@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Plugin/ExportHost.cs" Link="ExportHost.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CaptureLoopFactory.cs" Link="CaptureLoopFactory.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportOptions.cs" Link="ExportOptions.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportErrorText.cs" Link="ExportErrorText.cs" />
+    <Compile Include="../../src/VideoExport.Core/OutputDirectoryPreference.cs" Link="OutputDirectoryPreference.cs" />
+    <Compile Include="../../src/VideoExport.Core/CanvasLayout.cs" Link="CanvasLayout.cs" />
+    <Compile Include="../../src/VideoExport.Core/PlaybackLaunchGate.cs" Link="PlaybackLaunchGate.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportUiFlow.cs" Link="ExportUiFlow.cs" />
+  </ItemGroup>
+</Project>

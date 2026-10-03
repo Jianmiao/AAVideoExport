@@ -1,0 +1,7 @@
+{
+  "name": "AAVideoExport",
+  "version_number": "0.1.0",
+  "website_url": "https://github.com/Jianmiao/AAVideoExport",
+  "description": "AA 原生逐帧视频导出：GPU 异步读回、离线音频与硬件编码。开发验证版，需原生验收。",
+  "dependencies": []
+}

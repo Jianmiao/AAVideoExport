@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>AAVideoExport</AssemblyName>
+    <RootNamespace>AAVideoExport.Plugin</RootNamespace>
+    <Version>0.1.0</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../VideoExport.Core/VideoExport.Core.csproj" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Core.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Unity.Common.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/interop/*.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="CheckAAReferenceLocation" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(AAInstallPath)/BepInEx/interop/Assembly-CSharp.dll')" Text="Set AAInstallPath to your local AA installation with BepInEx 6 generated interop bindings. Native binaries are not distributed with this mod." />
+  </Target>
+</Project>

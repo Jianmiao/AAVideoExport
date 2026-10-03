@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>AAVideoExport.Core</AssemblyName>
+    <RootNamespace>AAVideoExport.Core</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Vortice.Direct3D11" Version="2.4.2" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="2.4.2" />
+    <InternalsVisibleTo Include="VideoExport.Core.Tests" />
+    <EmbeddedResource Include="Shaders/AA_FSR1.glsl" LogicalName="AAVideoExport.Core.Shaders.AA_FSR1.glsl" />
+    <EmbeddedResource Include="Shaders/AA_Anime4K.glsl" LogicalName="AAVideoExport.Core.Shaders.AA_Anime4K.glsl" />
+    <EmbeddedResource Include="Shaders/AA_RCAS.glsl" LogicalName="AAVideoExport.Core.Shaders.AA_RCAS.glsl" />
+  </ItemGroup>
+</Project>
