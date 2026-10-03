@@ -6,5 +6,6 @@
   <ItemGroup>
     <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
     <Compile Include="../../src/VideoExport.Plugin/NativeCaptureScope.cs" Link="NativeCaptureScope.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RenderControlV1.cs" Link="RenderControlV1.cs" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,11 @@
 using AAVideoExport.Core;
 using AAVideoExport.Plugin;
 using UnityEngine;
+using AAVideoExport.Integration;
+using System.Reflection;
+
+RenderControlV1.BeginHostInitialization();
+RenderControlV1.CompleteHostInitialization();
 
 // Compile and exercise the real capture scope. Only its Unity/AA boundary is
 // stubbed; this cannot establish the actual engine's sample-count semantics.
@@ -31,6 +36,60 @@ if (args.Contains("--repro"))
 
 var tests = new (string Name, Action Run)[]
 {
+    ("coordination restoration precedes capture snapshots and release follows all native restoration", () =>
+    {
+        int before = 0, after = 0;
+        Action acquire = () =>
+        {
+            Check(RenderControlV1.IsReady && RenderControlV1.IsRenderingOwned);
+            Equal(0, AudioRenderer.StartCalls);
+            Application.targetFrameRate = 144;
+            before++;
+        };
+        Action release = () =>
+        {
+            Check(!RenderControlV1.IsRenderingOwned);
+            Equal(144, Application.targetFrameRate);
+            Equal(1, QualitySettings.vSyncCount);
+            Check(Camera.main!.enabled && Camera.main.targetTexture == null && !CurrentPlayer!.auto);
+            Check(Time.captureDeltaTime == 0 && Time.timeScale == 0.5f && !Application.runInBackground);
+            Equal(1, AudioRenderer.StopCalls);
+            after++;
+        };
+        RenderControlV1.BeforeAcquire += acquire;
+        RenderControlV1.AfterRelease += release;
+        try { using var capture = NewCapture(); capture.Dispose(); Equal(1, before); Equal(1, after); }
+        finally { RenderControlV1.BeforeAcquire -= acquire; RenderControlV1.AfterRelease -= release; }
+    }),
+    ("rejected capture acquisition never mutates Unity or starts offline audio", () =>
+    {
+        Action reject = () => throw new InvalidOperationException("fixture participant failed");
+        RenderControlV1.BeforeAcquire += reject;
+        try
+        {
+            try { NewCapture(); throw new Exception("capture should have been rejected"); }
+            catch (AggregateException) { }
+            Equal(0, AudioRenderer.StartCalls);
+            Equal(72, Application.targetFrameRate);
+            Check(Camera.main!.enabled && Camera.main.targetTexture == null && !CurrentPlayer!.auto &&
+                !RenderControlV1.IsRenderingOwned);
+        }
+        finally { RenderControlV1.BeforeAcquire -= reject; }
+    }),
+    ("worker-thread disposal fails before touching Unity and leaves main-thread cleanup available", () =>
+    {
+        var capture = NewCapture();
+        Task.Run(() =>
+        {
+            try { capture.Dispose(); throw new Exception("worker cleanup should be rejected"); }
+            catch (InvalidOperationException) { }
+        }).GetAwaiter().GetResult();
+        Check(CurrentPlayer!.auto && Camera.main!.targetTexture != null && RenderControlV1.IsRenderingOwned,
+            "worker cleanup mutated Unity before its affinity guard");
+        Equal(0, AudioRenderer.StopCalls);
+        capture.Dispose();
+        Check(!CurrentPlayer.auto && !RenderControlV1.IsRenderingOwned);
+    }),
     ("disabled buttons stay invisible over 300 manual frames with one shared panel refresh", () => StableFrames(showButtons: false, automaticCapture: false)),
     ("enabled buttons stay visible over 300 manual frames with one shared panel refresh", () => StableFrames(showButtons: true, automaticCapture: false)),
     ("disabled buttons stay invisible over 300 automatic frames with one shared panel refresh", () => StableFrames(showButtons: false, automaticCapture: true)),
@@ -136,6 +195,8 @@ var tests = new (string Name, Action Run)[]
     ("geometry restore failure cannot block the other panels camera audio or timing restoration", () =>
     {
         using var capture = NewCapture(automaticCapture: false);
+        int released = 0;
+        RenderControlV1.AfterRelease += () => released++;
         var player = CurrentPlayer!;
         var panel = new UIPanel();
         var otherPanel = new UIPanel();
@@ -154,6 +215,8 @@ var tests = new (string Name, Action Run)[]
         Equal(1, AudioRenderer.StopCalls);
         Equal(72, Application.targetFrameRate);
         Equal(1, QualitySettings.vSyncCount);
+        Check(capture.RestorationFailed && !RenderControlV1.IsReady && RenderControlV1.IsRenderingOwned && released == 0,
+            "failed restoration must keep coordination unavailable and owned without a release event");
     }),
     ("canceling an automatic frame restores initially visible controls with the option off", () => CancelPreparedFrame(showButtons: false)),
     ("canceling an automatic frame restores initially hidden controls and parent with the option on", () => CancelPreparedFrame(showButtons: true)),
@@ -282,6 +345,13 @@ foreach (var test in tests)
 {
     try
     {
+        // Each case represents a fresh AA process. Restoration faults are
+        // intentionally sticky in production and must not contaminate tests.
+        foreach (var field in typeof(RenderControlV1).GetFields(BindingFlags.NonPublic | BindingFlags.Static))
+            if (!field.IsLiteral && !field.IsInitOnly)
+                field.SetValue(null, field.FieldType.IsValueType ? Activator.CreateInstance(field.FieldType) : null);
+        RenderControlV1.BeginHostInitialization();
+        RenderControlV1.CompleteHostInitialization();
         test.Run();
         Console.WriteLine("PASS " + test.Name);
         passed++;

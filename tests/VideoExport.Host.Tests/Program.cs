@@ -1,11 +1,61 @@
 using System.Reflection;
 using AAVideoExport.Core;
 using AAVideoExport.Plugin;
+using AAVideoExport.Integration;
 using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 var tests = new (string Name, Action Run)[]
 {
+    ("idle shutdown marks provider unavailable without reacquiring or faulting", () =>
+    {
+        var host = CreateHost();
+        Check(RenderControlV1.IsReady && !RenderControlV1.IsRenderingOwned, "ready boundary not initialized");
+        host.Shutdown();
+        Check(!RenderControlV1.IsReady && !RenderControlV1.IsRenderingOwned, "idle shutdown acquired rendering");
+        var replacement = CreateHost();
+        replacement.Shutdown();
+    }),
+    ("completed and cancelled host sessions release after busy and native cleanup", () =>
+    {
+        foreach (bool cancel in new[] { false, true })
+        {
+            var host = CreateHost();
+            var ownership = RenderControlV1.Acquire();
+            Set(host, "_renderSessionOwnership", ownership);
+            int released = 0;
+            Action after = () =>
+            {
+                Check(!host.Capturing && !Field<bool>(host, "_ownsInput"), "release before native restoration");
+                released++;
+            };
+            RenderControlV1.AfterRelease += after;
+            try
+            {
+                if (cancel)
+                {
+                    Set(host, "_session", new ExportSession(Options(), "", "", "fixture", 48000, 2, true));
+                    Call(host, "Cancel");
+                    Field<Task>(host, "_cleanup").GetAwaiter().GetResult();
+                }
+                host.Update();
+                Check(released == 1 && !RenderControlV1.IsRenderingOwned, "finished session did not release once");
+                host.Update();
+                Check(released == 1, "release repeated on later Update");
+            }
+            finally { RenderControlV1.AfterRelease -= after; host.Shutdown(); }
+        }
+    }),
+    ("shutdown with session ownership notifies release only after ready becomes false", () =>
+    {
+        var host = CreateHost();
+        Set(host, "_renderSessionOwnership", RenderControlV1.Acquire());
+        int released = 0;
+        Action after = () => { Check(!RenderControlV1.IsReady && !RenderControlV1.IsRenderingOwned, "shutdown event state"); released++; };
+        RenderControlV1.AfterRelease += after;
+        try { host.Shutdown(); Check(released == 1, "shutdown session token leaked"); }
+        finally { RenderControlV1.AfterRelease -= after; }
+    }),
     ("export folder restores on host restart and story changes retain it", () =>
     {
         string directory = Path.GetFullPath("artifacts/remembered-export-folder");

@@ -1,4 +1,5 @@
 using AAVideoExport.Core;
+using AAVideoExport.Integration;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -11,11 +12,14 @@ internal sealed class NativeCaptureScope : IDisposable
     private readonly List<(Camera Camera, RenderTexture Target, float Aspect, Rect Rect)> _cameras = new();
     private readonly List<Camera> _targetCameras = new();
     private readonly List<(Camera Camera, bool Enabled)> _displayCameras = new();
-    private readonly int _fps = Application.targetFrameRate;
-    private readonly int _vsync = QualitySettings.vSyncCount;
-    private readonly float _delta = Time.captureDeltaTime;
-    private readonly float _scale = Time.timeScale;
-    private readonly bool _background = Application.runInBackground;
+    private readonly int _fps;
+    private readonly int _vsync;
+    private readonly float _delta;
+    private readonly float _scale;
+    private readonly bool _background;
+    private IDisposable? _renderOwnership;
+    private bool _snapshotsCaptured;
+    internal bool RestorationFailed { get; private set; }
     private readonly Test _player;
     private readonly bool _auto;
     private readonly bool _showButtons;
@@ -33,7 +37,7 @@ internal sealed class NativeCaptureScope : IDisposable
     private bool _reportedFirstAudio;
     public Camera LastCamera { get; private set; } = null!;
     public bool AutomaticCameraCapture { get; }
-    public int SampleRate { get; } = AudioSettings.outputSampleRate;
+    public int SampleRate { get; }
     public int Channels { get; }
     internal long VisibilityTicks { get; private set; }
     internal long CameraRenderTicks { get; private set; }
@@ -42,19 +46,28 @@ internal sealed class NativeCaptureScope : IDisposable
     public NativeCaptureScope(Test player, ExportOptions options, RenderTexture target, bool showButtons, bool automaticCapture = true)
     {
         _player = player;
-        _auto = player.auto;
         _showButtons = showButtons;
-        _sourceAspect = options.CanvasMode == "viewport" ? options.Width / (float)options.Height
-            : options.SourceWidth > 0 ? options.SourceWidth / (float)options.SourceHeight : options.Width / (float)options.Height;
-        Channels = AudioSettings.speakerMode switch
-        {
-            AudioSpeakerMode.Mono => 1, AudioSpeakerMode.Stereo => 2, AudioSpeakerMode.Quad => 4,
-            AudioSpeakerMode.Surround => 5, AudioSpeakerMode.Mode5point1 => 6, AudioSpeakerMode.Mode7point1 => 8,
-            _ => throw new ExportException("audio_layout_unsupported", "当前 Unity 音频布局不支持离线导出。")
-        };
+        _renderOwnership = RenderControlV1.Acquire();
         try
         {
-            if (ScenarioResourceManager.Instance != null && ScenarioResourceManager.Instance.Preloading)
+            // Every Unity snapshot occurs after synchronous participant restoration.
+            _fps = Application.targetFrameRate;
+            _vsync = QualitySettings.vSyncCount;
+            _delta = Time.captureDeltaTime;
+            _scale = Time.timeScale;
+            _background = Application.runInBackground;
+            _auto = player.auto;
+            SampleRate = AudioSettings.outputSampleRate;
+            _snapshotsCaptured = true;
+            _sourceAspect = options.CanvasMode == "viewport" ? options.Width / (float)options.Height
+                : options.SourceWidth > 0 ? options.SourceWidth / (float)options.SourceHeight : options.Width / (float)options.Height;
+            Channels = AudioSettings.speakerMode switch
+            {
+                AudioSpeakerMode.Mono => 1, AudioSpeakerMode.Stereo => 2, AudioSpeakerMode.Quad => 4,
+                AudioSpeakerMode.Surround => 5, AudioSpeakerMode.Mode5point1 => 6, AudioSpeakerMode.Mode7point1 => 8,
+                _ => throw new ExportException("audio_layout_unsupported", "当前 Unity 音频布局不支持离线导出。")
+            };
+                if (ScenarioResourceManager.Instance != null && ScenarioResourceManager.Instance.Preloading)
                 throw new ExportException("assets_not_ready", "请等待 AA 素材预加载结束后再导出。");
             var scene = player.gameObject.scene;
             AutomaticCameraCapture = automaticCapture;
@@ -249,12 +262,13 @@ internal sealed class NativeCaptureScope : IDisposable
             }
         }
 
-        internal void Restore(List<UIPanel> panels)
+        internal bool Restore(List<UIPanel> panels)
         {
-            try { Apply(_active, panels); }
+            try { Apply(_active, panels); return true; }
             catch (Exception error)
             {
                 Debug.LogWarning("AA Video Export: playback control restore failed (" + error.GetType().Name + ").");
+                return false;
             }
         }
     }
@@ -311,28 +325,59 @@ internal sealed class NativeCaptureScope : IDisposable
     public void Dispose()
     {
         if (_disposed) return;
+        RenderControlV1.EnsureMainThread();
         _disposed = true;
-        RestoreAutomaticFrame();
-        foreach (var state in _ownedVisibility) state.Restore(_changedPanels);
-        RefreshButtonGeometry(restoring: true);
-        _ownedVisibility.Clear();
-        if (_audio) { Restore(() => AudioRenderer.Stop()); _audio = false; }
-        foreach (var state in _cameras)
-            Restore(() => { if (state.Camera != null) { state.Camera.targetTexture = state.Target; state.Camera.aspect = state.Aspect; state.Camera.rect = state.Rect; } });
-        foreach (var state in _displayCameras)
-            Restore(() => { if (state.Camera != null) state.Camera.enabled = state.Enabled; });
-        if (_viewport != null) { Restore(_viewport.Dispose); _viewport = null; }
-        Restore(() => { if (_player != null) { _player.auto = _auto; if (_player.selectionManager != null) _player.selectionManager.OnAutoModeChanged(_auto); } });
-        Restore(() => Time.captureDeltaTime = _delta);
-        Restore(() => Time.timeScale = _scale);
-        Restore(() => Application.targetFrameRate = _fps);
-        Restore(() => Application.runInBackground = _background);
-        Restore(() => QualitySettings.vSyncCount = _vsync);
+        try
+        {
+            Restore(RestoreAutomaticFrame);
+            foreach (var state in _ownedVisibility)
+                Restore(() => { if (!state.Restore(_changedPanels)) RestorationFailed = true; });
+            Restore(() => RefreshButtonGeometry(restoring: true));
+            _ownedVisibility.Clear();
+            if (_audio)
+            {
+                Restore(() =>
+                {
+                    if (!AudioRenderer.Stop()) throw new InvalidOperationException("Offline audio renderer did not stop.");
+                });
+                _audio = false;
+            }
+            foreach (var state in _cameras)
+                Restore(() => { if (state.Camera != null) { state.Camera.targetTexture = state.Target; state.Camera.aspect = state.Aspect; state.Camera.rect = state.Rect; } });
+            foreach (var state in _displayCameras)
+                Restore(() => { if (state.Camera != null) state.Camera.enabled = state.Enabled; });
+            if (_viewport != null) { Restore(_viewport.Dispose); _viewport = null; }
+            if (_snapshotsCaptured)
+            {
+                Restore(() => { if (_player != null) { _player.auto = _auto; if (_player.selectionManager != null) _player.selectionManager.OnAutoModeChanged(_auto); } });
+                Restore(() => Time.captureDeltaTime = _delta);
+                Restore(() => Time.timeScale = _scale);
+                Restore(() => Application.targetFrameRate = _fps);
+                Restore(() => Application.runInBackground = _background);
+                Restore(() => QualitySettings.vSyncCount = _vsync);
+            }
+        }
+        catch
+        {
+            RestorationFailed = true;
+            RenderControlV1.RestorationFailed();
+            throw;
+        }
+        if (RestorationFailed) RenderControlV1.RestorationFailed();
+        else
+        {
+            var ownership = _renderOwnership; _renderOwnership = null;
+            ownership?.Dispose();
+        }
     }
 
-    private static void Restore(Action restore)
+    private void Restore(Action restore)
     {
         try { restore(); }
-        catch (Exception error) { Debug.LogWarning("AA Video Export: restore step failed (" + error.GetType().Name + "). Restart AA before the next export."); }
+        catch (Exception error)
+        {
+            RestorationFailed = true;
+            Debug.LogWarning("AA Video Export: restore step failed (" + error.GetType().Name + "). Restart AA before the next export.");
+        }
     }
 }

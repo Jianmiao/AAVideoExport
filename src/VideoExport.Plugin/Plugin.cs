@@ -12,7 +12,7 @@ namespace AAVideoExport.Plugin;
 public sealed class Plugin : BasePlugin
 {
     public const string Guid = "halocue.aa.videoexport";
-    public const string Version = "0.1.0";
+    public const string Version = "0.2.0";
     internal static string FfmpegPath = "ffmpeg.exe";
     internal static string FfprobePath = "ffprobe.exe";
     internal static bool ReduceProgressUiWork = true;
@@ -28,8 +28,8 @@ public sealed class Plugin : BasePlugin
 
     public override void Load()
     {
-        FfmpegPath = Config.Bind("Encoder", "FFmpeg", "ffmpeg.exe", "External FFmpeg executable (not bundled).").Value;
-        FfprobePath = Config.Bind("Encoder", "FFprobe", "ffprobe.exe", "External ffprobe executable from the same FFmpeg distribution.").Value;
+        FfmpegPath = EncoderToolPaths.Resolve(Config.Bind("Encoder", "FFmpeg", "ffmpeg.exe", "Default uses bundled tools/ffmpeg.exe when present, otherwise PATH. Custom relative paths resolve from this mod's directory; absolute paths are honored.").Value, "ffmpeg.exe", Path.GetDirectoryName(typeof(Plugin).Assembly.Location)!);
+        FfprobePath = EncoderToolPaths.Resolve(Config.Bind("Encoder", "FFprobe", "ffprobe.exe", "Default uses bundled tools/ffprobe.exe when present, otherwise PATH. Custom relative paths resolve from this mod's directory; absolute paths are honored.").Value, "ffprobe.exe", Path.GetDirectoryName(typeof(Plugin).Assembly.Location)!);
         ReduceProgressUiWork = Config.Bind("Diagnostics", "ReduceProgressUiWork", true,
             "Reduce hidden export settings work during capture. False is only for comparing performance diagnostics.").Value;
         UseAsyncReadback = Config.Bind("Capture", "AsyncGPUReadback", true,
@@ -49,11 +49,13 @@ public sealed class Plugin : BasePlugin
         {
             _performanceLog = Log;
             _harmony.PatchAll(typeof(Plugin).Assembly);
+            MoreEffectsCompatibility.Initialize(_harmony, message => Log.LogInfo(message));
             _host = AddComponent<ExportHost>();
-            Log.LogInfo("AA Video Export loaded [20261003-unified-settings-accordion]. Ctrl+Shift+E opens settings. Export is explicit; project data is never written.");
+            Log.LogInfo("AA Video Export loaded [0.2.0-render-control-v1-bundled-tools]. Ctrl+Shift+E opens settings. Export is explicit; project data is never written.");
         }
         catch
         {
+            MoreEffectsCompatibility.Shutdown();
             _harmony.UnpatchSelf();
             _host?.Shutdown();
             throw;
@@ -85,6 +87,7 @@ public sealed class Plugin : BasePlugin
     public override bool Unload()
     {
         _host?.Shutdown();
+        if (!MoreEffectsCompatibility.Shutdown()) return false;
         _harmony?.UnpatchSelf();
         if (_host != null) UnityEngine.Object.Destroy(_host);
         return true;

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using AAVideoExport.Core;
+using AAVideoExport.Integration;
 using Il2CppInterop.Runtime;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
@@ -45,6 +46,7 @@ public sealed partial class NativeExportPanel : IDisposable
     private readonly List<Camera> _excludedCameras = new();
     private readonly List<Camera> _idleCameras = new();
     private bool _idleBudget;
+    private IDisposable? _renderOwnership;
     private int _idleFps, _idleVsync;
     private UITexture? _progressWidget;
     private UITexture? _exportProgressWidget;
@@ -86,15 +88,19 @@ public sealed partial class NativeExportPanel : IDisposable
         get => _visible;
         set
         {
+            RenderControlV1.EnsureMainThread();
             // Loading and rendering stay behind a progress surface. Hiding it
             // would expose the native story that is being processed internally.
             if (!value && _busy) return;
+            if (value && _renderOwnership == null)
+                _renderOwnership = RenderControlV1.Acquire();
             if (_visible == value && ReducePresentationWork) return;
             if (!value)
             {
                 PollInputs();
                 CommitOutputDirectory();
                 ReleaseIdleBudget();
+                ReleaseExcludedCameras();
             }
             _visible = value;
             _refreshCadence.Invalidate();
@@ -105,6 +111,7 @@ public sealed partial class NativeExportPanel : IDisposable
                 _root.SetActive(value);
             }
             if (_nativeCamera != null) _nativeCamera.gameObject.SetActive(value);
+            if (!value) ReleaseRenderOwnership();
         }
     }
 
@@ -173,22 +180,29 @@ public sealed partial class NativeExportPanel : IDisposable
     internal void ReleaseIdleBudget()
     {
         if (!_idleBudget) return;
+        RenderControlV1.EnsureMainThread();
+        try
+        {
         foreach (var camera in _idleCameras) if (camera != null) camera.enabled = true;
         _idleCameras.Clear();
         Application.targetFrameRate = _idleFps;
         QualitySettings.vSyncCount = _idleVsync;
         _idleBudget = false;
+        }
+        catch { RenderControlV1.RestorationFailed(); throw; }
     }
 
     private void ApplyIdleBudget()
     {
+        RenderControlV1.EnsureMainThread();
+        _renderOwnership ??= RenderControlV1.Acquire();
         if (!_idleBudget)
         {
             _idleFps = Application.targetFrameRate;
             _idleVsync = QualitySettings.vSyncCount;
+            _idleBudget = true;
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = 30;
-            _idleBudget = true;
         }
         foreach (var camera in Camera.allCameras)
         {
@@ -1184,10 +1198,7 @@ public sealed partial class NativeExportPanel : IDisposable
             _persistentUi.SetActive(false);
             Object.Destroy(_persistentUi);
         }
-        int mask = 1 << _layer;
-        foreach (var camera in _excludedCameras)
-            if (camera != null) camera.cullingMask |= mask;
-        _excludedCameras.Clear();
+        ReleaseExcludedCameras();
         foreach (var shape in _shapes.Values) if (shape != null) Object.Destroy(shape);
         _shapes.Clear();
         _root = null;
@@ -1224,14 +1235,42 @@ public sealed partial class NativeExportPanel : IDisposable
     public void Dispose()
     {
         if (_disposed) return;
+        RenderControlV1.EnsureMainThread();
         if (!_busy)
         {
             PollInputs();
             CommitOutputDirectory();
         }
         _disposed = true;
-        ReleaseIdleBudget();
-        DestroyHierarchy();
+        try
+        {
+            ReleaseIdleBudget();
+            DestroyHierarchy();
+            _visible = false;
+        }
+        catch { RenderControlV1.RestorationFailed(); throw; }
+        // A release observer error does not mean Unity restoration failed.
+        // The provider already reports IsReady=false, IsRenderingOwned=false.
+        ReleaseRenderOwnership();
+    }
+
+    private void ReleaseRenderOwnership()
+    {
+        var ownership = _renderOwnership;
+        _renderOwnership = null;
+        ownership?.Dispose();
+    }
+
+    private void ReleaseExcludedCameras()
+    {
+        try
+        {
+            int mask = 1 << _layer;
+            foreach (var camera in _excludedCameras)
+                if (camera != null) camera.cullingMask |= mask;
+            _excludedCameras.Clear();
+        }
+        catch { RenderControlV1.RestorationFailed(); throw; }
     }
 
     private sealed record ButtonBinding(UITexture Background, UILabel Label, BoxCollider Collider, Func<string> Text,

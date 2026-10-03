@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Plugin/EncoderToolPaths.cs" Link="Production/EncoderToolPaths.cs" />
+  </ItemGroup>
+</Project>

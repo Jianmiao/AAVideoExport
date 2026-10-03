@@ -114,6 +114,7 @@ internal static class NativeExportClock
         // Realtime itself was never hooked. Stop virtual dispatch before
         // reading it, and preserve remaining wait time on cancellation.
         float realNow = Time.realtimeSinceStartup;
+        List<Exception>? restoreErrors = null;
         try
         {
             foreach (var entry in Waits.Values)
@@ -126,10 +127,13 @@ internal static class NativeExportClock
                 }
                 catch (Exception error)
                 {
+                    (restoreErrors ??= new()).Add(error);
                     Debug.LogWarning("AA Video Export: realtime wait restoration failed (" + error.GetType().Name + ").");
                 }
             }
         }
         finally { Waits.Clear(); }
+        if (restoreErrors != null)
+            throw new AggregateException("One or more native realtime waits could not be restored.", restoreErrors);
     }
 }

@@ -155,6 +155,12 @@ namespace AAVideoExport.Core
 }
 namespace AAVideoExport.Plugin
 {
+    internal static class MoreEffectsCompatibility
+    {
+        internal static void TryInstall() { }
+        internal static void BeginExport(Func<double> readTime) { }
+        internal static void EndExport() { }
+    }
     public static class Plugin
     {
         internal static bool UseNativeFrameBuffers = true;
@@ -207,6 +213,7 @@ namespace AAVideoExport.Plugin
         public long VisibilityTicks, CameraRenderTicks, PanelRefreshCount;
         public bool AutomaticCameraCapture;
         public bool Disposed;
+        public bool RestorationFailed;
         public UnityEngine.Camera LastCamera { get; } = new();
         public NativeCaptureScope(Test player, ExportOptions options, UnityEngine.RenderTexture target, bool showButtons, bool automaticCapture = true) { AutomaticCameraCapture = automaticCapture; }
         public void Dispose() => Disposed = true;

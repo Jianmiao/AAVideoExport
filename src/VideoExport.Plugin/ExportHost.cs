@@ -2,6 +2,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
 using AAVideoExport.Core;
+using AAVideoExport.Integration;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.Attributes;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
@@ -63,6 +64,8 @@ public sealed class ExportHost : MonoBehaviour
     private bool _failureHandling;
     private long _uiTicks, _renderTicks, _audioTicks;
     private double _lastPerfReport;
+    private IDisposable? _renderSessionOwnership;
+    private bool _renderRestorationFailed;
 
     internal bool Capturing => _native != null;
     internal bool AllowTouch => !Capturing && !_panel.Visible;
@@ -75,6 +78,7 @@ public sealed class ExportHost : MonoBehaviour
 
     public void Awake()
     {
+        RenderControlV1.BeginHostInitialization();
         Current = this;
         _gpuName = SystemInfo.graphicsDeviceName;
         _panel.Options = new ExportOptions { Title = "", OutputDirectory = Plugin.OutputDirectory };
@@ -107,11 +111,13 @@ public sealed class ExportHost : MonoBehaviour
             _panel.SetSourceCanvas(Screen.width, Screen.height);
             _panel.Visible = true;
         });
+        RenderControlV1.CompleteHostInitialization();
     }
 
     public void Update()
     {
         if (_shutdown) return;
+        MoreEffectsCompatibility.TryInstall();
         try
         {
             if (Input.GetKey(KeyCode.LeftControl) && Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.E))
@@ -210,7 +216,11 @@ public sealed class ExportHost : MonoBehaviour
                 throw new ExportException("assets_not_ready", "剧情仍在加载素材。请先完整预加载，再从头导出，避免把加载时间混进视频。");
         }
         catch (Exception error) { Fail(error); }
-        finally { UpdateInputOwnership(); }
+        finally
+        {
+            RestoreCoordinated(UpdateInputOwnership, "updating native input ownership");
+            if (!Busy && !_renderRestorationFailed) ReleaseSessionOwnership();
+        }
     }
 
     [HideFromIl2Cpp]
@@ -267,7 +277,10 @@ public sealed class ExportHost : MonoBehaviour
     [HideFromIl2Cpp]
     private void Prepare(ExportOptions options)
     {
+        RenderControlV1.EnsureMainThread();
         if (Busy) return;
+        var acquisitionAttempted = false;
+        var acquired = _renderSessionOwnership != null;
         try
         {
             options = options with { RenderGpuVendorId = SystemInfo.graphicsDeviceVendorID, RenderGpuDeviceId = SystemInfo.graphicsDeviceID, Direct3DReadbackFrames = Plugin.Direct3DReadbackFrames };
@@ -281,6 +294,9 @@ public sealed class ExportHost : MonoBehaviour
             if (!string.Equals(Path.GetDirectoryName(storyKey), Path.TrimEndingDirectorySeparator(savesRoot), StringComparison.OrdinalIgnoreCase) ||
                 !string.Equals(Path.GetExtension(storyKey), ".aas", StringComparison.OrdinalIgnoreCase))
                 throw new ExportException("story_location_unsupported", "请选择当前 AA 工作区鉴赏列表中的剧情文件。");
+            acquisitionAttempted = true;
+            _renderSessionOwnership ??= RenderControlV1.Acquire();
+            acquired = true;
             // The native loader accepts a basename and resolves data/saves itself.
             // Read the selected file afresh; a global table can belong to a different card.
             var save = ScenarioResourceManager.Instance.LoadGenericScenario(Path.GetFileNameWithoutExtension(storyKey));
@@ -317,7 +333,16 @@ public sealed class ExportHost : MonoBehaviour
                 return session;
             });
         }
+        catch (Exception error) when (acquisitionAttempted && !acquired)
+        {
+            // Participants rejected the handoff before native preparation.
+            // Do not run Cancel or open a panel that would immediately try to
+            // acquire again; no exporter snapshot or mutation has occurred.
+            _status = "导出未开始：渲染控制权交接失败，请检查其他 Mod 的恢复状态。";
+            UnityEngine.Debug.LogError("AA Video Export: render acquisition rejected: " + error);
+        }
         catch (Exception error) { Fail(error); }
+        finally { if (!Busy && !_renderRestorationFailed) ReleaseSessionOwnership(); }
     }
 
     [HideFromIl2Cpp]
@@ -384,7 +409,9 @@ public sealed class ExportHost : MonoBehaviour
     [HideFromIl2Cpp]
     private void Begin(Test player)
     {
+        RenderControlV1.EnsureMainThread();
         if (_session == null || _options == null) throw new ExportException("session_missing", "编码任务未准备。");
+        _renderSessionOwnership ??= RenderControlV1.Acquire();
         _armed = false;
         _eligiblePlayer = IntPtr.Zero;
         _player = player;
@@ -398,6 +425,7 @@ public sealed class ExportHost : MonoBehaviour
         _frames = new FramePipeline(_options, _session, Plugin.UseAsyncReadback, nativeBuffers: Plugin.UseNativeFrameBuffers);
         _native = new NativeCaptureScope(player, _options, _frames.Target, _showButtons, _automaticCaptureAvailable);
         NativeExportClock.Begin(_uiEpoch, FrameDelta, () => UiClock);
+        MoreEffectsCompatibility.BeginExport(() => _captured / (double)_options.Fps);
         UpdateInputOwnership();
         _lastUnityFrame = -1;
         _elapsed.Restart();
@@ -589,7 +617,7 @@ public sealed class ExportHost : MonoBehaviour
             });
         }
         _elapsed.Stop();
-        _panel.Visible = true;
+        if (!_shutdown) _panel.Visible = true;
         _status = _nativeLoadPending ? "编码已取消，正在等待 AA 完成当前场景加载并返回设置…"
             : "已取消。原工程未修改，导出设置已保留。";
     }
@@ -669,13 +697,19 @@ public sealed class ExportHost : MonoBehaviour
         float exportClock = UiClock;
         var scope = _native;
         _native = null; // Clock hooks must be inert before reading the restored real clock.
-        BestEffort(NativeExportClock.Restore, "restoring native clock");
+        RestoreCoordinated(MoreEffectsCompatibility.EndExport, "restoring adapted animation clock");
+        RestoreCoordinated(NativeExportClock.Restore, "restoring native clock");
         if (_captureLoop != null)
         {
             try { _player?.StopCoroutine(_captureLoop); } catch { }
             _captureLoop = null;
         }
-        BestEffort(scope.Dispose, "restoring native settings");
+        RestoreCoordinated(scope.Dispose, "restoring native settings");
+        if (scope.RestorationFailed)
+        {
+            _renderRestorationFailed = true;
+            RenderControlV1.RestorationFailed();
+        }
         try
         {
             float offset = RealTime.time - exportClock;
@@ -686,6 +720,8 @@ public sealed class ExportHost : MonoBehaviour
         }
         catch (Exception error)
         {
+            _renderRestorationFailed = true;
+            RenderControlV1.RestorationFailed();
             // Scene teardown must still release the encoder and GPU resources.
             UnityEngine.Debug.LogWarning("AA Video Export: tween clock restoration unavailable (" + error.GetType().Name + ").");
         }
@@ -714,20 +750,50 @@ public sealed class ExportHost : MonoBehaviour
     public void Shutdown()
     {
         if (_shutdown) return;
+        RenderControlV1.BeginShutdown();
         _shutdown = true;
-        _probeCancellation?.Cancel();
-        Cancel();
-        _catalogAction?.Dispose();
+        BestEffort(() => _probeCancellation?.Cancel(), "cancelling GPU probe");
+        RestoreCoordinated(Cancel, "cancelling export during shutdown");
+        RestoreCoordinated(() => _catalogAction?.Dispose(), "removing catalog action");
         _catalogAction = null;
-        _panel.Dispose();
+        RestoreCoordinated(_panel.Dispose, "restoring export panel");
         if (_endFrame != null)
         {
             try { RenderPipelineManager.remove_endFrameRendering(_endFrame); }
             catch (Exception error) { UnityEngine.Debug.LogWarning("AA Video Export: URP callback cleanup unavailable (" + error.GetType().Name + ")."); }
         }
-        UpdateInputOwnership();
+        RestoreCoordinated(UpdateInputOwnership, "restoring native input");
+        if (!_renderRestorationFailed) ReleaseSessionOwnership();
         Current = null;
     }
     public void OnDestroy() => Shutdown();
     public void OnApplicationQuit() => Shutdown();
+
+    [HideFromIl2Cpp]
+    private void RestoreCoordinated(Action restore, string operation)
+    {
+        try { restore(); }
+        catch (Exception error)
+        {
+            _renderRestorationFailed = true;
+            RenderControlV1.RestorationFailed();
+            UnityEngine.Debug.LogWarning("AA Video Export: " + operation + " failed (" + error.GetType().Name + "); render coordination remains unavailable.");
+        }
+    }
+
+    [HideFromIl2Cpp]
+    private void ReleaseSessionOwnership()
+    {
+        var ownership = _renderSessionOwnership;
+        _renderSessionOwnership = null;
+        if (ownership == null) return;
+        try { ownership.Dispose(); }
+        catch (Exception error)
+        {
+            // Unity settings are already restored. A participant's release
+            // callback failure must not apply any exporter settings again.
+            _renderRestorationFailed = true;
+            UnityEngine.Debug.LogWarning("AA Video Export: render release observer failed (" + error.GetType().Name + ").");
+        }
+    }
 }
