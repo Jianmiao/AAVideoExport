@@ -8,7 +8,7 @@ $checks = @()
 foreach ($flag in @('canvas-only','anime-compute-only','d3d-policy-only','gpu-device-only','panel-layout-only','playback-launch-only','proxy-only','ui-flow-only','ui-refresh-only','encoder-path-only')) {
     $checks += @{ Name='Core-' + $flag; Project='VideoExport.Core.Tests'; Flag=$flag }
 }
-foreach ($name in @('Audio','Catalog','Clock','FramePipeline','Host','OutputDimensions','QueuedReadback')) {
+foreach ($name in @('Audio','Catalog','Clock','FramePipeline','Host','OutputDimensions','QueuedReadback','Compatibility')) {
     $checks += @{ Name=$name; Project='VideoExport.' + $name + '.Tests' }
 }
 $results = foreach ($check in $checks) {
@@ -20,7 +20,7 @@ $results = foreach ($check in $checks) {
     $lines = @($output | ForEach-Object ToString)
     [IO.File]::WriteAllLines((Join-Path $OutputDirectory ($check.Name + '.log')), $lines)
     if ($code -ne 0) { throw ($check.Name + ' failed: ' + ($lines -join "`n")) }
-    $summary = $lines | Where-Object { $_ -match '(\d+/\d+ passed|RESULT: \d+ passed)' } | Select-Object -Last 1
+    $summary = $lines | Where-Object { $_ -match '(\d+/\d+ passed|RESULT: \d+ passed|\d+ compatibility checks passed)' } | Select-Object -Last 1
     Write-Host ($check.Name + ': ' + $summary)
     [pscustomobject]@{Name=$check.Name;ExitCode=$code;Summary=$summary;Passed=@($lines | Where-Object {$_ -match '^PASS '}).Count}
 }

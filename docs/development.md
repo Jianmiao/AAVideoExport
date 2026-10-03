@@ -21,7 +21,7 @@ pwsh -File tools/Test-PortableReview.ps1
 pwsh -File tools/Test-CloneInstall.ps1
 ```
 
-前者运行 17 组、206 项纯功能检查，不启动 AA、不渲染作品、不运行性能测试。
+前者运行原有 17 组、206 项纯功能检查，以及 14 项计时适配检查，不启动 AA、不渲染作品、不运行性能测试。计时适配测试默认恢复固定版本的 HarmonyX；提供 `AAInstallPath` 时优先使用本机宿主的 Harmony。
 后者检查克隆安装目录、预编译组件、版本与 SHA-256。结果不能替代 AA 原生画面和音画同步验收。
 媒体 / GPU 测试及显式启用的 AA 测试插件分别见各测试项目 README。
 

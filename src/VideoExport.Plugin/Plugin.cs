@@ -49,11 +49,13 @@ public sealed class Plugin : BasePlugin
         {
             _performanceLog = Log;
             _harmony.PatchAll(typeof(Plugin).Assembly);
+            MoreEffectsCompatibility.Initialize(_harmony, message => Log.LogInfo(message));
             _host = AddComponent<ExportHost>();
-            Log.LogInfo("AA Video Export loaded [20261003-unified-settings-accordion]. Ctrl+Shift+E opens settings. Export is explicit; project data is never written.");
+            Log.LogInfo("AA Video Export loaded [20261003-moreeffects-clock]. Ctrl+Shift+E opens settings. Export is explicit; project data is never written.");
         }
         catch
         {
+            MoreEffectsCompatibility.Shutdown();
             _harmony.UnpatchSelf();
             _host?.Shutdown();
             throw;
@@ -85,6 +87,7 @@ public sealed class Plugin : BasePlugin
     public override bool Unload()
     {
         _host?.Shutdown();
+        if (!MoreEffectsCompatibility.Shutdown()) return false;
         _harmony?.UnpatchSelf();
         if (_host != null) UnityEngine.Object.Destroy(_host);
         return true;

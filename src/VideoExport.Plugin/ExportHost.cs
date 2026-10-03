@@ -112,6 +112,7 @@ public sealed class ExportHost : MonoBehaviour
     public void Update()
     {
         if (_shutdown) return;
+        MoreEffectsCompatibility.TryInstall();
         try
         {
             if (Input.GetKey(KeyCode.LeftControl) && Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.E))
@@ -398,6 +399,7 @@ public sealed class ExportHost : MonoBehaviour
         _frames = new FramePipeline(_options, _session, Plugin.UseAsyncReadback, nativeBuffers: Plugin.UseNativeFrameBuffers);
         _native = new NativeCaptureScope(player, _options, _frames.Target, _showButtons, _automaticCaptureAvailable);
         NativeExportClock.Begin(_uiEpoch, FrameDelta, () => UiClock);
+        MoreEffectsCompatibility.BeginExport(() => _captured / (double)_options.Fps);
         UpdateInputOwnership();
         _lastUnityFrame = -1;
         _elapsed.Restart();
@@ -669,6 +671,7 @@ public sealed class ExportHost : MonoBehaviour
         float exportClock = UiClock;
         var scope = _native;
         _native = null; // Clock hooks must be inert before reading the restored real clock.
+        BestEffort(MoreEffectsCompatibility.EndExport, "restoring adapted animation clock");
         BestEffort(NativeExportClock.Restore, "restoring native clock");
         if (_captureLoop != null)
         {

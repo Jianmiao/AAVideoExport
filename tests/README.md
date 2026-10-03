@@ -7,13 +7,21 @@ and a .NET SDK capable of building `net6.0` (plus the .NET 6 runtime):
 ./tools/Test-PortableReview.ps1
 ```
 
-The runner covers 17 groups for export geometry/settings, 720p SR tiers,
+The runner covers 18 groups for export geometry/settings, 720p SR tiers,
 encoder-selection policy, launch/cancellation flow, output path retention,
 audio/control visibility, frame pipeline and queued readback lifecycle. It uses
 synthetic/stubbed inputs and does not launch AA, call a GPU encoder or run a
 performance benchmark. First restore requires the project's pinned NuGet
 dependencies. Logs and the JSON result are written under `artifacts/portable-tests`
 or an explicit `-OutputDirectory`.
+
+The compatibility group runs 14 checks, including actual Harmony patches on a
+managed animation fixture, cancellation rebasing and ordinary playback timing.
+It uses pinned HarmonyX 2.10.2 without AA, or the local host Harmony when
+`AAInstallPath` is supplied. An optional argument pointing to the user's own
+`AzureArchive.VideoTools.Core.dll` adds four real preset evaluator checks; the
+third-party DLL is not included here. This does not exercise Mod instruction
+dispatch or prove that native scene effects appear in an exported video.
 
 The Core harness also contains real FFmpeg/GPU integration tests, including an
 explicit benchmark mode. See [Core test requirements](VideoExport.Core.Tests/README.md)

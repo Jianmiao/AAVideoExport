@@ -155,6 +155,12 @@ namespace AAVideoExport.Core
 }
 namespace AAVideoExport.Plugin
 {
+    internal static class MoreEffectsCompatibility
+    {
+        internal static void TryInstall() { }
+        internal static void BeginExport(Func<double> readTime) { }
+        internal static void EndExport() { }
+    }
     public static class Plugin
     {
         internal static bool UseNativeFrameBuffers = true;

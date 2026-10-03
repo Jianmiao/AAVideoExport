@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Plugin/AnimationTimestampClock.cs" Link="AnimationTimestampClock.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/MoreEffectsCompatibility.cs" Link="MoreEffectsCompatibility.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" Condition="Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+    <PackageReference Include="HarmonyX" Version="2.10.2" Condition="!Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+  </ItemGroup>
+</Project>

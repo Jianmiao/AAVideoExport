@@ -88,9 +88,13 @@ if ($frameworkCompiler -and (Test-Path -LiteralPath $frameworkCompiler)) {
     & $frameworkCompiler /nologo /optimize+ /target:exe ('/out:'+(Join-Path $OutputDirectory 'VideoExport.Core.Tests.exe')) (Join-Path $repo 'tools\OfflineTestHost.cs')
     if ($LASTEXITCODE -ne 0) { throw 'Offline test fixture host compilation failed.' }
 }
-foreach ($testName in @('FramePipeline','Host','Audio','Clock','OutputDimensions','Catalog','QueuedReadback')) {
+foreach ($testName in @('FramePipeline','Host','Audio','Clock','OutputDimensions','Catalog','QueuedReadback','Compatibility')) {
     $testReferences = if ($testName -eq 'Audio') { @($coreReference) } else { @() }
+    if ($testName -eq 'Compatibility') { $testReferences = @('/reference:' + (Join-Path $AAInstallPath 'BepInEx\core\0Harmony.dll')) }
     Compile-Project "tests\VideoExport.$testName.Tests\VideoExport.$testName.Tests.csproj" "VideoExport.$testName.Tests" $testReferences
+}
+foreach ($name in @('0Harmony.dll','MonoMod.Backports.dll','MonoMod.ILHelpers.dll','MonoMod.RuntimeDetour.dll','MonoMod.Utils.dll','Mono.Cecil.dll')) {
+    Copy-Item -LiteralPath (Join-Path $AAInstallPath ('BepInEx\core\' + $name)) -Destination (Join-Path $OutputDirectory $name)
 }
 $pluginRefs = @($coreReference)
 foreach ($name in @('BepInEx.Core.dll','BepInEx.Unity.Common.dll','BepInEx.Unity.IL2CPP.dll','Il2CppInterop.Runtime.dll','0Harmony.dll')) {
