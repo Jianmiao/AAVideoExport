@@ -88,7 +88,7 @@ if ($frameworkCompiler -and (Test-Path -LiteralPath $frameworkCompiler)) {
     & $frameworkCompiler /nologo /optimize+ /target:exe ('/out:'+(Join-Path $OutputDirectory 'VideoExport.Core.Tests.exe')) (Join-Path $repo 'tools\OfflineTestHost.cs')
     if ($LASTEXITCODE -ne 0) { throw 'Offline test fixture host compilation failed.' }
 }
-foreach ($testName in @('FramePipeline','Host','Audio','Clock','OutputDimensions','Catalog','QueuedReadback')) {
+foreach ($testName in @('FramePipeline','Host','Audio','Clock','OutputDimensions','Catalog','QueuedReadback','StoryPath')) {
     $testReferences = if ($testName -eq 'Audio') { @($coreReference) } else { @() }
     Compile-Project "tests\VideoExport.$testName.Tests\VideoExport.$testName.Tests.csproj" "VideoExport.$testName.Tests" $testReferences
 }
