@@ -12,6 +12,7 @@ local.props
 !/0.1.0/*.dll
 !/0.2.0/*.dll
 !/0.2.1/*.dll
+!/0.2.3/*.dll
 *.zip
 *.mp4
 *.mov

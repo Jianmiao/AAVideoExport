@@ -3,6 +3,7 @@
   <ItemGroup>
     <Compile Include="../VideoExport.Host.Tests/Fakes.cs" Link="Fakes.cs" />
     <Compile Include="../../src/VideoExport.Plugin/ExportHost.cs" Link="ExportHost.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/NativeAutoSelection.cs" Link="NativeAutoSelection.cs" />
     <Compile Include="../../src/VideoExport.Plugin/StorySourcePath.cs" Link="StorySourcePath.cs" />
     <Compile Include="../../src/VideoExport.Plugin/EncodingModeSelection.cs" Link="EncodingModeSelection.cs" />
     <Compile Include="../../src/VideoExport.Plugin/RenderControlV1.cs" Link="RenderControlV1.cs" />

@@ -28,16 +28,16 @@ MoreEffects 兼容测试在没有宿主 Harmony DLL 时使用固定版本 Harmon
 
 ```powershell
 pwsh -File tools/Package-Release.ps1 -AAInstallPath '你的 AA 安装目录' -Variant full -FFmpegDirectory '已核验 FFmpeg 的 bin 目录' -FFmpegNoticesDirectory '包含 LICENSE.txt 和源码来源说明的目录' -OutputDirectory artifacts/release
-pwsh -File tools/Test-ReleaseArchive.ps1 -Archive artifacts/release/AAVideoExport-0.2.1-win-x64-full.zip -Variant full
+pwsh -File tools/Test-ReleaseArchive.ps1 -Archive artifacts/release/AAVideoExport-0.2.3-win-x64-full.zip -Variant full
 ```
 
-ZIP 的唯一顶层是 AAVideoExport/，其下为 0.2.1/；禁止再加 mods/ 或开发包名称。工具固定放在 0.2.1/tools/，插件默认自行查找。两个包均包含九个 Mod/图形 DLL、manifest、图标、校验和、说明和许可证；full 大包另外包含 FFmpeg/ffprobe。不包含测试插件、interop、本机配置、工程或素材。
+ZIP 的唯一顶层是 AAVideoExport/，其下为 0.2.3/；禁止再加 mods/ 或开发包名称。工具固定放在 0.2.3/tools/，插件默认自行查找。两个包均包含九个 Mod/图形 DLL、manifest、图标、校验和、说明和许可证；full 大包另外包含 FFmpeg/ffprobe。不包含测试插件、interop、本机配置、工程或素材。
 
 小包使用 `-Variant lite` 打包并校验，不传 FFmpeg 目录。两个包的 Mod 功能一致，只选其一安装。
 
-Git 中的 0.2.1/ 保留克隆安装需要的小型 DLL，不提交大型 FFmpeg EXE。完整 Release 另外附带 FFmpeg，必须同时发布对应源码和构建来源资料。不要把上游构建配方误当作完整 FFmpeg 源码，也不要声称构建工具版本可实现逐字节复现。
+Git 中的 0.2.3/ 保留克隆安装需要的小型 DLL，不提交大型 FFmpeg EXE。完整 Release 另外附带 FFmpeg，必须同时发布对应源码和构建来源资料。不要把上游构建配方误当作完整 FFmpeg 源码，也不要声称构建工具版本可实现逐字节复现。
 
-仅更新 src/ 不会更新预编译的 0.2.1/。发布前同步版本常量、csproj、两个 manifest 和该目录的 SHA256SUMS.txt。旧版本可以保留，用户在管理器中选择新版本。
+仅更新 src/ 不会更新预编译的 0.2.3/。发布前同步版本常量、csproj、两个 manifest 和该目录的 SHA256SUMS.txt。旧版本可以保留，用户在管理器中选择新版本。
 
 ## 固定协作接口
 

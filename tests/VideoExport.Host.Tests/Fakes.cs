@@ -106,12 +106,28 @@ public sealed class CatalogFileInfo : UnityEngine.MonoBehaviour
 }
 public sealed class Test : UnityEngine.MonoBehaviour
 {
+    public bool hasSelection, IsAutoEnabled = true;
+    public int cur;
+    public SelectionManager? selectionManager;
     public bool previewMode;
     public object? scn = new();
     public int EndCalls;
     public Action? EndAction;
     public void End() { EndCalls++; EndAction?.Invoke(); }
 }
+public sealed class SelectionManager : UnityEngine.MonoBehaviour
+{
+    public bool isSelectionActive, autoModeEnabled = true;
+    public int defaultSelectionIndex = -1;
+    public float autoSelectDelaySeconds = 2;
+    public List<SelectionElement>? elements = new();
+}
+public sealed class SelectionElement : UnityEngine.MonoBehaviour
+{
+    public UI.MXButton? button = new();
+    public void OnSelect() { if (button != null) button.disabled = true; }
+}
+namespace UI { public sealed class MXButton : UnityEngine.MonoBehaviour { public bool disabled; } }
 public sealed class GenericScenarioExcelTable { }
 public static class PersistentData { public static GenericScenarioExcelTable? saveData; public static string projectPath = ""; }
 public sealed class UserSettings { public static UserSettings? Instance; public string WorkspacePath = ""; }
@@ -280,4 +296,5 @@ namespace AAVideoExport.Plugin
         public static void Begin(float epoch, float delta, Func<float> clock) { }
         public static void Restore() { }
     }
+    internal static class AutoSelectionHooks { internal static void EnsureSupported() { } }
 }

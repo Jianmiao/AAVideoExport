@@ -7,6 +7,27 @@ using Object = UnityEngine.Object;
 
 var tests = new (string Name, Action Run)[]
 {
+    ("active choice without AUTO stops the actual host and restores its session", () =>
+    {
+        var player = new Test { hasSelection = true, selectionManager = new() { isSelectionActive = true } };
+        var host = CapturingHost(player);
+        host.Update();
+        Check(!host.Capturing && host.AutoSelection == null, "missing AUTO kept recording");
+        Check(player.EndCalls == 1, "failed choice did not end playback exactly once");
+        Check(UnityEngine.Debug.Messages.Any(m => m.Contains("selection_default_missing")), "missing AUTO diagnostic absent");
+        host.Shutdown();
+    }),
+    ("valid AUTO choice stays capturing and cancellation drops its ownership", () =>
+    {
+        var player = new Test { hasSelection = true, selectionManager = new() { isSelectionActive = true, defaultSelectionIndex = 0 } };
+        player.selectionManager.elements!.Add(new());
+        var host = CapturingHost(player);
+        host.Update();
+        Check(host.Capturing && host.AutoSelection != null, "valid AUTO was rejected");
+        host.AutoSelectionFailed(new ExportException("selection_submit_failed", "AUTO failed"));
+        Check(!host.Capturing && host.AutoSelection == null && player.EndCalls == 1, "selection hook failure did not clean up host");
+        host.Shutdown();
+    }),
     ("encoding mode switch resets codec and encoder while preserving user output settings", () =>
     {
         var before = Options() with { Codec = "av1", Encoder = "av1_nvenc", Container = "mkv", Width = 2560,
@@ -339,6 +360,16 @@ static ExportHost CreateHost()
     var host = new ExportHost(new IntPtr(1)); host.Awake();
     Set(host, "_probeAttempted", true); Set(host, "_capabilities", new FfmpegCapabilities());
     Set(host, "_probeMode", "hardware"); Set(host, "_capabilitiesMode", "hardware");
+    return host;
+}
+static ExportHost CapturingHost(Test player)
+{
+    var host = CreateHost();
+    var options = Options();
+    Set(host, "_options", options);
+    Set(host, "_session", new ExportSession(options, "", "", "fixture", 48000, 2, true));
+    Set(host, "_cancellation", new CancellationTokenSource());
+    Call(host, "Begin", player);
     return host;
 }
 static ExportOptions Options() => new() { Title = "fixture", OutputDirectory = Path.GetFullPath("artifacts/host-test") };

@@ -7,9 +7,9 @@ and a .NET SDK capable of building `net6.0` (plus the .NET 6 runtime):
 ./tools/Test-PortableReview.ps1
 ```
 
-The runner covers 17 groups for export geometry/settings, 720p SR tiers,
+The runner covers 23 groups for export geometry/settings, 720p SR tiers,
 encoder-selection policy, launch/cancellation flow, output path retention,
-audio/control visibility, frame pipeline and queued readback lifecycle. It uses
+audio/control visibility, AUTO selection, frame pipeline and queued readback lifecycle. It uses
 synthetic/stubbed inputs and does not launch AA, call a GPU encoder or run a
 performance benchmark. First restore requires the project's pinned NuGet
 dependencies. Logs and the JSON result are written under `artifacts/portable-tests`

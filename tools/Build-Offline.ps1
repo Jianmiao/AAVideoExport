@@ -48,7 +48,7 @@ function Compile-Project([string]$Project, [string]$Name, [string[]]$ExtraRefs, 
     $executable = $null -ne $projectXml.SelectSingleNode('//OutputType[text()="Exe"]')
     $dll = Join-Path $OutputDirectory ($Name + '.dll')
     $metadata = Join-Path $OutputDirectory ($Name + '.AssemblyInfo.cs')
-    $assemblyVersion = if ($Name -in @('AAVideoExport','AAVideoExport.Core')) { '0.2.1.0' } else { '1.0.0.0' }
+    $assemblyVersion = if ($Name -in @('AAVideoExport','AAVideoExport.Core')) { '0.2.3.0' } else { '1.0.0.0' }
     [IO.File]::WriteAllText($metadata,
         '[assembly: System.Reflection.AssemblyVersion("' + $assemblyVersion + '")]' +
         '[assembly: System.Reflection.AssemblyFileVersion("' + $assemblyVersion + '")]')
@@ -69,7 +69,7 @@ function Compile-Project([string]$Project, [string]$Name, [string[]]$ExtraRefs, 
     }
     Write-Host "Built $Name"
 }
-if (!$GraphicsDependencyDirectory) { $GraphicsDependencyDirectory = Join-Path $repo '0.2.1' }
+if (!$GraphicsDependencyDirectory) { $GraphicsDependencyDirectory = Join-Path $repo '0.2.3' }
 $graphicsNames=@('Vortice.Direct3D11.dll','Vortice.DXGI.dll','Vortice.DirectX.dll','Vortice.D3DCompiler.dll',
     'Vortice.Mathematics.dll','SharpGen.Runtime.dll','SharpGen.Runtime.COM.dll')
 $graphicsRefs=@(foreach($name in $graphicsNames) {
@@ -88,9 +88,16 @@ if ($frameworkCompiler -and (Test-Path -LiteralPath $frameworkCompiler)) {
     & $frameworkCompiler /nologo /optimize+ /target:exe ('/out:'+(Join-Path $OutputDirectory 'VideoExport.Core.Tests.exe')) (Join-Path $repo 'tools\OfflineTestHost.cs')
     if ($LASTEXITCODE -ne 0) { throw 'Offline test fixture host compilation failed.' }
 }
-foreach ($testName in @('FramePipeline','Host','Audio','Clock','OutputDimensions','Catalog','QueuedReadback')) {
+foreach ($testName in @('FramePipeline','Host','Audio','Clock','OutputDimensions','Catalog','QueuedReadback','StoryPath')) {
     $testReferences = if ($testName -eq 'Audio') { @($coreReference) } else { @() }
     Compile-Project "tests\VideoExport.$testName.Tests\VideoExport.$testName.Tests.csproj" "VideoExport.$testName.Tests" $testReferences
+}
+Compile-Project 'tests\VideoExport.Selection.Tests\VideoExport.Selection.Tests.csproj' 'VideoExport.Selection.Tests' @('/reference:' + (Join-Path $AAInstallPath 'BepInEx\core\0Harmony.dll'))
+# Selection regression tests exercise actual Harmony patches on managed native
+# boundary fixtures; copy the runtime dependencies only into ignored artifacts.
+foreach ($name in @('0Harmony.dll','MonoMod.RuntimeDetour.dll','MonoMod.Utils.dll','Mono.Cecil.dll','Mono.Cecil.Pdb.dll','Mono.Cecil.Mdb.dll','Mono.Cecil.Rocks.dll','MonoMod.Backports.dll','MonoMod.ILHelpers.dll')) {
+    $path = Join-Path $AAInstallPath ('BepInEx\core\' + $name)
+    if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination (Join-Path $OutputDirectory $name) }
 }
 $pluginRefs = @($coreReference)
 foreach ($name in @('BepInEx.Core.dll','BepInEx.Unity.Common.dll','BepInEx.Unity.IL2CPP.dll','Il2CppInterop.Runtime.dll','0Harmony.dll')) {

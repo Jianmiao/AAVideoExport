@@ -34,6 +34,7 @@ public sealed class ExportHost : MonoBehaviour
     private ExportSession? _session;
     private FramePipeline? _frames;
     private NativeCaptureScope? _native;
+    private NativeAutoSelection? _autoSelection;
     private Test? _player;
     private ExportOptions? _options;
     private string _status = "选择剧情和视频参数，点击导出即可自动渲染。";
@@ -69,6 +70,8 @@ public sealed class ExportHost : MonoBehaviour
     private bool _renderRestorationFailed;
 
     internal bool Capturing => _native != null;
+    internal NativeAutoSelection? AutoSelection => Capturing ? _autoSelection : null;
+    internal void AutoSelectionFailed(Exception error) { if (Capturing) Fail(error); }
     internal bool AllowTouch => !Capturing && !_panel.Visible;
     internal float FrameDelta => _options == null ? 0 : 1f / _options.Fps;
     internal float UiClock => _uiEpoch + _captured * FrameDelta;
@@ -228,6 +231,7 @@ public sealed class ExportHost : MonoBehaviour
             _frames!.Drain(false);
             if (_player == null) throw new ExportException("player_closed", "剧情窗口已关闭，导出取消。");
             if (_endAt >= 0) return;
+            _autoSelection?.Validate();
             if (ScenarioResourceManager.Instance != null && ScenarioResourceManager.Instance.Preloading)
                 throw new ExportException("assets_not_ready", "剧情仍在加载素材。请先完整预加载，再从头导出，避免把加载时间混进视频。");
         }
@@ -462,6 +466,7 @@ public sealed class ExportHost : MonoBehaviour
         _frames = new FramePipeline(_options, _session, Plugin.UseAsyncReadback, nativeBuffers: Plugin.UseNativeFrameBuffers);
         _native = new NativeCaptureScope(player, _options, _frames.Target, _showButtons, _automaticCaptureAvailable);
         NativeExportClock.Begin(_uiEpoch, FrameDelta, () => UiClock);
+        _autoSelection = new NativeAutoSelection(player, message => UnityEngine.Debug.Log("AA Video Export: " + message));
         MoreEffectsCompatibility.BeginExport(() => _captured / (double)_options.Fps);
         UpdateInputOwnership();
         _lastUnityFrame = -1;
@@ -734,6 +739,7 @@ public sealed class ExportHost : MonoBehaviour
         float exportClock = UiClock;
         var scope = _native;
         _native = null; // Clock hooks must be inert before reading the restored real clock.
+        _autoSelection = null;
         RestoreCoordinated(MoreEffectsCompatibility.EndExport, "restoring adapted animation clock");
         RestoreCoordinated(NativeExportClock.Restore, "restoring native clock");
         if (_captureLoop != null)

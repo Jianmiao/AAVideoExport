@@ -8,7 +8,7 @@ $checks = @()
 foreach ($flag in @('canvas-only','anime-compute-only','d3d-policy-only','gpu-device-only','panel-layout-only','playback-launch-only','proxy-only','ui-flow-only','ui-refresh-only','encoder-path-only')) {
     $checks += @{ Name='Core-' + $flag; Project='VideoExport.Core.Tests'; Flag=$flag }
 }
-foreach ($name in @('Audio','Catalog','Clock','FramePipeline','Host','OutputDimensions','QueuedReadback','Compatibility','RenderControl','ToolPaths','SoftwareEncoding','StoryPath')) {
+foreach ($name in @('Audio','Catalog','Clock','FramePipeline','Host','OutputDimensions','QueuedReadback','Compatibility','RenderControl','ToolPaths','SoftwareEncoding','StoryPath','Selection')) {
     $checks += @{ Name=$name; Project='VideoExport.' + $name + '.Tests' }
 }
 $results = foreach ($check in $checks) {

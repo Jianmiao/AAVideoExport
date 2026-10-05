@@ -12,7 +12,7 @@ namespace AAVideoExport.Plugin;
 public sealed class Plugin : BasePlugin
 {
     public const string Guid = "halocue.aa.videoexport";
-    public const string Version = "0.2.1";
+    public const string Version = "0.2.3";
     internal static string FfmpegPath = "ffmpeg.exe";
     internal static string FfprobePath = "ffprobe.exe";
     internal static bool ReduceProgressUiWork = true;
@@ -49,12 +49,15 @@ public sealed class Plugin : BasePlugin
         {
             _performanceLog = Log;
             _harmony.PatchAll(typeof(Plugin).Assembly);
+            AutoSelectionHooks.Initialize(_harmony, () => ExportHost.Current?.AutoSelection,
+                error => ExportHost.Current?.AutoSelectionFailed(error), message => Log.LogInfo(message));
             MoreEffectsCompatibility.Initialize(_harmony, message => Log.LogInfo(message));
             _host = AddComponent<ExportHost>();
-            Log.LogInfo("AA Video Export loaded [0.2.1-software-encoding-candidate]. Ctrl+Shift+E opens settings. Encoding mode is explicit; project data is never written.");
+            Log.LogInfo("AA Video Export loaded [0.2.3-auto-selection]. Ctrl+Shift+E opens settings. Encoding mode is explicit; project data is never written.");
         }
         catch
         {
+            AutoSelectionHooks.Shutdown();
             MoreEffectsCompatibility.Shutdown();
             _harmony.UnpatchSelf();
             _host?.Shutdown();
@@ -88,6 +91,7 @@ public sealed class Plugin : BasePlugin
     {
         _host?.Shutdown();
         if (!MoreEffectsCompatibility.Shutdown()) return false;
+        AutoSelectionHooks.Shutdown();
         _harmony?.UnpatchSelf();
         if (_host != null) UnityEngine.Object.Destroy(_host);
         return true;
