@@ -38,6 +38,7 @@ public sealed class ExportHost : MonoBehaviour
     private Test? _player;
     private ExportOptions? _options;
     private string _status = "选择剧情和视频参数，点击导出即可自动渲染。";
+    private bool _statusIsError;
     private string _gpuName = "";
     private int _lastUnityFrame = -1;
     private long _captured;
@@ -151,11 +152,14 @@ public sealed class ExportHost : MonoBehaviour
                 SyncNativeUi();
             }
             if (_nativeLoadPending && _nativeLoadCancelled && _loadingTimer.Elapsed.TotalSeconds >= 120)
+            {
                 _status = "编码已取消，但 AA 的场景加载仍未结束。请重启 AA 后重试，避免重复加载剧情。";
+                _statusIsError = true;
+            }
             if (_cleanup?.IsCompleted == true)
             {
                 try { _cleanup.GetAwaiter().GetResult(); }
-                catch (Exception error) { _status = "停止导出后清理未完成，请检查输出目录。"; UnityEngine.Debug.LogWarning("AA Video Export: cleanup failed (" + error.GetType().Name + ")."); }
+                catch (Exception error) { _status = "停止导出后清理未完成，请检查输出目录。"; _statusIsError = true; UnityEngine.Debug.LogWarning("AA Video Export: cleanup failed (" + error.GetType().Name + ")."); }
                 _cleanup = null;
                 if (_cleanupCommittedResult != null)
                 {
@@ -173,6 +177,7 @@ public sealed class ExportHost : MonoBehaviour
                     {
                         _capabilities = detected;
                         _capabilitiesMode = _probeMode;
+                        _statusIsError = (_probeMode == "software" ? detected.SoftwareEncoders.Count : detected.HardwareEncoders.Count) == 0;
                         _status = _probeMode == "software"
                             ? detected.SoftwareEncoders.Count == 0
                                 ? "未检测到可用 CPU 软件编码，请检查 FFmpeg 是否包含 libx264。"
@@ -185,6 +190,7 @@ public sealed class ExportHost : MonoBehaviour
                 catch (Exception error)
                 {
                     _capabilities = null; _capabilitiesMode = "";
+                    _statusIsError = true;
                     _status = _probeMode == "software" ? "CPU 编码器检测失败，请检查 FFmpeg 后重新检测。"
                         : "GPU 检测失败。可手动选择 CPU 软件编码，或检查 FFmpeg 与驱动后重新检测。";
                     UnityEngine.Debug.LogWarning("AA Video Export: " + _probeMode + " encoder probe failed (" + error.GetType().Name + ").");
@@ -268,6 +274,7 @@ public sealed class ExportHost : MonoBehaviour
                 : _capabilitiesMode != _panel.Options.EncodingMode || _capabilities == null
                     ? Array.Empty<EncoderCapability>()
                     : _panel.Options.EncodingMode == "software" ? _capabilities.SoftwareEncoders : _capabilities.HardwareEncoders;
+            _panel.StatusIsError = _statusIsError;
             _panel.Draw(title, _gpuName, details.Replace('\n', ' '), Busy, _captured, -1, null, encoders);
             _panel.CaptureElapsedSeconds = _elapsed.Elapsed.TotalSeconds;
             _panel.EncodedFrames = _session?.FramesWritten ?? _captured;
@@ -278,6 +285,7 @@ public sealed class ExportHost : MonoBehaviour
         catch (Exception error)
         {
             _status = "导出面板错误：" + ExportErrorText.Describe(error);
+            _statusIsError = true;
             string fingerprint = error.GetType().Name + ":" + error.Message;
             if (fingerprint != _lastUiError)
                 UnityEngine.Debug.LogError("AA Video Export native panel exception: " + error);
@@ -305,6 +313,7 @@ public sealed class ExportHost : MonoBehaviour
         _probeMode = mode;
         _probeCancellation?.Dispose();
         _probeCancellation = new CancellationTokenSource();
+        _statusIsError = false;
         _status = mode == "software" ? "正在检测 CPU 软件编码（短片测试，不读取剧情）…"
             : "正在检测本机 GPU 硬件编码（短片测试，不读取剧情）…";
         _probe = mode == "software"
@@ -317,6 +326,7 @@ public sealed class ExportHost : MonoBehaviour
     {
         RenderControlV1.EnsureMainThread();
         if (Busy) return;
+        _statusIsError = false;
         var acquisitionAttempted = false;
         var acquired = _renderSessionOwnership != null;
         try
@@ -380,6 +390,7 @@ public sealed class ExportHost : MonoBehaviour
             // Do not run Cancel or open a panel that would immediately try to
             // acquire again; no exporter snapshot or mutation has occurred.
             _status = "导出未开始：渲染控制权交接失败，请检查其他 Mod 的恢复状态。";
+            _statusIsError = true;
             UnityEngine.Debug.LogError("AA Video Export: render acquisition rejected: " + error);
         }
         catch (Exception error) { Fail(error); }
@@ -475,6 +486,7 @@ public sealed class ExportHost : MonoBehaviour
         _panel.ResetPerformanceCounters();
         _lastPerfReport = 0;
         _status = "逐帧导出中…";
+        _statusIsError = false;
         _panel.Visible = true;
         UnityEngine.Debug.Log("AA Video Export: capture started; pipeline=" + (GraphicsSettings.currentRenderPipeline == null ? "builtin" : GraphicsSettings.currentRenderPipeline.GetType().Name));
         StartCaptureLoop(player);
@@ -596,6 +608,7 @@ public sealed class ExportHost : MonoBehaviour
             try { Cancel(); }
             catch (Exception cleanupError) { UnityEngine.Debug.LogWarning("AA Video Export: failure cleanup failed (" + cleanupError.GetType().Name + ")."); }
             _status = "导出停止：" + ExportErrorText.Describe(error);
+            _statusIsError = true;
             _panel.Visible = true;
         }
         finally { _failureHandling = false; }
@@ -662,11 +675,15 @@ public sealed class ExportHost : MonoBehaviour
         if (!_shutdown) _panel.Visible = true;
         _status = _nativeLoadPending ? "编码已取消，正在等待 AA 完成当前场景加载并返回设置…"
             : "已取消。原工程未修改，导出设置已保留。";
+        _statusIsError = false;
     }
 
     [HideFromIl2Cpp]
-    private void ReportCompleted(ExportResult result) =>
+    private void ReportCompleted(ExportResult result)
+    {
         _status = $"完成：{result.OutputPath}\n{result.Frames:N0} 帧 / {result.DurationSeconds:0.0} 秒；总耗时 {_elapsed.Elapsed.TotalSeconds:0.0} 秒";
+        _statusIsError = false;
+    }
 
     [HideFromIl2Cpp]
     private void ReportPerformance(bool final)

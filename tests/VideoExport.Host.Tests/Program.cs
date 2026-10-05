@@ -111,10 +111,12 @@ var tests = new (string Name, Action Run)[]
         panel.ProbeRequested!(); host.Update(); host.Update();
         Check(panel.LastEncoders?.Count == 0 && Field<FfmpegCapabilities?>(host, "_capabilities") == null, "failed GPU probe retained an encoder");
         Check(panel.LastStatus.Contains("CPU"), "GPU failure gives no software option guidance");
+        Check(panel.StatusIsError, "probe failure did not mark the displayed status as an error");
         FfmpegCapabilities.ProbeOverride = null;
         panel.Options = EncodingModeSelection.Change(panel.Options, "software"); panel.ProbeRequested!();
         host.Update(); host.Update();
         Check(panel.LastEncoders?.Any(e => e.Name == "libx264") == true, "CPU retry after failure did not recover");
+        Check(!panel.StatusIsError, "successful retry kept the error color state");
         host.Shutdown();
     }),
     ("software preparation passes libx264 and software mode to the actual session boundary", () =>
@@ -269,6 +271,7 @@ var tests = new (string Name, Action Run)[]
                 for (int i = 0; i < 10; i++) host.Update();
                 Check(session.Disposed && player.EndCalls == 1, "cleanup or native end was skipped or repeated");
                 Check(panel.Visible && !panel.LastBusy, "failed export left settings busy");
+                Check(panel.StatusIsError, "failed export did not mark its displayed status as an error");
                 Check(Field<string>(host, "_status").Contains("显卡读取视频帧失败"), "cleanup masked the localized original error");
                 Check(UnityEngine.Debug.Messages.Any(m => m.Contains("failure=gpu_readback_failed")
                     && m.Contains("fixture original readback failure")), "localization lost the original diagnostic from the log");

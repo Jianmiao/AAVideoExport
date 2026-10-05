@@ -24,6 +24,7 @@ internal sealed class NativeCaptureScope : IDisposable
     private readonly bool _auto;
     private readonly bool _showButtons;
     private readonly List<OwnedVisibility> _ownedVisibility = new();
+    private readonly List<GameObject> _pointerEffects = new();
     private readonly List<UIPanel> _changedPanels = new();
     private NativeExportViewport? _viewport;
     private bool _viewportReady;
@@ -110,6 +111,15 @@ internal sealed class NativeCaptureScope : IDisposable
             Application.runInBackground = true;
             Time.timeScale = 1;
             Time.captureFramerate = options.Fps;
+            // AA draws pointer feedback with pooled particle/trail objects.
+            // Hide effects left by the export button before the first frame;
+            // capture hooks prevent subsequent press/drag events from creating
+            // more. Keep these separate from authored scenario effects.
+            foreach (var effect in UnityEngine.Object.FindObjectsOfType<TouchEffect>(true))
+                if (effect != null && !_pointerEffects.Contains(effect.gameObject))
+                    _pointerEffects.Add(effect.gameObject);
+            HidePointerFeedback();
+            RefreshButtonGeometry();
             // Even muted exports must drive the game mixer: native voice completion waits on it.
             _audio = AudioRenderer.Start();
             if (!_audio) throw new ExportException("offline_audio_unavailable", "Unity 离线音频渲染未启动。请停止其他音频导出后重试。");
@@ -190,6 +200,7 @@ internal sealed class NativeCaptureScope : IDisposable
         long started = Stopwatch.GetTimestamp();
         try
         {
+            HidePointerFeedback();
             // AA Start/Auto/scenario commands can reactivate or replace these
             // references. Check every capture but mutate only actual changes.
             // Auto playback itself remains owned by Test/SelectionManager.
@@ -229,6 +240,15 @@ internal sealed class NativeCaptureScope : IDisposable
         var state = new OwnedVisibility(item);
         _ownedVisibility.Add(state);
         state.Apply(active, _changedPanels);
+    }
+
+    private void HidePointerFeedback()
+    {
+        foreach (var effect in _pointerEffects) ApplyVisibility(effect, false);
+        // The NGUI software cursor, when present, is also scene geometry.
+        // The OS pointer is outside the camera texture and remains usable.
+        var cursor = UICursor.instance;
+        if (cursor != null) ApplyVisibility(cursor.gameObject, false);
     }
 
     private readonly struct OwnedVisibility
@@ -334,6 +354,7 @@ internal sealed class NativeCaptureScope : IDisposable
                 Restore(() => { if (!state.Restore(_changedPanels)) RestorationFailed = true; });
             Restore(() => RefreshButtonGeometry(restoring: true));
             _ownedVisibility.Clear();
+            _pointerEffects.Clear();
             if (_audio)
             {
                 Restore(() =>

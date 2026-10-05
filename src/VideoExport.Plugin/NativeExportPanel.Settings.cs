@@ -505,6 +505,7 @@ public sealed partial class NativeExportPanel
 
     private string ReadyMessage()
     {
+        if (StatusIsError) return _status;
         if (!string.IsNullOrWhiteSpace(_notice)) return _notice;
         if (_status.StartsWith("GPU 检测完成", StringComparison.Ordinal) || _status.StartsWith("CPU 检测完成", StringComparison.Ordinal)
             || _status.StartsWith("选择剧情", StringComparison.Ordinal) || string.IsNullOrWhiteSpace(_status))
@@ -520,7 +521,8 @@ public sealed partial class NativeExportPanel
         // Keep the existing diagnostic counters; progress itself has its own page.
         _progressWidget = Texture(footer, "Settings progress", 44, 0, 1, 1, Cyan, 11);
         DynamicLabel(footer, ExportSummary, 44, 10, 892, 24, 16);
-        DynamicLabel(footer, ReadyMessage, 44, 38, 892, 34, 14, Muted);
+        DynamicLabel(footer, ReadyMessage, 44, 38, 892, 34, 14, Muted,
+            currentColor: () => StatusIsError || !string.IsNullOrWhiteSpace(_notice) && _noticeIsError ? ErrorRed : Muted);
         DynamicLabel(footer, () => _settingsGeometry?.MaximumScroll > 0 ? "滚轮或右侧箭头查看更多设置" : "Ctrl + Shift + E  显示 / 隐藏", 44, 85, 440, 24, 13, Muted);
         Button(footer, 548, 78, 126, 34, () => "关闭", () => Visible = false);
         Button(footer, 694, 78, 242, 34,

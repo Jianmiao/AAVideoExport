@@ -35,6 +35,16 @@ public sealed record ExportOptions
     // The older fixed-resolution research callers retain their measured filter.
     internal string EffectiveUpscaleAlgorithm => SuperResolutionEnabled ? UpscaleAlgorithm : "bilinear";
     public int Fps { get; init; } = 30;
+    // Offline audio is emitted in mixer blocks. Permit a small final tail,
+    // with comparable time limits at each supported output frame rate.
+    internal int AudioTimelineToleranceFrames => Fps switch
+    {
+        24 or 25 => 2,
+        30 => 3,
+        50 => 4,
+        _ => 5
+    };
+    internal double AudioTimelineToleranceSeconds => (double)AudioTimelineToleranceFrames / Fps;
     public string Container { get; init; } = "mp4";
     public string Codec { get; init; } = "h264";
     // The product explicitly chooses a mode. Automatic selection stays within

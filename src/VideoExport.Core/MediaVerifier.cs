@@ -36,6 +36,8 @@ internal static class MediaVerifier
             double expectedDuration = (double)frameCount / options.Fps;
             double duration = Number(document.RootElement.GetProperty("format"), "duration");
             double durationTolerance = Math.Max(2d / options.Fps, 0.05);
+            if (options.AudioQuality != "none")
+                durationTolerance = Math.Max(durationTolerance, options.AudioTimelineToleranceSeconds);
             Require(double.IsFinite(duration) && Math.Abs(duration - expectedDuration) <= durationTolerance, "Container duration does not match the captured timeline.");
             var audioStreams = streams.Where(s => Text(s, "codec_type") == "audio").ToArray();
             if (options.AudioQuality == "none") Require(audioStreams.Length == 0, "Unexpected audio stream.");

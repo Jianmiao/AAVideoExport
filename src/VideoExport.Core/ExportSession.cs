@@ -335,8 +335,9 @@ public sealed class ExportSession : IDisposable
             ThrowIfCancelled();
             if (FramesAccepted == 0) throw new ExportException("invalid_state", "An export needs at least one captured frame.");
             double duration = (double)FramesAccepted / options.Fps;
-            if (options.AudioQuality != "none" && (AudioSampleFrames == 0 || Math.Abs((double)AudioSampleFrames / captureSampleRate - duration) > 1d / options.Fps + 2d / captureSampleRate))
-                throw new ExportException("audio_timeline_mismatch", "Captured audio duration differs from video by more than one frame.");
+            if (options.AudioQuality != "none" && (AudioSampleFrames == 0 || Math.Abs((double)AudioSampleFrames / captureSampleRate - duration) > options.AudioTimelineToleranceSeconds + 2d / captureSampleRate))
+                throw new ExportException("audio_timeline_mismatch",
+                    $"Captured audio is missing or exceeds the output frame-rate tolerance. Video={duration:R}s, audio={(double)AudioSampleFrames / captureSampleRate:R}s, fps={options.Fps}, tolerance_frames={options.AudioTimelineToleranceFrames}, tolerance_seconds={options.AudioTimelineToleranceSeconds:R}.");
             audioStream?.Flush(flushToDisk: true);
             audioStream?.Dispose();
             audioStream = null;
