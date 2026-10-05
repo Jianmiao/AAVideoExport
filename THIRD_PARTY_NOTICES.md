@@ -19,10 +19,12 @@ the original bloc97 and AMD license headers remain in those resources.
 
 The clone-ready version directory contains mod/core assemblies, the seven
 graphics dependency assemblies, settings manifest and an authored icon.
-The repository also includes source, tests and documentation. The full portable 0.2.0
+The repository also includes source, tests and documentation. The full portable
 Release additionally includes unmodified FFmpeg and ffprobe binaries from the pinned
 BtbN build, the GPLv3 license, build configuration and source retrieval information.
-The companion FFmpeg source archive is published alongside the runtime ZIP.
+The release page provides a direct link to the matching FFmpeg source companion:
+https://github.com/Jianmiao/AAVideoExport/releases/download/v0.2.0/FFmpeg-n8.0-16-gd8605a6b55-source-companion.zip
+Version 0.2.1 retains the same unmodified FFmpeg/ffprobe build as 0.2.0.
 Direct Git clones do not include these large programs and need externally configured tools.
 AA/game/character/audio resources
 remain local to their owner. No Jianying code, icon, image or model is copied.

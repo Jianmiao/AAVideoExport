@@ -25,6 +25,7 @@ public sealed class ExportHost : MonoBehaviour
     private Task<FfmpegCapabilities>? _probe;
     private CancellationTokenSource? _probeCancellation;
     private bool _probeAttempted;
+    private string _probeMode = "", _capabilitiesMode = "";
     private Task<ExportSession>? _prepare;
     private Task<ExportResult>? _finalize;
     private Task? _cleanup;
@@ -164,12 +165,27 @@ public sealed class ExportHost : MonoBehaviour
             {
                 try
                 {
-                    _capabilities = _probe.GetAwaiter().GetResult();
-                    _status = _capabilities.HardwareEncoders.Count == 0
-                        ? "未检测到可用 GPU 硬件编码，请检查显卡驱动和 FFmpeg。不会自动改用 CPU。"
-                        : "GPU 检测完成，仅列出本机实测可用的硬件编码。";
+                    var detected = _probe.GetAwaiter().GetResult();
+                    if (_probeMode == _panel.Options.EncodingMode)
+                    {
+                        _capabilities = detected;
+                        _capabilitiesMode = _probeMode;
+                        _status = _probeMode == "software"
+                            ? detected.SoftwareEncoders.Count == 0
+                                ? "未检测到可用 CPU 软件编码，请检查 FFmpeg 是否包含 libx264。"
+                                : "CPU 检测完成，仅列出已通过实测的软件编码器；画面仍由 GPU 渲染。"
+                            : detected.HardwareEncoders.Count == 0
+                                ? "未检测到可用 GPU 硬件编码，可手动选择 CPU 软件编码，或检查驱动与 FFmpeg。"
+                                : "GPU 检测完成，仅列出本机实测可用的硬件编码。";
+                    }
                 }
-                catch (Exception error) { _capabilities = null; _status = "GPU 检测失败，请检查 FFmpeg 与驱动后重新检测。"; UnityEngine.Debug.LogWarning("AA Video Export: GPU probe failed (" + error.GetType().Name + ")."); }
+                catch (Exception error)
+                {
+                    _capabilities = null; _capabilitiesMode = "";
+                    _status = _probeMode == "software" ? "CPU 编码器检测失败，请检查 FFmpeg 后重新检测。"
+                        : "GPU 检测失败。可手动选择 CPU 软件编码，或检查 FFmpeg 与驱动后重新检测。";
+                    UnityEngine.Debug.LogWarning("AA Video Export: " + _probeMode + " encoder probe failed (" + error.GetType().Name + ").");
+                }
                 _probe = null;
             }
             if (_prepare?.IsCompleted == true)
@@ -228,7 +244,7 @@ public sealed class ExportHost : MonoBehaviour
     {
         try
         {
-            if (_panel.Visible && !_probeAttempted) Probe();
+            if (_panel.Visible && (!_probeAttempted || _probeMode != _panel.Options.EncodingMode)) Probe();
             _panel.IsCapturing = Capturing;
             _panel.ReduceCaptureUiWork = Plugin.ReduceProgressUiWork;
             _catalogAction?.Tick(_panel.Visible || Capturing);
@@ -243,9 +259,12 @@ public sealed class ExportHost : MonoBehaviour
                 double speed = _captured / Math.Max(.001, _elapsed.Elapsed.TotalSeconds);
                 details = $"正在渲染 · {speed:0} 帧/秒 · {speed / _options!.Fps:0.0}× 实时速度 · 缓冲 {_frames!.BufferedFrames} 帧";
             }
-            IReadOnlyList<EncoderCapability>? hardware = _probe != null || !_probeAttempted
-                ? null : _capabilities?.HardwareEncoders ?? Array.Empty<EncoderCapability>();
-            _panel.Draw(title, _gpuName, details.Replace('\n', ' '), Busy, _captured, -1, null, hardware);
+            IReadOnlyList<EncoderCapability>? encoders = _probe != null || !_probeAttempted
+                || _probeMode != _panel.Options.EncodingMode ? null
+                : _capabilitiesMode != _panel.Options.EncodingMode || _capabilities == null
+                    ? Array.Empty<EncoderCapability>()
+                    : _panel.Options.EncodingMode == "software" ? _capabilities.SoftwareEncoders : _capabilities.HardwareEncoders;
+            _panel.Draw(title, _gpuName, details.Replace('\n', ' '), Busy, _captured, -1, null, encoders);
             _panel.CaptureElapsedSeconds = _elapsed.Elapsed.TotalSeconds;
             _panel.EncodedFrames = _session?.FramesWritten ?? _captured;
             _panel.ExportStage = _cleanup != null || _nativeLoadCancelled ? "正在取消" : _returningToCatalog ? "返回导出设置" : _prepare != null ? "准备编码器" : _armed ? "加载剧情与素材" : Capturing ? "渲染画面与音频" : _finalize != null ? "合成并校验视频" : "准备就绪";
@@ -265,13 +284,28 @@ public sealed class ExportHost : MonoBehaviour
     [HideFromIl2Cpp]
     private void Probe()
     {
-        if (_probe != null || Busy) return;
+        string mode = _panel.Options.EncodingMode;
+        if (Busy || (_probe != null && _probeMode == mode)) return;
+        if (_probe != null)
+        {
+            // A mode switch owns a fresh result. Cancel the old process and
+            // observe faults without ever publishing its result to the panel.
+            _probeCancellation?.Cancel();
+            _ = _probe.ContinueWith(completed => { _ = completed.Exception; },
+                CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
         _probeAttempted = true;
         _capabilities = null;
+        _capabilitiesMode = "";
+        _probeMode = mode;
         _probeCancellation?.Dispose();
         _probeCancellation = new CancellationTokenSource();
-        _status = "正在检测本机 GPU 硬件编码（短片测试，不读取剧情）…";
-        _probe = FfmpegCapabilities.ProbeHardwareAsync(Plugin.FfmpegPath, _gpuName, _probeCancellation.Token);
+        _status = mode == "software" ? "正在检测 CPU 软件编码（短片测试，不读取剧情）…"
+            : "正在检测本机 GPU 硬件编码（短片测试，不读取剧情）…";
+        _probe = mode == "software"
+            ? FfmpegCapabilities.ProbeSoftwareAsync(Plugin.FfmpegPath, _probeCancellation.Token)
+            : FfmpegCapabilities.ProbeHardwareAsync(Plugin.FfmpegPath, _gpuName, _probeCancellation.Token);
     }
 
     [HideFromIl2Cpp]
@@ -285,21 +319,23 @@ public sealed class ExportHost : MonoBehaviour
         {
             options = options with { RenderGpuVendorId = SystemInfo.graphicsDeviceVendorID, RenderGpuDeviceId = SystemInfo.graphicsDeviceID, Direct3DReadbackFrames = Plugin.Direct3DReadbackFrames };
             options.Validate();
-            if (_capabilities == null) { Probe(); _status = "请先等待编码器检测完成，再点击导出。"; return; }
+            if (_capabilities == null || _probe != null || _capabilitiesMode != options.EncodingMode
+                || _panel.Options.EncodingMode != options.EncodingMode)
+            { Probe(); _status = "请先等待当前编码方式的检测完成，再点击导出。"; return; }
+            string encoder = _capabilities.PickForMode(options);
             var (selected, storyKey) = ResolveStory();
             if (!File.Exists(storyKey)) throw new ExportException("story_missing", "所选剧情文件不存在，请刷新鉴赏列表。");
             if (UserSettings.Instance == null || ScenarioResourceManager.Instance == null)
                 throw new ExportException("story_resources_unavailable", "AA 的剧情资源服务尚未就绪，请稍后重试。");
-            string savesRoot = Path.GetFullPath(Path.Combine(UserSettings.Instance.WorkspacePath, "data", "saves"));
-            if (!string.Equals(Path.GetDirectoryName(storyKey), Path.TrimEndingDirectorySeparator(savesRoot), StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(Path.GetExtension(storyKey), ".aas", StringComparison.OrdinalIgnoreCase))
-                throw new ExportException("story_location_unsupported", "请选择当前 AA 工作区鉴赏列表中的剧情文件。");
+            if (!StorySourcePath.TryGetScenarioName(storyKey,
+                name => ScenarioResourceManager.GetPersistentFilePath("saves", name, ".aas"), out string scenarioName))
+                throw new ExportException("story_location_unsupported", "所选剧情与 AA 当前读取的鉴赏目录不一致，请刷新鉴赏列表后重新选择。");
             acquisitionAttempted = true;
             _renderSessionOwnership ??= RenderControlV1.Acquire();
             acquired = true;
             // The native loader accepts a basename and resolves data/saves itself.
             // Read the selected file afresh; a global table can belong to a different card.
-            var save = ScenarioResourceManager.Instance.LoadGenericScenario(Path.GetFileNameWithoutExtension(storyKey));
+            var save = ScenarioResourceManager.Instance.LoadGenericScenario(scenarioName);
             if (save == null) throw new ExportException("story_read_failed", "所选剧情无法读取，请检查文件后重试。");
             _launchTicket = _launch.Begin(storyKey);
             _selectedStory = selected;
@@ -317,13 +353,14 @@ public sealed class ExportHost : MonoBehaviour
             _captured = 0; _endAt = -1;
             _elapsed.Reset();
             _cancellation?.Dispose(); _cancellation = new CancellationTokenSource();
-            string encoder = _capabilities.PickHardwareEncoder(options);
             int sampleRate = AudioSettings.outputSampleRate;
             int channels = AudioSettings.speakerMode switch { AudioSpeakerMode.Mono => 1, AudioSpeakerMode.Stereo => 2, AudioSpeakerMode.Quad => 4, AudioSpeakerMode.Surround => 5, AudioSpeakerMode.Mode5point1 => 6, AudioSpeakerMode.Mode7point1 => 8, _ => 0 };
             if (channels == 0) throw new ExportException("audio_layout_unsupported", "当前 Unity 音频输出布局不支持导出。");
             string encoderVendor = encoder.EndsWith("_nvenc", StringComparison.Ordinal) ? "NVIDIA"
                 : encoder.EndsWith("_amf", StringComparison.Ordinal) ? "AMD" : "Intel";
-            _status = $"正在检查 {encoderVendor} 硬件编码器，画面 {options.Width}×{options.Height}…";
+            _status = options.EncodingMode == "software"
+                ? $"正在检查 CPU 软件编码器 {encoder}，画面 {options.Width}×{options.Height}…"
+                : $"正在检查 {encoderVendor} 硬件编码器，画面 {options.Width}×{options.Height}…";
             var token = _cancellation.Token;
             _prepare = Task.Run(() =>
             {
@@ -752,7 +789,7 @@ public sealed class ExportHost : MonoBehaviour
         if (_shutdown) return;
         RenderControlV1.BeginShutdown();
         _shutdown = true;
-        BestEffort(() => _probeCancellation?.Cancel(), "cancelling GPU probe");
+        BestEffort(() => _probeCancellation?.Cancel(), "cancelling encoder probe");
         RestoreCoordinated(Cancel, "cancelling export during shutdown");
         RestoreCoordinated(() => _catalogAction?.Dispose(), "removing catalog action");
         _catalogAction = null;

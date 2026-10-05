@@ -7,6 +7,123 @@ using Object = UnityEngine.Object;
 
 var tests = new (string Name, Action Run)[]
 {
+    ("encoding mode switch resets codec and encoder while preserving user output settings", () =>
+    {
+        var before = Options() with { Codec = "av1", Encoder = "av1_nvenc", Container = "mkv", Width = 2560,
+            Height = 1440, Fps = 60, AudioQuality = "aac320", BitrateKbps = 18000, SuperResolutionEnabled = true };
+        var software = EncodingModeSelection.Change(before, "software");
+        Check(software.EncodingMode == "software" && software.Codec == "h264" && software.Encoder == "libx264", "CPU mode kept a GPU-only encoder or did not default to H264");
+        Check(!software.SuperResolutionEnabled && software.UpscaleAlgorithm == "bilinear", "CPU mode kept incompatible shader upscaling");
+        Check(software.Width == before.Width && software.Height == before.Height && software.Fps == before.Fps
+            && software.BitrateKbps == before.BitrateKbps && software.AudioQuality == before.AudioQuality
+            && software.OutputDirectory == before.OutputDirectory && software.Container == before.Container, "switch reset unrelated settings");
+        var hardware = EncodingModeSelection.Change(software, "hardware");
+        Check(hardware.EncodingMode == "hardware" && hardware.Codec == "h264" && hardware.Encoder == "auto", "returning GPU mode kept libx264");
+        Check(!hardware.SuperResolutionEnabled, "mode switch silently enabled a previously disabled feature");
+        Check(EncodingModeSelection.Change(software, "software") == software, "same-mode action changed options");
+        var scalar = EncodingModeSelection.Change(before with { UpscaleAlgorithm = "lanczos" }, "software");
+        Check(scalar.SuperResolutionEnabled && scalar.UpscaleAlgorithm == "lanczos", "CPU-capable scaler was needlessly disabled");
+    }),
+    ("no hardware available still permits explicit CPU probe and selection", () =>
+    {
+        var host = CreateHost();
+        var panel = Field<NativeExportPanel>(host, "_panel");
+        panel.Visible = true;
+        var available = new FfmpegCapabilities { HardwareEncoders = Array.Empty<EncoderCapability>() };
+        Set(host, "_capabilities", available);
+        host.Update();
+        Check(panel.LastEncoders?.Count == 0, "missing GPU must not show software as hardware");
+        panel.Options = EncodingModeSelection.Change(panel.Options, "software");
+        panel.ProbeRequested!();
+        Check(Field<string>(host, "_probeMode") == "software", "software selection did not start software probe");
+        host.Update(); host.Update();
+        Check(Field<string>(host, "_capabilitiesMode") == "software", "CPU result missing mode ownership");
+        Check(panel.LastEncoders?.All(e => !e.Hardware) == true && panel.LastEncoders.Count > 0, "CPU mode has stale hardware or no results");
+        host.Shutdown();
+    }),
+    ("rapid hardware software hardware switches cancel and ignore replaced probes", () =>
+    {
+        var pending = new List<(string Mode, CancellationToken Token, TaskCompletionSource<FfmpegCapabilities> Work)>();
+        FfmpegCapabilities.ProbeOverride = (mode, token) =>
+        {
+            var task = new TaskCompletionSource<FfmpegCapabilities>();
+            pending.Add((mode, token, task));
+            return task.Task;
+        };
+        var host = CreateHost();
+        var panel = Field<NativeExportPanel>(host, "_panel");
+        panel.Visible = true;
+        panel.ProbeRequested!();
+        panel.Options = EncodingModeSelection.Change(panel.Options, "software"); panel.ProbeRequested!();
+        panel.Options = EncodingModeSelection.Change(panel.Options, "hardware"); panel.ProbeRequested!();
+        Check(pending.Count == 3 && pending[0].Token.IsCancellationRequested && pending[1].Token.IsCancellationRequested,
+            "replaced probes were not cancelled");
+        pending[0].Work.SetResult(new FfmpegCapabilities());
+        pending[1].Work.SetResult(new FfmpegCapabilities());
+        host.Update();
+        Check(panel.LastEncoders == null && Field<FfmpegCapabilities?>(host, "_capabilities") == null,
+            "stale completed probe enabled export before current probe completed");
+        pending[2].Work.SetResult(new FfmpegCapabilities());
+        host.Update(); host.Update();
+        Check(Field<string>(host, "_capabilitiesMode") == "hardware" && panel.LastEncoders?.All(e => e.Hardware) == true,
+            "final mode used wrong probe results");
+        host.Shutdown();
+    }),
+    ("export preparation rejects results belonging to another encoding mode before story load", () =>
+    {
+        var host = CreateHost();
+        var panel = Field<NativeExportPanel>(host, "_panel");
+        var software = EncodingModeSelection.Change(Options(), "software");
+        panel.Options = software;
+        Call(host, "Prepare", software);
+        Check(ScenarioResourceManager.Instance!.LoadedNames.Count == 0 && Field<Task<ExportSession>?>(host, "_prepare") == null,
+            "stale GPU results reached story or encoder preparation");
+        Check(Field<string>(host, "_probeMode") == "software", "mismatched preparation did not request current probe");
+        host.Shutdown();
+    }),
+    ("probe failure remains retryable and switching modes does not reuse failed results", () =>
+    {
+        FfmpegCapabilities.ProbeOverride = (_, _) => Task.FromException<FfmpegCapabilities>(new IOException("FFmpeg unavailable"));
+        var host = CreateHost();
+        var panel = Field<NativeExportPanel>(host, "_panel");
+        panel.Visible = true;
+        panel.ProbeRequested!(); host.Update(); host.Update();
+        Check(panel.LastEncoders?.Count == 0 && Field<FfmpegCapabilities?>(host, "_capabilities") == null, "failed GPU probe retained an encoder");
+        Check(panel.LastStatus.Contains("CPU"), "GPU failure gives no software option guidance");
+        FfmpegCapabilities.ProbeOverride = null;
+        panel.Options = EncodingModeSelection.Change(panel.Options, "software"); panel.ProbeRequested!();
+        host.Update(); host.Update();
+        Check(panel.LastEncoders?.Any(e => e.Name == "libx264") == true, "CPU retry after failure did not recover");
+        host.Shutdown();
+    }),
+    ("software preparation passes libx264 and software mode to the actual session boundary", () =>
+    {
+        var host = CreateHost();
+        var panel = Field<NativeExportPanel>(host, "_panel");
+        string workspace = Path.Combine(Path.GetTempPath(), "aave-software-host-" + Guid.NewGuid().ToString("N"));
+        string saves = Path.Combine(workspace, "data", "saves");
+        string story = Path.Combine(saves, "fixture.aas");
+        Directory.CreateDirectory(saves); File.WriteAllText(story, "fixture");
+        UserSettings.Instance = new() { WorkspacePath = workspace };
+        var selected = new CatalogFileInfo { block = new() { path = story }, controlPanel = new() };
+        Set(host, "_selectedStory", selected); Set(host, "_selectedStoryKey", story);
+        panel.Options = EncodingModeSelection.Change(Options(), "software");
+        Set(host, "_capabilitiesMode", "software"); Set(host, "_probeMode", "software");
+        try
+        {
+            Call(host, "Prepare", panel.Options);
+            var session = Field<Task<ExportSession>>(host, "_prepare").GetAwaiter().GetResult();
+            Check(session.Encoder == "libx264" && session.Options.EncodingMode == "software", "software mode reached wrong session encoder");
+            Check(Field<string>(host, "_status").Contains("CPU 软件编码器 libx264"), "software encoder was labeled as GPU vendor");
+            session.Dispose(); Set(host, "_prepare", null);
+        }
+        finally
+        {
+            host.Shutdown();
+            File.Delete(story); Directory.Delete(saves); Directory.Delete(Path.Combine(workspace, "data")); Directory.Delete(workspace);
+            UserSettings.Instance = null;
+        }
+    }),
     ("idle shutdown marks provider unavailable without reacquiring or faulting", () =>
     {
         var host = CreateHost();
@@ -209,6 +326,7 @@ foreach (var test in tests)
     Object.ResetRegistry();
     UnityEngine.Debug.Messages.Clear();
     Plugin.SavedOutputDirectory = "";
+    FfmpegCapabilities.ProbeOverride = null;
     ScenarioResourceManager.Instance = new();
     try { test.Run(); Console.WriteLine("PASS " + test.Name); }
     catch (Exception ex) { failed++; Console.WriteLine("FAIL " + test.Name + ": " + ex); }
@@ -220,6 +338,7 @@ static ExportHost CreateHost()
 {
     var host = new ExportHost(new IntPtr(1)); host.Awake();
     Set(host, "_probeAttempted", true); Set(host, "_capabilities", new FfmpegCapabilities());
+    Set(host, "_probeMode", "hardware"); Set(host, "_capabilitiesMode", "hardware");
     return host;
 }
 static ExportOptions Options() => new() { Title = "fixture", OutputDirectory = Path.GetFullPath("artifacts/host-test") };

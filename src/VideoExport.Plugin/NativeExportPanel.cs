@@ -238,7 +238,7 @@ public sealed partial class NativeExportPanel : IDisposable
         if (capabilitiesChanged)
         {
             CloseDropdown();
-            ReconcileHardwareSelection();
+            ReconcileEncoderSelection();
         }
         if (!busy && _wasBusy) _elapsed.Stop();
         _flow.ObserveBusy(busy);
@@ -551,7 +551,7 @@ public sealed partial class NativeExportPanel : IDisposable
         Texture(parent, "Summary divider", 68, 502, 844, 1, Line, 5);
         DynamicLabel(parent, () => $"画面  {ActiveOptions.Width} × {ActiveOptions.Height}  /  {ActiveOptions.Fps} 帧/秒",
             68, 519, 420, 27, 17);
-        DynamicLabel(parent, () => $"格式与编码  {ActiveOptions.Container.ToUpperInvariant()}  /  {CodecName(ActiveOptions.Codec)}",
+        DynamicLabel(parent, () => $"编码  {(ActiveOptions.EncodingMode == "software" ? "CPU" : "GPU")}  /  {CodecName(ActiveOptions.Codec)}  /  {ActiveOptions.Container.ToUpperInvariant()}",
             500, 519, 412, 27, 17);
         DynamicLabel(parent, () => $"码率  {VideoBitrate.FormatMbps(ActiveOptions.BitrateKbps)} Mbps  /  "
             + (ActiveOptions.RateControl == "cbr" ? "CBR（恒定码率）" : "VBR（可变码率）"),
@@ -686,7 +686,7 @@ public sealed partial class NativeExportPanel : IDisposable
             if (fallback == null)
             { _notice = "本机可用的 AV1 编码器不支持 MOV，请使用 MP4 或 MKV。"; return; }
             _options = _options with { Codec = fallback.Value, Encoder = "auto" };
-            _notice = "MOV 不支持 AV1，已切换到本机可用的 " + fallback.Title + " 硬件编码。";
+            _notice = "MOV 不支持 AV1，已切换到本机可用的 " + fallback.Title + " 编码。";
         }
         _options = _options with { Container = value };
         RecommendBitrate();
@@ -722,51 +722,73 @@ public sealed partial class NativeExportPanel : IDisposable
             return new DropdownItem(value, title, $"{width} × {height}" + (value == "custom" ? " · 手动输入偶数宽高" : value == "native" ? " · 当前窗口尺寸" : " · 按目标画布重新排版"));
         }).Where(item => item != null).Select(item => item!).ToArray();
 
-    private IEnumerable<EncoderCapability> AvailableHardware => _encoders?.Where(encoder => encoder.Hardware && encoder.Available
-        && encoder.Codec is "h264" or "hevc" or "av1") ?? Enumerable.Empty<EncoderCapability>();
+    private bool SoftwareEncoding => _options.EncodingMode == "software";
 
-    private bool HasHardware => AvailableHardware.Any(encoder => encoder.Codec == _options.Codec
+    private IEnumerable<EncoderCapability> AvailableEncoders => _encoders == null
+        ? Enumerable.Empty<EncoderCapability>()
+        : EncoderSelectionPolicy.GetAvailable(_encoders, _options.EncodingMode)
+            .Where(encoder => encoder.Codec is "h264" or "hevc" or "av1");
+
+    private bool HasEncoder => AvailableEncoders.Any(encoder => encoder.Codec == _options.Codec
         && (_options.Encoder == "auto" || encoder.Name == _options.Encoder));
 
-    private string HardwarePlaceholder() => _encoders == null ? "检测本机GPU..." : "无可用硬件编码器";
+    private string EncoderPlaceholder() => _encoders == null ? "检测编码器中…"
+        : SoftwareEncoding ? "无可用软件编码器" : "无可用硬件编码器";
+
+    private void SetEncodingMode(string mode)
+    {
+        if (_busy || _options.EncodingMode == mode) return;
+        PollInputs();
+        bool disablesGpuFilter = mode == "software" && _options.SuperResolutionEnabled
+            && _options.UpscaleAlgorithm is "anime4k-cnn" or "anime4k-rcas" or "fsr1-luma";
+        _options = EncodingModeSelection.Change(_options, mode);
+        _encoders = null; // Never enable export with results from the previous mode.
+        _notice = disablesGpuFilter ? "已关闭 GPU 超分辨率；CPU 软件编码可能较慢，画面仍由 GPU 渲染。" : "";
+        CloseDropdown();
+        RefreshSettingsLayout();
+        _refreshCadence.Invalidate();
+        ProbeRequested?.Invoke();
+    }
 
     private IReadOnlyList<DropdownItem> CodecItems() => new[] { "h264", "hevc", "av1" }
-        .Where(codec => AvailableHardware.Any(encoder => encoder.Codec == codec))
+        .Where(codec => AvailableEncoders.Any(encoder => encoder.Codec == codec))
         .Select(codec => new DropdownItem(codec, CodecName(codec), codec switch
         {
-            "h264" => "通用兼容 · 本机硬件加速",
-            "hevc" => "更小文件 · 本机硬件加速；播放设备需支持",
+            "h264" => SoftwareEncoding ? "通用兼容 · CPU 软件编码" : "通用兼容 · 本机硬件加速",
+            "hevc" => "更小文件 · 播放设备需支持 HEVC",
             _ => "更高压缩效率 · 播放设备需支持 AV1"
         })).ToArray();
 
     private IReadOnlyList<DropdownItem> EncoderItems()
     {
-        var hardware = AvailableHardware.Where(encoder => encoder.Codec == _options.Codec).ToArray();
-        if (hardware.Length == 0) return Array.Empty<DropdownItem>();
-        return new[] { new DropdownItem("auto", "自动选择本机硬件", $"{hardware.Length} 个已通过检测的硬件编码器") }
-            .Concat(hardware.Select(encoder => new DropdownItem(encoder.Name, encoder.Name,
-                encoder.Name.Contains("nvenc", StringComparison.Ordinal) ? "NVIDIA NVENC · 已通过编码检测"
+        var available = AvailableEncoders.Where(encoder => encoder.Codec == _options.Codec).ToArray();
+        if (available.Length == 0) return Array.Empty<DropdownItem>();
+        return new[] { new DropdownItem("auto", SoftwareEncoding ? "自动选择软件编码器" : "自动选择本机硬件", $"{available.Length} 个已通过检测的编码器") }
+            .Concat(available.Select(encoder => new DropdownItem(encoder.Name, encoder.Name,
+                !encoder.Hardware ? "CPU 软件编码 · 已通过编码检测"
+                : encoder.Name.Contains("nvenc", StringComparison.Ordinal) ? "NVIDIA NVENC · 已通过编码检测"
                 : encoder.Name.Contains("qsv", StringComparison.Ordinal) ? "Intel Quick Sync · 已通过编码检测"
                 : encoder.Name.Contains("amf", StringComparison.Ordinal) ? "AMD AMF · 已通过编码检测" : "硬件编码 · 已通过检测"))).ToArray();
     }
 
-    private void ReconcileHardwareSelection()
+    private void ReconcileEncoderSelection()
     {
         if (_encoders == null) return;
         var codecs = CodecItems();
         if (codecs.Count == 0)
-        { _notice = "未检测到可用的 GPU 硬件编码器。请检查显卡驱动与 FFmpeg，然后重新检测。"; return; }
-        if (_notice.StartsWith("未检测到可用的 GPU", StringComparison.Ordinal)) _notice = "";
+        { _notice = SoftwareEncoding ? "未检测到可用的软件编码器。请使用含 libx264 的 FFmpeg 后重新检测。"
+            : "未检测到可用的 GPU 硬件编码器。可在上方改选 CPU 软件编码，或检查驱动后重新检测。"; return; }
+        if (_notice.StartsWith("未检测到可用的", StringComparison.Ordinal)) _notice = "";
         if (!codecs.Any(codec => codec.Value == _options.Codec))
         {
             var codec = codecs[0];
             _options = _options with { Codec = codec.Value, Encoder = "auto", Container = codec.Value == "av1" && _options.Container == "mov" ? "mkv" : _options.Container };
-            _notice = "原视频编码在本机不可用，已切换到 " + codec.Title + " 硬件编码。";
+            _notice = "原视频编码在此模式不可用，已切换到 " + codec.Title + "。";
         }
-        else if (_options.Encoder != "auto" && !AvailableHardware.Any(encoder => encoder.Codec == _options.Codec && encoder.Name == _options.Encoder))
+        else if (_options.Encoder != "auto" && !AvailableEncoders.Any(encoder => encoder.Codec == _options.Codec && encoder.Name == _options.Encoder))
         {
             _options = _options with { Encoder = "auto" };
-            _notice = "原硬件编码器不可用，已切换为自动选择本机可用硬件。";
+            _notice = "原编码器不可用，已在当前模式内改为自动选择。";
         }
     }
 
@@ -775,7 +797,7 @@ public sealed partial class NativeExportPanel : IDisposable
         CloseDropdown();
         PollInputs();
         CommitOutputDirectory();
-        if (!HasHardware) { _notice = HardwarePlaceholder() + "。完成硬件检测后才能开始导出。"; return; }
+        if (!HasEncoder) { _notice = EncoderPlaceholder() + "。完成当前模式的检测后才能开始导出。"; return; }
         if (string.IsNullOrWhiteSpace(_options.Title)) { _notice = "请填写作品名称。"; return; }
         if (string.IsNullOrWhiteSpace(_options.OutputDirectory)) { _notice = "请选择或填写保存位置。"; return; }
         if (_options.Title.Length > 120 || _options.Title != _options.Title.Trim() || _options.Title.EndsWith('.')

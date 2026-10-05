@@ -183,12 +183,21 @@ public sealed partial class NativeExportPanel
     {
         _outputSection = Child(parent, "Output canvas section");
         var output = _outputSection.transform;
-        _outputCard = Rounded(output, "Output card", 32, 0, 916, 104, 14, Paper, 8);
+        _outputCard = Rounded(output, "Output card", 32, 0, 916, 168, 14, Paper, 8);
         Label(output, "输出画面", 52, 12, 700, 26, 19);
-        Caption(output, "分辨率", 52, 38);
-        Dropdown(output, 52, 62, 340, () => _preset, ResolutionItems, SetResolution, height: 32);
-        Caption(output, "画面比例", 416, 38);
-        Dropdown(output, 416, 62, 238, () => _aspect, () => new[]
+        Caption(output, "编码方式", 52, 38);
+        Dropdown(output, 52, 62, 340, () => _options.EncodingMode, () => new[]
+        {
+            new DropdownItem("hardware", "GPU 硬件编码", "使用本机已通过检测的硬件编码器"),
+            new DropdownItem("software", "CPU 软件编码", "无需硬件编码单元 · 默认 H.264 / libx264")
+        }, SetEncodingMode, height: 32);
+        DynamicLabel(output, () => SoftwareEncoding
+            ? "CPU 占用较高、可能较慢；画面仍由 GPU 渲染。"
+            : "硬件不可用时，可手动改选 CPU 软件编码。", 416, 66, 512, 26, 14, Muted);
+        Caption(output, "分辨率", 52, 102);
+        Dropdown(output, 52, 126, 340, () => _preset, ResolutionItems, SetResolution, height: 32);
+        Caption(output, "画面比例", 416, 102);
+        Dropdown(output, 416, 126, 238, () => _aspect, () => new[]
         {
             new DropdownItem("canvas", "当前窗口", $"使用 {SourceWidth} × {SourceHeight} 的比例"),
             new DropdownItem("16:9", "16:9 横屏", "按目标比例重新排版"),
@@ -202,12 +211,12 @@ public sealed partial class NativeExportPanel
             if (_preset == "native") _preset = "1080";
             if (_preset != "custom") SetResolution(_preset);
         }, height: 32);
-        Caption(output, "帧率", 678, 38);
-        Dropdown(output, 678, 62, 250, () => Number(_options.Fps), () => new[] { 24, 25, 30, 50, 60 }
+        Caption(output, "帧率", 678, 102);
+        Dropdown(output, 678, 126, 250, () => Number(_options.Fps), () => new[] { 24, 25, 30, 50, 60 }
             .Select(value => new DropdownItem(Number(value), value + " 帧/秒", value >= 50 ? "动作更流畅 · 渲染帧数更多" : "日常播放与视频制作")).ToArray(),
             value => _options = _options with { Fps = int.Parse(value, CultureInfo.InvariantCulture) }, height: 32);
         _customDimensionsSection = Child(output, "Custom dimensions");
-        PlaceSection(_customDimensionsSection, 104);
+        PlaceSection(_customDimensionsSection, 168);
         var dimensions = _customDimensionsSection.transform;
         Caption(dimensions, "自定义宽 × 高", 52, 0);
         Input(dimensions, 52, 26, 150, 34, () => _width, value => { _width = value; EditDimensions(); }, 5, UIInput.Validation.Integer);
@@ -263,9 +272,9 @@ public sealed partial class NativeExportPanel
 
     private IReadOnlyList<DropdownItem> UpscaleModelItems() => new[]
     {
-        new DropdownItem("anime4k-cnn", "Anime4K", "默认 · 动漫画面放大与降噪", _options.Codec != "qtrle"),
-        new DropdownItem("anime4k-rcas", "Anime4K → FSR RCAS", "放大降噪后锐化 · 锐度可调", _options.Codec != "qtrle"),
-        new DropdownItem("fsr1-luma", "FSR1（空间放大）", "EASU + RCAS · 亮度通道移植版", _options.Codec != "qtrle"),
+        new DropdownItem("anime4k-cnn", "Anime4K", "默认 · 动漫画面放大与降噪", !SoftwareEncoding && _options.Codec != "qtrle"),
+        new DropdownItem("anime4k-rcas", "Anime4K → FSR RCAS", "放大降噪后锐化 · 锐度可调", !SoftwareEncoding && _options.Codec != "qtrle"),
+        new DropdownItem("fsr1-luma", "FSR1（空间放大）", "EASU + RCAS · 亮度通道移植版", !SoftwareEncoding && _options.Codec != "qtrle"),
         new DropdownItem("bilinear", "双线性", "轻量插值 · 偏向速度"),
         new DropdownItem("bicubic", "双三次", "平滑插值"),
         new DropdownItem("lanczos", "Lanczos", "锐利插值 · 可能出现边缘振铃"),
@@ -344,7 +353,7 @@ public sealed partial class NativeExportPanel
         {
             if (_options.Codec == value) return;
             _options = _options with { Codec = value, Encoder = "auto", Container = value == "av1" && _options.Container == "mov" ? "mkv" : _options.Container };
-        }, enabled: () => HasHardware, placeholder: HardwarePlaceholder, height: 32);
+        }, enabled: () => HasEncoder, placeholder: EncoderPlaceholder, height: 32);
         Caption(page, "音频质量", 442, 38);
         Dropdown(page, 442, 62, 268, () => _options.AudioQuality, () => new[]
         {
@@ -384,13 +393,14 @@ public sealed partial class NativeExportPanel
 
         _advancedSection = Child(parent, "Advanced encoder accordion");
         var body = _advancedSection.transform;
-        Rounded(body, "Hardware encoder card", 32, 0, 916, 110, 14, Paper, 8);
-        Caption(body, "硬件编码器", 52, 8);
+        Rounded(body, "Encoder card", 32, 0, 916, 110, 14, Paper, 8);
+        Caption(body, "编码器", 52, 8);
         Dropdown(body, 52, 34, 700, () => _options.Encoder, EncoderItems,
-            value => _options = _options with { Encoder = value }, enabled: () => HasHardware,
-            placeholder: HardwarePlaceholder, height: 34);
+            value => _options = _options with { Encoder = value }, enabled: () => HasEncoder,
+            placeholder: EncoderPlaceholder, height: 34);
         Button(body, 768, 34, 160, 34, () => "重新检测", () => ProbeRequested?.Invoke());
-        DynamicLabel(body, () => "显卡：" + (string.IsNullOrWhiteSpace(_gpuName) ? "等待检测" : _gpuName),
+        DynamicLabel(body, () => (SoftwareEncoding ? "CPU 软件编码 · 渲染显卡：" : "显卡：")
+            + (string.IsNullOrWhiteSpace(_gpuName) ? "等待检测" : _gpuName),
             52, 74, 876, 24, 14, Muted);
         Rounded(body, "Bitrate controls card", 32, 124, 916, 154, 14, Paper, 8);
         Caption(body, "码率控制", 52, 132);
@@ -471,10 +481,11 @@ public sealed partial class NativeExportPanel
 
     private string EncoderSummary()
     {
-        if (!HasHardware) return HardwarePlaceholder();
+        if (!HasEncoder) return EncoderPlaceholder();
         string selected;
-        try { selected = HardwareEncoderPolicy.Select(_options, _encoders!, _gpuName); }
-        catch (ExportException) { return "硬件自动选择"; }
+        try { selected = EncoderSelectionPolicy.Select(_options, _encoders!, _gpuName); }
+        catch (ExportException) { return SoftwareEncoding ? "软件自动选择" : "硬件自动选择"; }
+        if (SoftwareEncoding) return "CPU · " + selected;
         string vendor = selected.EndsWith("_nvenc", StringComparison.Ordinal) ? "NVIDIA"
             : selected.EndsWith("_amf", StringComparison.Ordinal) ? "AMD" : "Intel";
         return (_options.Encoder == "auto" ? "自动 · " : "") + vendor;
@@ -489,14 +500,15 @@ public sealed partial class NativeExportPanel
             var canvas = _options.GetCanvasLayout();
             render = UpscaleModelTitle() + " / " + TierTitle() + " · 内部 " + Math.Min(canvas.CaptureWidth, canvas.CaptureHeight) + "P";
         }
-        return $"{size} · {_options.Fps} 帧 · {_options.Container.ToUpperInvariant()} · {render}";
+        return $"{size} · {_options.Fps} 帧 · {_options.Container.ToUpperInvariant()} · {(SoftwareEncoding ? "CPU 编码" : "GPU 编码")} · {render}";
     }
 
     private string ReadyMessage()
     {
         if (!string.IsNullOrWhiteSpace(_notice)) return _notice;
-        if (_status.StartsWith("GPU 检测完成", StringComparison.Ordinal) || _status.StartsWith("选择剧情", StringComparison.Ordinal) || string.IsNullOrWhiteSpace(_status))
-            return HasHardware ? "硬件加速已就绪" : HardwarePlaceholder();
+        if (_status.StartsWith("GPU 检测完成", StringComparison.Ordinal) || _status.StartsWith("CPU 检测完成", StringComparison.Ordinal)
+            || _status.StartsWith("选择剧情", StringComparison.Ordinal) || string.IsNullOrWhiteSpace(_status))
+            return HasEncoder ? SoftwareEncoding ? "CPU 软件编码已就绪；编码可能较慢。" : "硬件加速已就绪" : EncoderPlaceholder();
         return _status;
     }
 
@@ -512,7 +524,7 @@ public sealed partial class NativeExportPanel
         DynamicLabel(footer, () => _settingsGeometry?.MaximumScroll > 0 ? "滚轮或右侧箭头查看更多设置" : "Ctrl + Shift + E  显示 / 隐藏", 44, 85, 440, 24, 13, Muted);
         Button(footer, 548, 78, 126, 34, () => "关闭", () => Visible = false);
         Button(footer, 694, 78, 242, 34,
-            () => _busy ? "正在导出…" : _encoders == null ? "检测硬件中…" : !HasHardware ? "无可用硬件编码器" : "开始导出",
-            RequestExport, primary: true, enabled: () => !_picker.Busy && HasHardware);
+            () => _busy ? "正在导出…" : _encoders == null ? "检测编码器中…" : !HasEncoder ? EncoderPlaceholder() : "开始导出",
+            RequestExport, primary: true, enabled: () => !_picker.Busy && HasEncoder);
     }
 }

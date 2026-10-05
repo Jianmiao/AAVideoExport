@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../VideoExport.Host.Tests/Fakes.cs" Link="Fakes.cs" />
     <Compile Include="../../src/VideoExport.Plugin/ExportHost.cs" Link="ExportHost.cs" />
     <Compile Include="../../src/VideoExport.Plugin/StorySourcePath.cs" Link="StorySourcePath.cs" />
     <Compile Include="../../src/VideoExport.Plugin/EncodingModeSelection.cs" Link="EncodingModeSelection.cs" />

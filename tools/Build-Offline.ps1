@@ -48,7 +48,7 @@ function Compile-Project([string]$Project, [string]$Name, [string[]]$ExtraRefs, 
     $executable = $null -ne $projectXml.SelectSingleNode('//OutputType[text()="Exe"]')
     $dll = Join-Path $OutputDirectory ($Name + '.dll')
     $metadata = Join-Path $OutputDirectory ($Name + '.AssemblyInfo.cs')
-    $assemblyVersion = if ($Name -eq 'AAVideoExport') { '0.2.0.0' } else { '1.0.0.0' }
+    $assemblyVersion = if ($Name -in @('AAVideoExport','AAVideoExport.Core')) { '0.2.1.0' } else { '1.0.0.0' }
     [IO.File]::WriteAllText($metadata,
         '[assembly: System.Reflection.AssemblyVersion("' + $assemblyVersion + '")]' +
         '[assembly: System.Reflection.AssemblyFileVersion("' + $assemblyVersion + '")]')
@@ -69,7 +69,7 @@ function Compile-Project([string]$Project, [string]$Name, [string[]]$ExtraRefs, 
     }
     Write-Host "Built $Name"
 }
-if (!$GraphicsDependencyDirectory) { $GraphicsDependencyDirectory = Join-Path $repo '0.2.0' }
+if (!$GraphicsDependencyDirectory) { $GraphicsDependencyDirectory = Join-Path $repo '0.2.1' }
 $graphicsNames=@('Vortice.Direct3D11.dll','Vortice.DXGI.dll','Vortice.DirectX.dll','Vortice.D3DCompiler.dll',
     'Vortice.Mathematics.dll','SharpGen.Runtime.dll','SharpGen.Runtime.COM.dll')
 $graphicsRefs=@(foreach($name in $graphicsNames) {

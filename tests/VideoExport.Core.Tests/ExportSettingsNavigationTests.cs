@@ -88,12 +88,12 @@ internal static partial class Program
         }
         navigation.OpenAdvanced();
         navigation.ScrollTo(float.MaxValue, PanelLayoutForMask(15));
-        AssertSettingsState(navigation, true, 492, "expanded body can be scrolled to its final row");
+        AssertSettingsState(navigation, true, 556, "expanded body can be scrolled to its final row");
         navigation.ToggleAdvanced();
         navigation.ScrollTo(navigation.ScrollOffset, PanelLayoutForMask(7));
-        AssertSettingsState(navigation, false, 214, "collapse clamps to the end of the remaining video and audio content");
+        AssertSettingsState(navigation, false, 278, "collapse clamps to the end of the remaining video and audio content");
         navigation.ScrollTo(navigation.ScrollOffset, PanelLayoutForMask(0));
-        AssertSettingsState(navigation, false, 0, "collapsing optional video controls clears stale overflow");
+        AssertSettingsState(navigation, false, 48, "collapsing optional video controls clears stale overflow");
     }
 
     private static void TestSettingsNavigationRepeatedTrace()

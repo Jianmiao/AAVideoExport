@@ -116,7 +116,7 @@ internal static partial class Program
             Equal(compact.PanelHeight, layout.PanelHeight, "expanded content cannot grow the shell");
             Equal(compact.FooterY, layout.FooterY, "expanded content cannot move export actions");
         }
-        Equal(0, compact.MaximumScroll, "the compact video audio and advanced header fit without scrolling");
+        Equal(48, compact.MaximumScroll, "explicit encoding mode row uses the internal scroll without growing the shell");
         Check(anime.MaximumScroll > 0 && rcas.MaximumScroll > anime.MaximumScroll && customRcas.MaximumScroll > rcas.MaximumScroll,
             "expanded video controls overflow internally alongside audio");
     }
@@ -137,8 +137,8 @@ internal static partial class Program
         // missing sections in the combined video/audio/advanced list.
         foreach (var (mask, contentHeight, maximumScroll) in new[]
         {
-            (0, 410, 0), (1, 474, 48), (2, 514, 88), (6, 576, 150),
-            (7, 640, 214), (8, 688, 262), (15, 918, 492)
+            (0, 474, 48), (1, 538, 112), (2, 578, 152), (6, 640, 214),
+            (7, 704, 278), (8, 752, 326), (15, 982, 556)
         })
         {
             var layout = PanelLayoutForMask(mask);
@@ -150,8 +150,8 @@ internal static partial class Program
             Equal(middle, layout.ClampScroll(middle), "fractional scroll within bounds is preserved");
             Equal(layout.ClampScroll(float.MaxValue), layout.ClampScroll(layout.ClampScroll(float.MaxValue)), "clamping is idempotent");
         }
-        Equal(214f, PanelLayoutForMask(7).ClampScroll(492), "collapsing Advanced reveals the end of the remaining settings");
-        Equal(0f, PanelLayoutForMask(0).ClampScroll(492), "collapsing all optional controls cannot leave blank scrolled content");
+        Equal(278f, PanelLayoutForMask(7).ClampScroll(556), "collapsing Advanced reveals the end of the remaining settings");
+        Equal(48f, PanelLayoutForMask(0).ClampScroll(556), "collapsing all optional controls cannot leave blank scrolled content");
     }
 
     private static void TestPanelResponsiveViewports()

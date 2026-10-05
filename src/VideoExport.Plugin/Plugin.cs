@@ -12,7 +12,7 @@ namespace AAVideoExport.Plugin;
 public sealed class Plugin : BasePlugin
 {
     public const string Guid = "halocue.aa.videoexport";
-    public const string Version = "0.2.0";
+    public const string Version = "0.2.1";
     internal static string FfmpegPath = "ffmpeg.exe";
     internal static string FfprobePath = "ffprobe.exe";
     internal static bool ReduceProgressUiWork = true;
@@ -51,7 +51,7 @@ public sealed class Plugin : BasePlugin
             _harmony.PatchAll(typeof(Plugin).Assembly);
             MoreEffectsCompatibility.Initialize(_harmony, message => Log.LogInfo(message));
             _host = AddComponent<ExportHost>();
-            Log.LogInfo("AA Video Export loaded [0.2.0-render-control-v1-bundled-tools]. Ctrl+Shift+E opens settings. Export is explicit; project data is never written.");
+            Log.LogInfo("AA Video Export loaded [0.2.1-software-encoding-candidate]. Ctrl+Shift+E opens settings. Encoding mode is explicit; project data is never written.");
         }
         catch
         {

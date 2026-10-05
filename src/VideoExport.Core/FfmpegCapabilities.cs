@@ -7,33 +7,38 @@ public sealed class FfmpegCapabilities
     private readonly string gpuName;
     public IReadOnlyList<EncoderCapability> Encoders { get; }
     public IReadOnlyList<EncoderCapability> HardwareEncoders { get; }
+    public IReadOnlyList<EncoderCapability> SoftwareEncoders { get; }
 
     private FfmpegCapabilities(IReadOnlyList<EncoderCapability> encoders, string gpuName)
     {
         Encoders = encoders;
         HardwareEncoders = HardwareEncoderPolicy.GetAvailable(encoders);
+        SoftwareEncoders = EncoderSelectionPolicy.GetAvailable(encoders, "software");
         this.gpuName = gpuName;
     }
 
     public static Task<FfmpegCapabilities> ProbeAsync(string ffmpegPath, string gpuName, CancellationToken cancellationToken = default) =>
-        ProbeCandidatesAsync(ffmpegPath, gpuName, false, cancellationToken);
+        ProbeCandidatesAsync(ffmpegPath, gpuName, null, cancellationToken);
 
     public static Task<FfmpegCapabilities> ProbeHardwareAsync(string ffmpegPath, string gpuName, CancellationToken cancellationToken = default) =>
         ProbeCandidatesAsync(ffmpegPath, gpuName, true, cancellationToken);
 
-    private static async Task<FfmpegCapabilities> ProbeCandidatesAsync(string ffmpegPath, string gpuName, bool hardwareOnly, CancellationToken cancellationToken)
+    public static Task<FfmpegCapabilities> ProbeSoftwareAsync(string ffmpegPath, CancellationToken cancellationToken = default) =>
+        ProbeCandidatesAsync(ffmpegPath, "", false, cancellationToken);
+
+    private static async Task<FfmpegCapabilities> ProbeCandidatesAsync(string ffmpegPath, string gpuName, bool? hardware, CancellationToken cancellationToken)
     {
         var listing = await FfmpegProcess.RunAsync(ffmpegPath, new[] { "-hide_banner", "-encoders" }, TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
         listing.EnsureSuccess("Encoder discovery");
         using var semaphore = new SemaphoreSlim(2);
-        var tasks = EncoderCatalog.All.Where(candidate => !hardwareOnly || candidate.Hardware).Select(async candidate =>
+        var tasks = EncoderCatalog.All.Where(candidate => hardware is null || candidate.Hardware == hardware).Select(async candidate =>
         {
             if (!Regex.IsMatch(listing.Output, @"(?m)^\s*V\S*\s+" + Regex.Escape(candidate.Name) + @"\s"))
                 return candidate with { Detail = "Not included in this FFmpeg build." };
             await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                var options = new ExportOptions { Codec = candidate.Codec, Container = candidate.Codec == "qtrle" ? "mov" : "mkv", Width = 256, Height = 144, Fps = 30, AudioQuality = "none" };
+                var options = new ExportOptions { EncodingMode = candidate.Hardware ? "hardware" : "software", Codec = candidate.Codec, Container = candidate.Codec == "qtrle" ? "mov" : "mkv", Width = 256, Height = 144, Fps = 30, AudioQuality = "none" };
                 await TestEncoderAsync(ffmpegPath, options, candidate.Name, cancellationToken).ConfigureAwait(false);
                 return candidate with { Available = true, Detail = "Passed a real 3-frame encode at 256 × 144." };
             }
@@ -48,6 +53,8 @@ public sealed class FfmpegCapabilities
     }
 
     public string PickHardwareEncoder(ExportOptions options) => HardwareEncoderPolicy.Select(options, HardwareEncoders, gpuName);
+
+    public string PickForMode(ExportOptions options) => EncoderSelectionPolicy.Select(options, Encoders, gpuName);
 
     public string PickEncoder(ExportOptions options)
     {

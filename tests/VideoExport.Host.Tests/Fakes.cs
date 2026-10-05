@@ -118,6 +118,14 @@ public sealed class UserSettings { public static UserSettings? Instance; public 
 public sealed class ScenarioResourceManager
 {
     public static ScenarioResourceManager? Instance;
+    // Native AA falls back to Application.persistentDataPath for an unset workspace.
+    public static string PersistentDataPath = Path.GetTempPath();
+    public static string GetPersistentFilePath(string folderName, string fileName = "", string extension = ".aap2")
+    {
+        string workspace = UserSettings.Instance?.WorkspacePath ?? "";
+        if (string.IsNullOrEmpty(workspace)) workspace = PersistentDataPath;
+        return Path.Combine(workspace, "data", folderName, fileName + extension).Replace('\\', '/');
+    }
     public bool Preloading;
     public readonly List<string> LoadedNames = new();
     public GenericScenarioExcelTable LoadGenericScenario(string name) { LoadedNames.Add(name); return new(); }
@@ -130,9 +138,16 @@ namespace AAVideoExport.Core
 {
     public sealed class FfmpegCapabilities
     {
-        public IReadOnlyList<EncoderCapability> HardwareEncoders { get; } = new[] { new EncoderCapability("fixture", "h264", true, true, "fake native boundary") };
-        public static Task<FfmpegCapabilities> ProbeHardwareAsync(string path, string gpu, CancellationToken cancellation) => Task.FromResult(new FfmpegCapabilities());
-        public string PickHardwareEncoder(ExportOptions options) => "fixture";
+        public IReadOnlyList<EncoderCapability> HardwareEncoders { get; init; } = new[] { new EncoderCapability("fixture", "h264", true, true, "fake native boundary") };
+        public IReadOnlyList<EncoderCapability> SoftwareEncoders { get; init; } = new[] { new EncoderCapability("libx264", "h264", false, true, "fake native boundary") };
+        public static Func<string, CancellationToken, Task<FfmpegCapabilities>>? ProbeOverride;
+        public static Task<FfmpegCapabilities> ProbeHardwareAsync(string path, string gpu, CancellationToken cancellation) =>
+            ProbeOverride?.Invoke("hardware", cancellation) ?? Task.FromResult(new FfmpegCapabilities());
+        public static Task<FfmpegCapabilities> ProbeSoftwareAsync(string path, CancellationToken cancellation) =>
+            ProbeOverride?.Invoke("software", cancellation) ?? Task.FromResult(new FfmpegCapabilities());
+        public string PickForMode(ExportOptions options) =>
+            (options.EncodingMode == "software" ? SoftwareEncoders : HardwareEncoders)
+                .First(e => e.Codec == options.Codec && (options.Encoder == "auto" || options.Encoder == e.Name)).Name;
     }
     public sealed class ExportSession : IDisposable
     {
@@ -145,8 +160,9 @@ namespace AAVideoExport.Core
         public string UpscaleFallbackReason => "";
         public bool Cancelled, Disposed;
         public ExportOptions Options;
+        public string Encoder;
         public ExportSession(ExportOptions options, string ffmpeg, string ffprobe, string encoder, int sampleRate, int channels, bool flip)
-        { Options = options; lock (Created) Created.Add(this); }
+        { Options = options; Encoder = encoder; lock (Created) Created.Add(this); }
         public void Cancel() => Cancelled = true;
         public void Dispose() => Disposed = true;
         public void WriteAudio(float[] audio, int count) { }
@@ -192,8 +208,10 @@ namespace AAVideoExport.Plugin
         public Action<string>? OutputDirectoryCommitted;
         public readonly ExportUiFlow Flow = new();
         public bool LastBusy;
+        public IReadOnlyList<EncoderCapability>? LastEncoders;
+        public string LastStatus = "";
         public void Draw(string title, string gpu, string status, bool busy, long captured, long total, object? progress, IReadOnlyList<EncoderCapability>? hardware)
-        { LastProjectName = title; LastBusy = busy; Flow.ObserveBusy(busy); }
+        { LastProjectName = title; LastBusy = busy; LastEncoders = hardware; LastStatus = status; Flow.ObserveBusy(busy); }
         public void SetSourceCanvas(int width, int height) { }
         public void SetStoryTitle(string title) { Options = Options with { Title = title }; }
         public void Tick() { }

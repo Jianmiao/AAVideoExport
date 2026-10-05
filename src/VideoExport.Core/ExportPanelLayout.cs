@@ -36,7 +36,7 @@ public sealed record ExportPanelLayout
         bool rcasModel, bool advanced, bool customBitrate, int panelHeight = DefaultPanelHeight)
     {
         bool sharpness = superResolution && rcasModel;
-        int outputHeight = 104 + (customDimensions ? 64 : 0);
+        int outputHeight = 168 + (customDimensions ? 64 : 0);
         int superY = ContentTop + outputHeight + 10;
         int superHeight = superResolution ? 164 + (sharpness ? 62 : 0) : 60;
         int audioY = superY + superHeight + 10;

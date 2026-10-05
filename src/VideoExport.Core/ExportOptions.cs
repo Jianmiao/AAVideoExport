@@ -37,6 +37,9 @@ public sealed record ExportOptions
     public int Fps { get; init; } = 30;
     public string Container { get; init; } = "mp4";
     public string Codec { get; init; } = "h264";
+    // The product explicitly chooses a mode. Automatic selection stays within
+    // that mode and never silently substitutes CPU encoding for a failed GPU.
+    public string EncodingMode { get; init; } = "hardware";
     public string Encoder { get; init; } = "auto";
     public int BitrateKbps { get; init; } = 4000;
     public string RateControl { get; init; } = "vbr";
@@ -65,6 +68,7 @@ public sealed record ExportOptions
         Require(Fps is 24 or 25 or 30 or 50 or 60, "Frame rate must be 24, 25, 30, 50, or 60.");
         Require(Container is "mp4" or "mov" or "mkv", "Container must be mp4, mov, or mkv.");
         Require(Codec is "h264" or "hevc" or "av1" or "qtrle", "Unsupported video codec.");
+        Require(EncodingMode is "hardware" or "software", "Encoding mode must be hardware or software.");
         Require(Codec != "qtrle" || Container == "mov", "Lossless QuickTime Animation requires MOV.");
         Require(Codec != "av1" || Container != "mov", "AV1 is offered in MP4 or MKV; use one of those containers.");
         Require(RateControl is "vbr" or "cbr", "Rate control must be vbr or cbr.");

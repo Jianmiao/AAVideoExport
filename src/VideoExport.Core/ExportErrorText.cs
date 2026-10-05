@@ -19,7 +19,10 @@ public static class ExportErrorText
                 "io_error" => DescribeIo(export.InnerException ?? export),
                 "cancelled" => "导出已取消。",
                 "hardware_encoder_required" => "请使用通过本机检测的硬件编码器，再开始导出。",
-                "hardware_encoder_unavailable" or "encoder_unavailable" => "当前视频格式没有可用的硬件编码器。请重新检测、更新显卡驱动或更换视频编码。",
+                "hardware_encoder_unavailable" => "当前视频格式没有可用的硬件编码器。请重新检测、更新显卡驱动，或切换为 CPU 软件编码。",
+                "software_encoder_required" => "请使用通过本机检测的软件编码器，再开始导出。",
+                "software_encoder_unavailable" => "当前视频格式没有可用的软件编码器。请重新检测或更换视频编码；H.264 软件编码需要 FFmpeg 包含 libx264。",
+                "encoder_unavailable" => "当前视频格式没有可用的编码器。请重新检测或更换视频编码。",
                 "encoder_failed" or "encode_failed" => "视频编码或音视频合成失败。请检查视频与音频格式、显卡驱动和保存位置，详细原因已记录在 Mod 日志中。",
                 "process_start_failed" => "无法启动视频处理组件。请检查 FFmpeg 安装位置和文件是否完整。",
                 "process_timeout" => "视频处理长时间没有响应，导出已停止。请检查显卡驱动及磁盘状态后重试。",
@@ -65,6 +68,7 @@ public static class ExportErrorText
         "Frame rate must be 24, 25, 30, 50, or 60." => "请选择 24、25、30、50 或 60 帧/秒。",
         "Container must be mp4, mov, or mkv." => "请选择 MP4、MOV 或 MKV 文件格式。",
         "Unsupported video codec." => "当前视频编码不受支持，请重新选择视频编码。",
+        "Encoding mode must be hardware or software." => "请选择 GPU 硬件编码或 CPU 软件编码。",
         "Lossless QuickTime Animation requires MOV." => "无损动画编码需要使用 MOV 文件格式。",
         "AV1 is offered in MP4 or MKV; use one of those containers." => "AV1 编码需要使用 MP4 或 MKV 文件格式。",
         "Rate control must be vbr or cbr." => "请选择 VBR 可变码率或 CBR 恒定码率。",
@@ -72,7 +76,7 @@ public static class ExportErrorText
         "Unsupported audio quality." => "当前音频质量不受支持，请重新选择音频设置。",
         "Audio sample rate must be 44100 or 48000 Hz." => "音频采样率须为 44.1 或 48 kHz。",
         "The selected encoder does not support this codec." or "The encoder does not match the selected codec."
-            => "所选硬件编码器不支持当前视频编码，请更换编码器或视频编码。",
+            => "所选编码器不支持当前视频编码，请更换编码器或视频编码。",
         "Dimensions must be even, at least 16 pixels, and within 7680 × 4320 (or portrait equivalent)."
             => "画面宽高须为偶数且至少 16 像素，最长边不超过 7680、最短边不超过 4320。",
         "This fill composition needs a render target larger than the supported canvas. Choose fit or a lower output resolution."
