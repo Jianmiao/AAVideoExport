@@ -1,14 +1,14 @@
 param([string]$RepositoryPath = (Split-Path -Parent $PSScriptRoot))
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $RepositoryPath).Path
-$payload = Join-Path $root '0.2.1'
+$payload = Join-Path $root '0.2.3'
 $required = @('AAVideoExport.dll', 'AAVideoExport.Core.dll', 'Vortice.Direct3D11.dll',
     'Vortice.DXGI.dll', 'Vortice.DirectX.dll', 'Vortice.D3DCompiler.dll',
     'Vortice.Mathematics.dll', 'SharpGen.Runtime.dll', 'SharpGen.Runtime.COM.dll',
     'manifest.json', 'icon.png')
 $manifest = Get-Content -LiteralPath (Join-Path $payload 'manifest.json') -Raw | ConvertFrom-Json
-if ($manifest.name -ne 'AAVideoExport' -or $manifest.version_number -ne '0.2.1') {
-    throw 'Manifest identity does not match mods/AAVideoExport/0.2.1.'
+if ($manifest.name -ne 'AAVideoExport' -or $manifest.version_number -ne '0.2.3') {
+    throw 'Manifest identity does not match mods/AAVideoExport/0.2.3.'
 }
 if ($manifest.website_url -ne 'https://github.com/Jianmiao/AAVideoExport') {
     throw 'Manifest repository URL mismatch.'
@@ -39,7 +39,7 @@ foreach ($name in $required) {
     }
 }
 $version = [Reflection.AssemblyName]::GetAssemblyName((Join-Path $payload 'AAVideoExport.dll')).Version
-if ($version.ToString() -ne '0.2.1.0') { throw "Plugin assembly version mismatch: $version" }
+if ($version.ToString() -ne '0.2.3.0') { throw "Plugin assembly version mismatch: $version" }
 $dlls = @(Get-ChildItem -LiteralPath $payload -Filter '*.dll' -File -Recurse)
 if ($dlls.Count -ne 9) { throw 'Runtime must contain exactly the nine reviewed DLLs.' }
 foreach ($file in @('LICENSE', 'THIRD_PARTY_NOTICES.md',
@@ -49,4 +49,4 @@ foreach ($file in @('LICENSE', 'THIRD_PARTY_NOTICES.md',
     if (!(Test-Path -LiteralPath (Join-Path $root $file) -PathType Leaf)) { throw "Missing distribution notice: $file" }
 }
 if (Test-Path -LiteralPath (Join-Path $root 'mods/AAVideoExport')) { throw 'Unexpected nested mods directory.' }
-Write-Output 'PASS clone-ready layout: AAVideoExport/0.2.1, 11 runtime files, 9 real DLLs, SHA-256 and notices.'
+Write-Output 'PASS clone-ready layout: AAVideoExport/0.2.3, 11 runtime files, 9 real DLLs, SHA-256 and notices.'

@@ -24,7 +24,7 @@ Release additionally includes unmodified FFmpeg and ffprobe binaries from the pi
 BtbN build, the GPLv3 license, build configuration and source retrieval information.
 The release page provides a direct link to the matching FFmpeg source companion:
 https://github.com/Jianmiao/AAVideoExport/releases/download/v0.2.0/FFmpeg-n8.0-16-gd8605a6b55-source-companion.zip
-Version 0.2.1 retains the same unmodified FFmpeg/ffprobe build as 0.2.0.
+Versions 0.2.1 and 0.2.3 retain the same unmodified FFmpeg/ffprobe build as 0.2.0.
 Direct Git clones do not include these large programs and need externally configured tools.
 AA/game/character/audio resources
 remain local to their owner. No Jianying code, icon, image or model is copied.

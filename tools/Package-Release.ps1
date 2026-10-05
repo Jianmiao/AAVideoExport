@@ -49,7 +49,7 @@ if ($Variant -eq 'full') {
     Copy-Item -LiteralPath $FFmpegNoticesDirectory -Destination (Join-Path $licenses 'FFmpeg') -Recurse
     if (!(Test-Path -LiteralPath (Join-Path $licenses 'FFmpeg/LICENSE.txt'))) { throw 'Missing FFmpeg license.' }
 }
-foreach ($file in @('README.md','THIRD_PARTY_NOTICES.md','docs/development.md','docs/render-control-v1.md','docs/moreeffects-clock-compatibility.md','docs/shader-provenance-2026-10-03.md','docs/release-0.2.1.md')) {
+foreach ($file in @('README.md','THIRD_PARTY_NOTICES.md','docs/development.md','docs/render-control-v1.md','docs/moreeffects-clock-compatibility.md','docs/shader-provenance-2026-10-03.md','docs/release-0.2.1.md','docs/release-0.2.3.md','docs/auto-selection-export.md')) {
     $destination = Join-Path $payload $file
     New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $repo $file) -Destination $destination
