@@ -16,6 +16,7 @@ public sealed partial class NativeExportPanel : IDisposable
     private static readonly Color Paper = new(0.965f, 0.980f, 0.992f, 1);
     private static readonly Color Ink = new(0.176f, 0.302f, 0.439f, 1);
     private static readonly Color Muted = new(0.424f, 0.553f, 0.643f, 1);
+    private static readonly Color ErrorRed = new(0.82f, 0.12f, 0.16f, 1);
     private static readonly Color Cyan = new(0.306f, 0.824f, 0.965f, 1);
     private static readonly Color Yellow = new(0.976f, 0.910f, 0.298f, 1);
     private static readonly Color Line = new(0.812f, 0.871f, 0.906f, 1);
@@ -56,6 +57,7 @@ public sealed partial class NativeExportPanel : IDisposable
     private string _bitrate = VideoBitrate.FormatMbps(VideoBitrate.RecommendedKbps);
     private string _rcasSharpness = "0.87";
     private string _notice = "", _projectName = "", _gpuName = "", _status = "";
+    private bool _noticeIsError;
     private float _progress;
     private long _frames;
     private IReadOnlyList<EncoderCapability>? _encoders;
@@ -71,6 +73,7 @@ public sealed partial class NativeExportPanel : IDisposable
     private double _nextCameraScan;
 
     internal bool IsCapturing { get; set; }
+    internal bool StatusIsError { get; set; }
     internal bool ReduceCaptureUiWork { get; set; } = true;
     internal bool ShowPlaybackButtons { get; private set; }
     private bool ReducePresentationWork => !IsCapturing || ReduceCaptureUiWork;
@@ -255,7 +258,7 @@ public sealed partial class NativeExportPanel : IDisposable
                 _options = _options with { OutputDirectory = directory };
                 CommitOutputDirectory();
             }
-            if (error != null) _notice = error;
+            if (error != null) Notice(error);
             _refreshCadence.Invalidate();
         }
         if (!Visible) return;
@@ -530,8 +533,9 @@ public sealed partial class NativeExportPanel : IDisposable
         Rounded(parent, "Progress card", 44, 111, 892, 226, 16, Paper, 4);
         DynamicLabel(parent, () => _flow.Phase == ExportUiPhase.Cancelling ? "正在取消" : ExportStage,
             72, 131, 836, 38, 27);
-        DynamicLabel(parent, () => _flow.Phase == ExportUiPhase.Cancelling
-            ? "正在停止编码并清理本次临时输出，请稍候。" : _status, 72, 179, 836, 32, 17, Muted);
+        DynamicLabel(parent, () => StatusIsError ? _status : _flow.Phase == ExportUiPhase.Cancelling
+            ? "正在停止编码并清理本次临时输出，请稍候。" : _status, 72, 179, 836, 32, 17, Muted,
+            currentColor: () => StatusIsError ? ErrorRed : Muted);
         Rounded(parent, "Export progress track", 72, 232, 836, 10, 5, Line, 5);
         _exportProgressWidget = Texture(parent, "Export progress indicator", 72, 232, 1, 10, Cyan, 6);
         DynamicLabel(parent, () => _progressKnown ? $"已完成 {_progress:P0}"
@@ -684,9 +688,9 @@ public sealed partial class NativeExportPanel : IDisposable
         {
             var fallback = CodecItems().FirstOrDefault(item => item.Value != "av1");
             if (fallback == null)
-            { _notice = "本机可用的 AV1 编码器不支持 MOV，请使用 MP4 或 MKV。"; return; }
+            { Notice("本机可用的 AV1 编码器不支持 MOV，请使用 MP4 或 MKV。"); return; }
             _options = _options with { Codec = fallback.Value, Encoder = "auto" };
-            _notice = "MOV 不支持 AV1，已切换到本机可用的 " + fallback.Title + " 编码。";
+            Notice("MOV 不支持 AV1，已切换到本机可用的 " + fallback.Title + " 编码。", false);
         }
         _options = _options with { Container = value };
         RecommendBitrate();
@@ -743,7 +747,7 @@ public sealed partial class NativeExportPanel : IDisposable
             && _options.UpscaleAlgorithm is "anime4k-cnn" or "anime4k-rcas" or "fsr1-luma";
         _options = EncodingModeSelection.Change(_options, mode);
         _encoders = null; // Never enable export with results from the previous mode.
-        _notice = disablesGpuFilter ? "已关闭 GPU 超分辨率；CPU 软件编码可能较慢，画面仍由 GPU 渲染。" : "";
+        Notice(disablesGpuFilter ? "已关闭 GPU 超分辨率；CPU 软件编码可能较慢，画面仍由 GPU 渲染。" : "", false);
         CloseDropdown();
         RefreshSettingsLayout();
         _refreshCadence.Invalidate();
@@ -776,19 +780,19 @@ public sealed partial class NativeExportPanel : IDisposable
         if (_encoders == null) return;
         var codecs = CodecItems();
         if (codecs.Count == 0)
-        { _notice = SoftwareEncoding ? "未检测到可用的软件编码器。请使用含 libx264 的 FFmpeg 后重新检测。"
-            : "未检测到可用的 GPU 硬件编码器。可在上方改选 CPU 软件编码，或检查驱动后重新检测。"; return; }
+        { Notice(SoftwareEncoding ? "未检测到可用的软件编码器。请使用含 libx264 的 FFmpeg 后重新检测。"
+            : "未检测到可用的 GPU 硬件编码器。可在上方改选 CPU 软件编码，或检查驱动后重新检测。"); return; }
         if (_notice.StartsWith("未检测到可用的", StringComparison.Ordinal)) _notice = "";
         if (!codecs.Any(codec => codec.Value == _options.Codec))
         {
             var codec = codecs[0];
             _options = _options with { Codec = codec.Value, Encoder = "auto", Container = codec.Value == "av1" && _options.Container == "mov" ? "mkv" : _options.Container };
-            _notice = "原视频编码在此模式不可用，已切换到 " + codec.Title + "。";
+            Notice("原视频编码在此模式不可用，已切换到 " + codec.Title + "。", false);
         }
         else if (_options.Encoder != "auto" && !AvailableEncoders.Any(encoder => encoder.Codec == _options.Codec && encoder.Name == _options.Encoder))
         {
             _options = _options with { Encoder = "auto" };
-            _notice = "原编码器不可用，已在当前模式内改为自动选择。";
+            Notice("原编码器不可用，已在当前模式内改为自动选择。", false);
         }
     }
 
@@ -797,29 +801,29 @@ public sealed partial class NativeExportPanel : IDisposable
         CloseDropdown();
         PollInputs();
         CommitOutputDirectory();
-        if (!HasEncoder) { _notice = EncoderPlaceholder() + "。完成当前模式的检测后才能开始导出。"; return; }
-        if (string.IsNullOrWhiteSpace(_options.Title)) { _notice = "请填写作品名称。"; return; }
-        if (string.IsNullOrWhiteSpace(_options.OutputDirectory)) { _notice = "请选择或填写保存位置。"; return; }
+        if (!HasEncoder) { Notice(EncoderPlaceholder() + "。完成当前模式的检测后才能开始导出。"); return; }
+        if (string.IsNullOrWhiteSpace(_options.Title)) { Notice("请填写作品名称。"); return; }
+        if (string.IsNullOrWhiteSpace(_options.OutputDirectory)) { Notice("请选择或填写保存位置。"); return; }
         if (_options.Title.Length > 120 || _options.Title != _options.Title.Trim() || _options.Title.EndsWith('.')
             || _options.Title.Contains("..", StringComparison.Ordinal) || _options.Title.Any(c => c < 32 || "<>:\"/\\|?*".Contains(c)))
-        { _notice = "作品名称请使用 1–120 个有效文件名字符，首尾不能有空格，结尾不能有句点。"; return; }
+        { Notice("作品名称请使用 1–120 个有效文件名字符，首尾不能有空格，结尾不能有句点。"); return; }
         var stem = _options.Title.Split('.')[0].ToUpperInvariant();
         if (stem is "CON" or "PRN" or "AUX" or "NUL" or "CONIN$" or "CONOUT$"
             || System.Text.RegularExpressions.Regex.IsMatch(stem, @"^(COM|LPT)[1-9¹²³]$"))
-        { _notice = "此作品名称被 Windows 保留，请换一个名称。"; return; }
+        { Notice("此作品名称被 Windows 保留，请换一个名称。"); return; }
         if (!OutputDirectoryPreference.TryNormalize(_options.OutputDirectory, out var directory))
-        { _notice = "保存路径无效，请重新选择文件夹；路径必须完整且不能包含换行或非法字符。"; return; }
+        { Notice("保存路径无效，请重新选择文件夹；路径必须完整且不能包含换行或非法字符。"); return; }
         _options = _options with { OutputDirectory = directory };
         if (!int.TryParse(_width, out var width) || !int.TryParse(_height, out var height) || !ValidDimensions(width, height))
-        { _notice = "宽高须为偶数，至少 16 像素；最长边不超过 7680，最短边不超过 4320。"; return; }
+        { Notice("宽高须为偶数，至少 16 像素；最长边不超过 7680，最短边不超过 4320。"); return; }
         _options = (_options with { Width = width, Height = height }).NormalizeSuperResolutionForOutput();
         if (_options.SuperResolutionEnabled && _options.UpscaleAlgorithm == "anime4k-rcas" &&
             (!double.TryParse(_rcasSharpness, NumberStyles.Float, CultureInfo.InvariantCulture, out var sharpness)
                 || !double.IsFinite(sharpness) || sharpness < 0 || sharpness > 1))
-        { _notice = "RCAS 锐度须为 0–1 之间的数字。"; return; }
+        { Notice("RCAS 锐度须为 0–1 之间的数字。"); return; }
         RecommendBitrate();
         if (!VideoBitrate.TryParseMbps(_bitrate, out var bitrate))
-        { _notice = "目标码率须为 0.1–500 Mbps，可保留三位小数。"; return; }
+        { Notice("目标码率须为 0.1–500 Mbps，可保留三位小数。"); return; }
         _options = _options with { BitrateKbps = bitrate };
         try
         {
@@ -830,7 +834,7 @@ public sealed partial class NativeExportPanel : IDisposable
         }
         catch (Exception ex)
         {
-            _notice = "无法开始导出：" + ExportErrorText.Describe(ex);
+            Notice("无法开始导出：" + ExportErrorText.Describe(ex));
             UnityEngine.Debug.LogError("AA Video Export: start failed\n" + ex);
         }
     }
@@ -906,10 +910,26 @@ public sealed partial class NativeExportPanel : IDisposable
         return label;
     }
 
-    private void DynamicLabel(Transform parent, Func<string> text, int x, int y, int width, int height, int size, Color? color = null)
+    private void DynamicLabel(Transform parent, Func<string> text, int x, int y, int width, int height, int size,
+        Color? color = null, Func<Color>? currentColor = null)
     {
-        var label = Label(parent, text(), x, y, width, height, size, color);
-        _refresh.Add(new RefreshBinding(label.gameObject, () => SetText(label, text())));
+        var label = Label(parent, text(), x, y, width, height, size, currentColor?.Invoke() ?? color);
+        _refresh.Add(new RefreshBinding(label.gameObject, () =>
+        {
+            SetText(label, text());
+            if (currentColor != null)
+            {
+                var next = currentColor();
+                if (label.color != next) label.color = next;
+            }
+        }));
+    }
+
+    private void Notice(string message, bool isError = true)
+    {
+        _notice = message;
+        _noticeIsError = isError && !string.IsNullOrWhiteSpace(message);
+        _refreshCadence.Invalidate();
     }
 
     private void Caption(Transform parent, string text, int x, int y) => Label(parent, text, x, y + 3, 436, 18, 15, Muted);

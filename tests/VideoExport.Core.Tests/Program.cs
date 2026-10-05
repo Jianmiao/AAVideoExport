@@ -150,6 +150,12 @@ internal static partial class Program
             await BenchmarkProxy();
             return 0;
         }
+        if (args.Contains("--audio-tolerance-only", StringComparer.Ordinal))
+        {
+            await TestAudioTimelineTolerances();
+            Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
+            return failed == 0 ? 0 : 1;
+        }
         if (args.Contains("--audio-empty-only", StringComparer.Ordinal))
         {
             await Test("zero-length mixer writes preserve PCM samples and duration", TestEmptyAudioFrames);
@@ -198,6 +204,7 @@ internal static partial class Program
         await TestCanvasMedia();
         await Test("qtrle + PCM16 MOV: exact pixels, sample timing and stereo audio", TestMov);
         await Test("zero-length mixer writes preserve PCM samples and duration", TestEmptyAudioFrames);
+        await TestAudioTimelineTolerances();
         await Test("H.264 + PCM24 MKV: 24-bit samples and frame count", TestMkv);
         await Test("audio can be explicitly disabled", TestSilent);
         await Test("48 kHz capture resamples to 44.1 kHz stereo output", TestResample);

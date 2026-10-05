@@ -39,6 +39,21 @@ internal static class TouchCaptureHook
     static bool Prefix() => ExportHost.Current?.AllowTouch ?? true;
 }
 
+// These callbacks draw AA's click particles and drag trail independently of
+// Test.OnTouchAreaClicked. Reject only visual feedback while exporting; the
+// export panel can still receive clicks (including Cancel).
+[HarmonyPatch(typeof(TouchEffectCreator), nameof(TouchEffectCreator.OnPressed))]
+internal static class PointerPressCaptureHook
+{
+    static bool Prefix() => !(ExportHost.Current?.Capturing ?? false);
+}
+
+[HarmonyPatch(typeof(TouchEffectCreator), nameof(TouchEffectCreator.OnDragged))]
+internal static class PointerDragCaptureHook
+{
+    static bool Prefix() => !(ExportHost.Current?.Capturing ?? false);
+}
+
 [HarmonyPatch(typeof(RealTime), "get_deltaTime")]
 internal static class FixedUiDeltaHook
 {

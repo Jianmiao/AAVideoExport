@@ -32,7 +32,7 @@ public static class ExportErrorText
                 "invalid_frame" => "视频帧的数据或尺寸异常，导出已停止。请重新加载剧情后重试。",
                 "gpu_readback_failed" => "显卡读取视频帧失败，导出已停止。请检查显卡驱动后重试。",
                 "invalid_audio" => "音频数据异常，导出已停止。请重新加载剧情或关闭音频后重试。",
-                "audio_timeline_mismatch" => "录制的音频与画面时长不一致，导出已停止。请重新加载剧情后重试。",
+                "audio_timeline_mismatch" => "录制音频缺失，或与画面时长的差值超过当前帧率允许范围，导出已停止。请重新加载剧情后重试。",
                 "verification_failed" => "导出文件未通过完整性检查。请查看 Mod 日志中的详细原因后重试。",
                 "invalid_state" => "当前导出任务状态异常，请返回设置重新开始导出。",
                 _ => StartsWithChinese(export.Message) ? export.Message : "导出发生异常，请查看 Mod 日志中的详细原因后重试。"

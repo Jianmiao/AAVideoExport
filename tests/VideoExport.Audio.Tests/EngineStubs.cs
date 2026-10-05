@@ -1,6 +1,10 @@
 // Minimal boundary doubles, deliberately not an alternative capture algorithm.
 namespace UnityEngine
 {
+    internal static class Object
+    {
+        public static T[] FindObjectsOfType<T>(bool includeInactive) => Array.Empty<T>();
+    }
     internal sealed class GameObject
     {
         public int scene = 1;
@@ -169,6 +173,11 @@ internal sealed class SelectionManager
     public void OnAutoModeChanged(bool auto) { AutoModeChanges++; AutoEnabled = auto; }
 }
 internal sealed class UIWidget { public UIPanel? panel; }
+internal sealed class TouchEffect : UnityEngine.Component { }
+internal sealed class UICursor : UnityEngine.Component
+{
+    public static UICursor? instance;
+}
 internal sealed class UIPanel
 {
     public Action? OnRefresh;

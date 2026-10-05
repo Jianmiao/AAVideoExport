@@ -214,7 +214,7 @@ namespace AAVideoExport.Plugin
     public sealed class NativeExportPanel : IDisposable
     {
         public ExportOptions Options = new();
-        public bool Visible, IsCapturing, ReduceCaptureUiWork, ShowPlaybackButtons;
+        public bool Visible, IsCapturing, ReduceCaptureUiWork, ShowPlaybackButtons, StatusIsError;
         public string LastProjectName = "";
         public double CaptureElapsedSeconds;
         public long EncodedFrames, ControlRefreshCount, CameraScanCount;
