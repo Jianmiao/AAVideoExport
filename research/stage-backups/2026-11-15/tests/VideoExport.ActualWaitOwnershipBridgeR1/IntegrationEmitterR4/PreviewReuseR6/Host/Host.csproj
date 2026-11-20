@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>AAVE.ActualWaitOwnership.IntegrationEmitterR4.Host</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.ActualWaitOwnershipBridgeR1\IntegrationEmitterR4\PreviewReuseR6\Owner\*.cs;E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.ActualWaitOwnershipBridgeR1\IntegrationEmitterR4\Owner\BoundaryContracts.cs" />
+    <Compile Include="E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.NormalDynamicTokenIdentityR2\Host\*.cs" Exclude="E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.NormalDynamicTokenIdentityR2\Host\ActualWaitObservation.cs;E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.NormalDynamicTokenIdentityR2\Host\ActualTargets.cs" />
+    <Compile Include="E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.NormalDynamicTokenIdentityR2\Source\**\*.cs;E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.NormalDynamicTokenIdentityR2\Witness\*.cs" Exclude="E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.NormalDynamicTokenIdentityR2\Source\Bridge\StoryAdmissionBridge.cs" />
+    <Compile Include="E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.StoryCallAdmissionAAStageR4\Early\ResourceConstructionJournal.cs;E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.StoryCallAdmissionAAStageR4\R3Adaptation\NativeCloneStorage.cs;E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.StoryCallAdmissionAAStageR4\R3Adaptation\PreparedNativeEntry.cs;E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.StoryCallAdmissionAAStageR4\Inputs\FrozenR3Source\Adapter\MethodIdentity.cs;E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.StoryCallAdmissionAAStageR4\Candidate\VideoExport.Plugin\CompilerAttributes.cs" />
+    <Reference Include="AAVE.WaitOwnership.Integration.Contracts.R4">
+      <HintPath>E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.ActualWaitOwnershipBridgeR1\IntegrationEmitterR4\RootOwnerProbe\PackageR5\AAVE.WaitOwnership.Integration.Contracts.R4.dll</HintPath>
+    </Reference>
+    <Reference Include="AAVE.CapturedOperation.Contracts.V2">
+      <HintPath>E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.CapturedCompletionArmOwnershipR4\Package\managed\AAVE.CapturedOperation.Contracts.V2.dll</HintPath>
+    </Reference>
+    <Reference Include="AAVE.WaitOwnership.CallerSource.R2">
+      <HintPath>E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.ActualWaitOwnershipBridgeR1\IntegrationEmitterR4\Callee\Source\bin\Release\net6.0\AAVE.WaitOwnership.CallerSource.R2.dll</HintPath>
+    </Reference>
+    <Reference Include="AAVE.ActualWaitOwnership.Lifetime.Core.R1">
+      <HintPath>E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.ActualWaitOwnershipBridgeR1\Lifetime\Core\bin\Release\net6.0\AAVE.ActualWaitOwnership.Lifetime.Core.R1.dll</HintPath>
+    </Reference>
+    <Reference Include="E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.StoryCallAdmissionAAStageR4\Inputs\References\*.dll" Exclude="E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.StoryCallAdmissionAAStageR4\Inputs\References\dobby.dll" Private="false" />
+    <Compile Include="E:\aamod\AAVE-transparent-runtime-work-20261031\tests\VideoExport.ActualWaitOwnershipBridgeR1\IntegrationEmitterR4\Host\*.cs" />
+  </ItemGroup>
+  <Target Name="RecordPreviewReuseInputs" AfterTargets="CoreCompile">
+    <WriteLinesToFile File="$(MSBuildThisFileDirectory)..\Evidence\host-compile-inputs.txt" Lines="@(Compile-&gt;'%(FullPath)')" Overwrite="true" />
+    <WriteLinesToFile File="$(MSBuildThisFileDirectory)..\Evidence\host-reference-inputs.txt" Lines="@(ReferencePath-&gt;'%(FullPath)')" Overwrite="true" />
+  </Target>
+</Project>

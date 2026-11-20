@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><AssemblyName>AAVE.Facts.Controls</AssemblyName><TreatWarningsAsErrors>true</TreatWarningsAsErrors><EnableDefaultCompileItems>false</EnableDefaultCompileItems><Optimize>true</Optimize></PropertyGroup><Import Project="../SharedSource.props"/><ItemGroup><Compile Include="Program.cs"/></ItemGroup></Project>

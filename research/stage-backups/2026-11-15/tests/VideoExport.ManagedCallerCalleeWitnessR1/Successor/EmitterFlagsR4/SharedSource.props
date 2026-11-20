@@ -1,0 +1,7 @@
+<Project><ItemGroup>
+<Compile Include="$(MSBuildThisFileDirectory)../Source/*.cs" Exclude="$(MSBuildThisFileDirectory)../Source/ManagedChainRegistration.cs;$(MSBuildThisFileDirectory)../Source/SourceBodyTemplate.cs;$(MSBuildThisFileDirectory)../Source/WholeChainManipulator.cs" />
+<Compile Include="$(MSBuildThisFileDirectory)../LabelBoundaryR3/Source/*.cs" Exclude="$(MSBuildThisFileDirectory)../LabelBoundaryR3/Source/ManagedChainRegistration.cs" />
+<Compile Include="$(MSBuildThisFileDirectory)Source/*.cs" />
+<Compile Include="$(MSBuildThisFileDirectory)../../../VideoExport.NormalDynamicTokenIdentityR2/Witness/ExactRuntimeIdentity.cs" />
+<Reference Include="$(MSBuildThisFileDirectory)../../../VideoExport.ManagedOriginalCallWitnessR1/References/*.dll" />
+</ItemGroup></Project>
