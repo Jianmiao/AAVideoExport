@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>VideoExport.GenericClock.Fixture</AssemblyName>
+    <RootNamespace>VideoExport.GenericClock.Fixture</RootNamespace>
+  </PropertyGroup>
+</Project>

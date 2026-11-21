@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedPlaybackProof.cs" Link="RetainedPlaybackProof.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedPlaybackController.cs" Link="RetainedPlaybackController.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedPatchGuard.cs" Link="RetainedPatchGuard.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedMenuPlaybackBoundary.cs" Link="RetainedMenuPlaybackBoundary.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/AssemblySimpleNameCache.cs" Link="AssemblySimpleNameCache.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedInstallSchedule.cs" Link="RetainedInstallSchedule.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/MenuStartupNameProof.cs" Link="MenuStartupNameProof.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CompatibilityBuild.cs" Link="CompatibilityBuild.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CompilerAttributes.cs" Link="CompilerAttributes.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RenderControlV1.cs" Link="RenderControlV1.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/interop/*.dll" Private="false" />
+  </ItemGroup>
+</Project>

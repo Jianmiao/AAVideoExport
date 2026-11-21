@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>AAVideoExport.ControlledAuthoring.NativeCompile</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Plugin/CompilerAttributes.cs" Link="CompilerAttributes.cs" />
+    <Compile Include="../VideoExport.NativePath.Tests/OfficialControlledStoryAuthoringChecks.cs" Link="OfficialControlledStoryAuthoringChecks.cs" />
+    <Compile Include="../VideoExport.NativePath.Tests/ControlledStoryPlaybackChecks.cs" Link="ControlledStoryPlaybackChecks.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/interop/*.dll" Private="false" />
+  </ItemGroup>
+</Project>

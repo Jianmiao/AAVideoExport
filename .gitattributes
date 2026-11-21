@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.dll -text
+*.png -text
+src/VideoExport.Core/Shaders/*.glsl -text -whitespace
+docs/licenses/AMD-FSR1-MIT.txt -whitespace
+*.ps1 text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+SHA256SUMS.txt text eol=lf

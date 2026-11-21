@@ -1,0 +1,161 @@
+{
+  "schema": "aave.runtime-attribution.feasibility.v1",
+  "timestampUtc": "2026-10-29T14:21:03.0313273+00:00",
+  "framework": ".NET 6.0.7",
+  "runtimeVersion": "6.0.7",
+  "architecture": "X64",
+  "harmony": "0Harmony, Version=2.10.2.0, Culture=neutral, PublicKeyToken=null",
+  "hooksRequested": false,
+  "instrumentationFailure": null,
+  "PatchAttempts": [],
+  "ReentrantCallbacksSkipped": 0,
+  "CallbackFailures": 0,
+  "delegateComparisons": 2412,
+  "checks": [
+    {
+      "name": "constructor_attribution_A",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "constructor_attribution_B",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "producer_method_captured",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "same_holder_distinct_identity",
+      "passed": false,
+      "detail": {
+        "holder": "Anonymously Hosted DynamicMethods Assembly, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+        "idA": null,
+        "idB": null
+      }
+    },
+    {
+      "name": "materialization_captured",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "delegate_output_unchanged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "preexisting_methods_not_falsely_claimed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "late_creation_without_assemblyload",
+      "passed": false,
+      "detail": {
+        "loadedDuringLate": [],
+        "attribution": null
+      }
+    },
+    {
+      "name": "late_delegate_output",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "all_public_constructor_overloads_observed",
+      "passed": false,
+      "detail": [
+        {
+          "variant": 0,
+          "record": null,
+          "outputEqual": true
+        },
+        {
+          "variant": 1,
+          "record": null,
+          "outputEqual": true
+        },
+        {
+          "variant": 2,
+          "record": null,
+          "outputEqual": true
+        },
+        {
+          "variant": 3,
+          "record": null,
+          "outputEqual": true
+        },
+        {
+          "variant": 4,
+          "record": null,
+          "outputEqual": true
+        },
+        {
+          "variant": 5,
+          "record": null,
+          "outputEqual": true
+        },
+        {
+          "variant": 6,
+          "record": null,
+          "outputEqual": true
+        },
+        {
+          "variant": 7,
+          "record": null,
+          "outputEqual": true
+        }
+      ]
+    },
+    {
+      "name": "all_constructor_overload_outputs_unchanged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "bound_delegate_overload_observed",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "bound_delegate_output_unchanged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "returned_delegates_correlate_to_method_identity",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "preexisting_materialization_retains_unknown_creator",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "direct_invoke_output",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "direct_invoke_materialization_is_explicit_gap",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "no_callback_errors",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "patch_removal_verified",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "failed": 11,
+  "verdict": "FAIL_ATTRIBUTION_PROBE"
+}

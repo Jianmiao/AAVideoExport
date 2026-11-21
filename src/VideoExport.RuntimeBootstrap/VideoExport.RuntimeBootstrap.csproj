@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>AAVideoExport.RuntimeBootstrap</AssemblyName>
+    <RootNamespace>AAVideoExport.RuntimeBootstrap</RootNamespace>
+    <Version>0.1.0</Version>
+    <AAReferenceRoot Condition="'$(AAReferenceRoot)' == ''">F:\AzureArchive_101</AAReferenceRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="0Harmony"><HintPath>$(AAReferenceRoot)\BepInEx\core\0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BepInEx.Core"><HintPath>$(AAReferenceRoot)\BepInEx\core\BepInEx.Core.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BepInEx.Preloader.Core"><HintPath>$(AAReferenceRoot)\BepInEx\core\BepInEx.Preloader.Core.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <ItemGroup><InternalsVisibleTo Include="AAVE.RuntimeBootstrap.Tests" /><InternalsVisibleTo Include="AAVE.RuntimeRecipe.Tests" /></ItemGroup>
+</Project>

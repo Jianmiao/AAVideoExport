@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Plugin/NativeExportClock.cs" Link="NativeExportClock.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/NativeScaledWaitHooks.cs" Link="NativeScaledWaitHooks.cs" />
+    <None Include="../../src/VideoExport.Plugin/NativeExportClock.cs" Link="NativeExportClock.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/VideoExport.Plugin/CaptureHooks.cs" Link="CaptureHooks.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/VideoExport.Plugin/ExportHost.cs" Link="ExportHost.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/VideoExport.Plugin/ExportHost.Strict.cs" Link="ExportHost.Strict.cs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

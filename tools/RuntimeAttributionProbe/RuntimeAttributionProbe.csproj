@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>AAVE.RuntimeAttributionProbe</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AAReferenceRoot Condition="'$(AAReferenceRoot)' == ''">F:\AzureArchive_101</AAReferenceRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="RuntimeObserver.cs" />
+    <Compile Include="HostSeamInspector.cs" />
+    <Reference Include="0Harmony"><HintPath>$(AAReferenceRoot)\BepInEx\core\0Harmony.dll</HintPath></Reference>
+    <Reference Include="Mono.Cecil"><HintPath>$(AAReferenceRoot)\BepInEx\core\Mono.Cecil.dll</HintPath></Reference>
+    <Reference Include="MonoMod.RuntimeDetour"><HintPath>$(AAReferenceRoot)\BepInEx\core\MonoMod.RuntimeDetour.dll</HintPath></Reference>
+    <Reference Include="MonoMod.Utils"><HintPath>$(AAReferenceRoot)\BepInEx\core\MonoMod.Utils.dll</HintPath></Reference>
+    <Reference Include="MonoMod.Backports"><HintPath>$(AAReferenceRoot)\BepInEx\core\MonoMod.Backports.dll</HintPath></Reference>
+    <Reference Include="MonoMod.ILHelpers"><HintPath>$(AAReferenceRoot)\BepInEx\core\MonoMod.ILHelpers.dll</HintPath></Reference>
+    <Reference Include="Iced"><HintPath>$(AAReferenceRoot)\BepInEx\core\Iced.dll</HintPath></Reference>
+    <ProjectReference Include="ProducerA\ProducerA.csproj" />
+    <ProjectReference Include="ProducerB\ProducerB.csproj" />
+    <None Include="$(AAReferenceRoot)\BepInEx\core\MonoMod.*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(AAReferenceRoot)\BepInEx\core\Iced.dll" Link="Iced.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

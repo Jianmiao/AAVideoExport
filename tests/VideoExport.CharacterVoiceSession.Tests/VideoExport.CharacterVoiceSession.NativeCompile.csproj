@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>AAVideoExport.CharacterVoiceSession.NativeCompile</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/CompilerAttributes.cs" Link="CompilerAttributes.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CharacterVoiceSessionTrace.cs" Link="CharacterVoiceSessionTrace.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CharacterVoiceSessionAdapter.cs" Link="CharacterVoiceSessionAdapter.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CharacterVoiceDelayClock.cs" Link="CharacterVoiceDelayClock.cs" />
+    <Compile Include="../VideoExport.NativePath.Tests/CharacterVoiceManifestEvidence.cs" Link="CharacterVoiceManifestEvidence.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/interop/*.dll" Private="false" />
+  </ItemGroup>
+</Project>

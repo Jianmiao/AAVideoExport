@@ -1,0 +1,26 @@
+name: Clone installation and functional checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            6.0.x
+      - name: Verify clone-ready runtime
+        shell: pwsh
+        run: ./tools/Test-CloneInstall.ps1
+      - name: Run portable functional tests
+        shell: pwsh
+        run: ./tools/Test-PortableReview.ps1

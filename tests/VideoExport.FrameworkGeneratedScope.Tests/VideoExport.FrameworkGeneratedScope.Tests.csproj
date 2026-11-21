@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><AllowUnsafeBlocks>true</AllowUnsafeBlocks><AAReferenceRoot>F:\AzureArchive_101</AAReferenceRoot></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/StrictCapabilityInventory.cs" Link="StrictCapabilityInventory.cs" />
+    <Compile Include="../VideoExport.StaticInertMod.Tests/OtherModFakes.cs" Link="OtherModFakes.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/FrameworkGeneratedAssemblyScope.cs" Link="FrameworkGeneratedAssemblyScope.cs" Condition="Exists('../../src/VideoExport.Plugin/FrameworkGeneratedAssemblyScope.cs')" />
+    <Compile Include="../../src/VideoExport.Plugin/FrameworkGeneratedAssemblyScope.Additional.cs" Link="FrameworkGeneratedAssemblyScope.Additional.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/FrameworkGeneratedAssemblyScope.HarmonyMetadata.cs" Link="FrameworkGeneratedAssemblyScope.HarmonyMetadata.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/AssemblySimpleNameCache.cs" Link="AssemblySimpleNameCache.cs" Condition="Exists('../../src/VideoExport.Plugin/AssemblySimpleNameCache.cs')" />
+    <Reference Include="0Harmony"><HintPath>$(AAReferenceRoot)\BepInEx\core\0Harmony.dll</HintPath></Reference>
+    <Reference Include="MonoMod.Utils"><HintPath>$(AAReferenceRoot)\BepInEx\core\MonoMod.Utils.dll</HintPath></Reference>
+    <Reference Include="MonoMod.RuntimeDetour"><HintPath>$(AAReferenceRoot)\BepInEx\core\MonoMod.RuntimeDetour.dll</HintPath></Reference>
+    <Reference Include="Mono.Cecil"><HintPath>$(AAReferenceRoot)\BepInEx\core\Mono.Cecil.dll</HintPath></Reference>
+    <Reference Include="Il2CppInterop.Runtime"><HintPath>$(AAReferenceRoot)\BepInEx\core\Il2CppInterop.Runtime.dll</HintPath></Reference>
+    <Reference Include="AAVideoExport.RuntimeBootstrap"><HintPath>../../artifacts/runtime-recipes-webrequest-20261030/native-candidate/AAVideoExport.RuntimeBootstrap.dll</HintPath></Reference>
+    <None Include="$(AAReferenceRoot)\BepInEx\core\MonoMod.*.dll;$(AAReferenceRoot)\BepInEx\core\Iced.dll;$(AAReferenceRoot)\BepInEx\core\Mono.Cecil.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(AAReferenceRoot)\BepInEx\core\BepInEx.*.dll;$(AAReferenceRoot)\BepInEx\core\SemanticVersioning.dll;$(AAReferenceRoot)\BepInEx\core\Il2CppInterop.Common.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,12 @@
+  正在确定要还原的项目…
+  所有项目均是最新的，无法还原。
+  ProducerA -> E:\aamod\AAVideoExport-0.2.4-source\tools\RuntimeAttributionProbe\ProducerA\bin\Release\net6.0\AAVE.Probe.ProducerA.dll
+  VideoExport.RuntimeBootstrap -> E:\aamod\AAVideoExport-0.2.4-source\src\VideoExport.RuntimeBootstrap\bin\Release\net6.0\AAVideoExport.RuntimeBootstrap.dll
+  ProducerB -> E:\aamod\AAVideoExport-0.2.4-source\tools\RuntimeAttributionProbe\ProducerB\bin\Release\net6.0\AAVE.Probe.ProducerB.dll
+  VideoExport.RuntimeBootstrap.Tests -> E:\aamod\AAVideoExport-0.2.4-source\tests\VideoExport.RuntimeBootstrap.Tests\bin\Release\net6.0\AAVE.RuntimeBootstrap.Tests.dll
+
+已成功生成。
+    0 个警告
+    0 个错误
+
+已用时间 00:00:02.14

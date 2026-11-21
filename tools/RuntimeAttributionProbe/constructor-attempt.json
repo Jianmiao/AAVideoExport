@@ -1,0 +1,169 @@
+{
+  "schema": "aave.runtime-attribution.feasibility.v1",
+  "timestampUtc": "2026-10-29T14:08:06.0691413+00:00",
+  "framework": ".NET 6.0.36",
+  "runtimeVersion": "6.0.36",
+  "architecture": "X64",
+  "harmony": "0Harmony, Version=2.10.2.0, Culture=neutral, PublicKeyToken=null",
+  "instrumentationFailure": null,
+  "PatchAttempts": [
+    {
+      "target": "Void .ctor(System.String, System.Type, System.Type[])",
+      "succeeded": true,
+      "error": null
+    },
+    {
+      "target": "System.Delegate CreateDelegate(System.Type)",
+      "succeeded": true,
+      "error": null
+    },
+    {
+      "target": "System.Delegate CreateDelegate(System.Type, System.Object)",
+      "succeeded": true,
+      "error": null
+    }
+  ],
+  "checks": [
+    {
+      "name": "constructor_attribution_A",
+      "passed": true,
+      "detail": {
+        "Id": 1,
+        "Name": "SameName",
+        "Holder": "Anonymously Hosted DynamicMethods Assembly, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+        "ProducerAssembly": "AAVE.Probe.ProducerA",
+        "ProducerMethod": "FixtureProducer.Factory.Build",
+        "ConstructorEvents": 1,
+        "MaterializationEvents": 1,
+        "CreationStack": [
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.Capture",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.ConstructorPostfix",
+          "AAVE.Probe.ProducerA!FixtureProducer.Factory.Build",
+          "System.Private.CoreLib!System.RuntimeMethodHandle.InvokeMethod",
+          "System.Private.CoreLib!System.Reflection.RuntimeMethodInfo.Invoke",
+          "System.Private.CoreLib!System.Reflection.MethodBase.Invoke",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.\u003CMain\u003Eg__Build|1_1",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.Main"
+        ],
+        "MaterializationStack": [
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.Capture",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.MaterializationPostfix",
+          "System.Private.CoreLib!.DMD\u003CSystem.Reflection.Emit.DynamicMethod::CreateDelegate\u003E",
+          "AAVE.Probe.ProducerA!FixtureProducer.Factory.Build",
+          "System.Private.CoreLib!System.RuntimeMethodHandle.InvokeMethod",
+          "System.Private.CoreLib!System.Reflection.RuntimeMethodInfo.Invoke",
+          "System.Private.CoreLib!System.Reflection.MethodBase.Invoke",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.\u003CMain\u003Eg__Build|1_1",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.Main"
+        ]
+      }
+    },
+    {
+      "name": "constructor_attribution_B",
+      "passed": true,
+      "detail": {
+        "Id": 2,
+        "Name": "SameName",
+        "Holder": "Anonymously Hosted DynamicMethods Assembly, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+        "ProducerAssembly": "AAVE.Probe.ProducerB",
+        "ProducerMethod": "FixtureProducer.Factory.Build",
+        "ConstructorEvents": 1,
+        "MaterializationEvents": 1,
+        "CreationStack": [
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.Capture",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.ConstructorPostfix",
+          "AAVE.Probe.ProducerB!FixtureProducer.Factory.Build",
+          "System.Private.CoreLib!System.RuntimeMethodHandle.InvokeMethod",
+          "System.Private.CoreLib!System.Reflection.RuntimeMethodInfo.Invoke",
+          "System.Private.CoreLib!System.Reflection.MethodBase.Invoke",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.\u003CMain\u003Eg__Build|1_1",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.Main"
+        ],
+        "MaterializationStack": [
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.Capture",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.MaterializationPostfix",
+          "System.Private.CoreLib!.DMD\u003CSystem.Reflection.Emit.DynamicMethod::CreateDelegate\u003E",
+          "AAVE.Probe.ProducerB!FixtureProducer.Factory.Build",
+          "System.Private.CoreLib!System.RuntimeMethodHandle.InvokeMethod",
+          "System.Private.CoreLib!System.Reflection.RuntimeMethodInfo.Invoke",
+          "System.Private.CoreLib!System.Reflection.MethodBase.Invoke",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.\u003CMain\u003Eg__Build|1_1",
+          "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.Main"
+        ]
+      }
+    },
+    {
+      "name": "producer_method_captured",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "same_holder_distinct_identity",
+      "passed": true,
+      "detail": {
+        "holder": "Anonymously Hosted DynamicMethods Assembly, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+        "idA": 1,
+        "idB": 2
+      }
+    },
+    {
+      "name": "materialization_captured",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "delegate_output_unchanged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "preexisting_methods_not_falsely_claimed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "late_creation_without_assemblyload",
+      "passed": true,
+      "detail": {
+        "loadedDuringLate": [],
+        "attribution": {
+          "Id": 3,
+          "Name": "SameName",
+          "Holder": "Anonymously Hosted DynamicMethods Assembly, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+          "ProducerAssembly": "AAVE.Probe.ProducerA",
+          "ProducerMethod": "FixtureProducer.Factory.Build",
+          "ConstructorEvents": 1,
+          "MaterializationEvents": 1,
+          "CreationStack": [
+            "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.Capture",
+            "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.ConstructorPostfix",
+            "AAVE.Probe.ProducerA!FixtureProducer.Factory.Build",
+            "System.Private.CoreLib!System.RuntimeMethodHandle.InvokeMethod",
+            "System.Private.CoreLib!System.Reflection.RuntimeMethodInfo.Invoke",
+            "System.Private.CoreLib!System.Reflection.MethodBase.Invoke",
+            "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.\u003CMain\u003Eg__Build|1_1",
+            "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.Main"
+          ],
+          "MaterializationStack": [
+            "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.Capture",
+            "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.RuntimeObserver.MaterializationPostfix",
+            "System.Private.CoreLib!.DMD\u003CSystem.Reflection.Emit.DynamicMethod::CreateDelegate\u003E",
+            "AAVE.Probe.ProducerA!FixtureProducer.Factory.Build",
+            "System.Private.CoreLib!System.RuntimeMethodHandle.InvokeMethod",
+            "System.Private.CoreLib!System.Reflection.RuntimeMethodInfo.Invoke",
+            "System.Private.CoreLib!System.Reflection.MethodBase.Invoke",
+            "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.\u003CMain\u003Eg__Build|1_1",
+            "AAVE.RuntimeAttributionProbe!RuntimeAttributionProbe.Program.Main"
+          ]
+        }
+      }
+    },
+    {
+      "name": "late_delegate_output",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "failed": 0,
+  "verdict": "PASS_BOUNDED_FIXTURES_ONLY"
+}

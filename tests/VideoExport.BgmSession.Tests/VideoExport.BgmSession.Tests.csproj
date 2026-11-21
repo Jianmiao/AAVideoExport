@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Plugin/NativeBgmSessionAdapter.cs" Link="NativeBgmSessionAdapter.cs" Condition="Exists('../../src/VideoExport.Plugin/NativeBgmSessionAdapter.cs')" />
+    <Compile Include="../../src/VideoExport.Core/ExportBuildProfile.cs" Link="ExportBuildProfile.cs" />
+  </ItemGroup>
+</Project>

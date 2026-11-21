@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>AAVideoExport.LegacyBenchmark.Tests</AssemblyName>
+    <AAInstallPath Condition="'$(AAInstallPath)' == ''">F:/AzureArchive_101</AAInstallPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Plugin/CompilerAttributes.cs" Link="CompilerAttributes.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Core.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/interop/*.dll" Private="false" />
+  </ItemGroup>
+</Project>

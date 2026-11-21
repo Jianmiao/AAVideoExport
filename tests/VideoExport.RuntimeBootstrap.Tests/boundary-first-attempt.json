@@ -1,0 +1,331 @@
+{
+  "schema": "aave.runtime-bootstrap.tests.v1",
+  "runtime": "6.0.36",
+  "checks": [
+    {
+      "name": "early bootstrap assembly exists",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "versioned diagnostics cannot certify strict export",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks: unset",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks: ",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks: true",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks: 0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks:  1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks: 1 ",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "opt in installs early hooks",
+      "passed": true,
+      "detail": {
+        "schema": "aave.runtime-attribution.v1",
+        "installed": true,
+        "coverageStartedUtc": "2026-10-29T14:49:46.1426611\u002B00:00",
+        "runtime": {
+          "framework": ".NET 6.0.36",
+          "version": "6.0.36",
+          "architecture": "X64",
+          "harmony": "0Harmony, Version=2.10.2.0, Culture=neutral, PublicKeyToken=null"
+        },
+        "preexistingCoverage": false,
+        "allCodeCoverage": false,
+        "permitsStrictExport": false,
+        "evidenceKind": "STACK_OBSERVATION_ONLY",
+        "startAssemblies": [
+          "0Harmony, Version=2.10.2.0, Culture=neutral, PublicKeyToken=null",
+          "AAVE.Probe.ProducerA, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+          "AAVE.Probe.ProducerB, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+          "AAVE.RuntimeBootstrap.Tests, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+          "AAVideoExport.RuntimeBootstrap, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null",
+          "Anonymously Hosted DynamicMethods Assembly, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+          "Microsoft.Win32.Primitives, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "Mono.Cecil, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e",
+          "MonoMod.RuntimeDetour, Version=22.7.31.1, Culture=neutral, PublicKeyToken=null",
+          "MonoMod.RuntimeDetour.Runtime.NETCore3\u002BHelpers, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+          "MonoMod.Utils, Version=22.7.31.1, Culture=neutral, PublicKeyToken=null",
+          "MonoMod.Utils.Cil.ILGeneratorProxy, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+          "System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Collections.Concurrent, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Collections.NonGeneric, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.ComponentModel.Primitives, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Console, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Diagnostics.FileVersionInfo, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Diagnostics.Process, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Diagnostics.StackTrace, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.IO.FileSystem, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Linq, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Memory, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+          "System.Net.Primitives, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Net.Requests, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Numerics.Vectors, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Private.CoreLib, Version=6.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e",
+          "System.Private.Uri, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Reflection.Emit.ILGeneration, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Reflection.Emit.Lightweight, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Reflection.Primitives, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Runtime, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Runtime.CompilerServices.Unsafe, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Runtime.InteropServices, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Runtime.InteropServices.RuntimeInformation, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Runtime.Intrinsics, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+          "System.Text.Encoding.Extensions, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "System.Text.Encodings.Web, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+          "System.Text.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+          "System.Threading, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+          "mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+          "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51"
+        ],
+        "targets": [
+          {
+            "kind": "constructor",
+            "signature": "Void .ctor(System.String, System.Type, System.Type[])",
+            "installed": true,
+            "error": ""
+          },
+          {
+            "kind": "constructor",
+            "signature": "Void .ctor(System.String, System.Type, System.Type[], Boolean)",
+            "installed": true,
+            "error": ""
+          },
+          {
+            "kind": "constructor",
+            "signature": "Void .ctor(System.String, System.Type, System.Type[], System.Reflection.Module)",
+            "installed": true,
+            "error": ""
+          },
+          {
+            "kind": "constructor",
+            "signature": "Void .ctor(System.String, System.Type, System.Type[], System.Reflection.Module, Boolean)",
+            "installed": true,
+            "error": ""
+          },
+          {
+            "kind": "constructor",
+            "signature": "Void .ctor(System.String, System.Reflection.MethodAttributes, System.Reflection.CallingConventions, System.Type, System.Type[], System.Reflection.Module, Boolean)",
+            "installed": true,
+            "error": ""
+          },
+          {
+            "kind": "constructor",
+            "signature": "Void .ctor(System.String, System.Type, System.Type[], System.Type)",
+            "installed": true,
+            "error": ""
+          },
+          {
+            "kind": "constructor",
+            "signature": "Void .ctor(System.String, System.Type, System.Type[], System.Type, Boolean)",
+            "installed": true,
+            "error": ""
+          },
+          {
+            "kind": "constructor",
+            "signature": "Void .ctor(System.String, System.Reflection.MethodAttributes, System.Reflection.CallingConventions, System.Type, System.Type[], System.Type, Boolean)",
+            "installed": true,
+            "error": ""
+          },
+          {
+            "kind": "createDelegate",
+            "signature": "System.Delegate CreateDelegate(System.Type)",
+            "installed": true,
+            "error": ""
+          },
+          {
+            "kind": "createDelegate",
+            "signature": "System.Delegate CreateDelegate(System.Type, System.Object)",
+            "installed": true,
+            "error": ""
+          },
+          {
+            "kind": "invokeAttempt",
+            "signature": "System.Object Invoke(System.Object, System.Reflection.BindingFlags, System.Reflection.Binder, System.Object[], System.Globalization.CultureInfo)",
+            "installed": true,
+            "error": ""
+          }
+        ],
+        "records": [],
+        "markers": [],
+        "lossCounters": {
+          "droppedRecordEvents": 0,
+          "droppedDelegateAssociations": 0,
+          "droppedMarkers": 0,
+          "reentrantCallbacksSkipped": 0,
+          "callbackFailures": 0,
+          "installFailures": 0,
+          "rollbackFailures": 0,
+          "truncatedStacks": 0,
+          "truncatedText": 0
+        },
+        "limits": {
+          "records": 4096,
+          "delegates": 8192,
+          "markers": 256,
+          "stackFrames": 32,
+          "textCharacters": 512
+        },
+        "installationError": "",
+        "invocationSemantics": "Invoke events count attempts, including calls that throw; delegate execution is not intercepted."
+      }
+    },
+    {
+      "name": "coverage begins after install and never claims preexisting or all code",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "same name and holder do not collapse method identity",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "observed caller belongs to each actual creator assembly",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "observed delegate output equals baseline",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "unobserved returned delegate stays unknown",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "late creation captured without AssemblyLoad",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "name": "all eight public constructor overloads preserve results and attribution",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "bound delegate overload preserves identity and results",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "preexisting method later materialization never invents a creator",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "public DynamicMethod Invoke is observed without altering result",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "snapshot is a detached immutable copy",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "diagnostic marker recorded",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "callback failures remain zero",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "all observed records are diagnostic only",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "partial real Harmony installation rolls back every owned patch",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "rollback failure is explicit and capture remains disabled",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "record and marker caps report exact dropped counts",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "delegate cap preserves known associations and reports dropped new ones",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "live weak keys do not keep methods or delegates alive",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "parallel creation and snapshots preserve distinct identity and output",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "reentrant observer callbacks are counted and never modify outputs",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "callback failures are counted and do not escape",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "original reflection invocation and delegate exceptions are preserved",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "immutable snapshots retain pre-mutation event counts",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "removing observer hooks leaves original behavior intact",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "bounded text and stack evidence reports truncation",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "failed": 0,
+  "scope": "Isolated fixtures only; no AA startup, Mod certification, or export-effects proof."
+}

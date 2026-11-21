@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <DefineConstants Condition="'$(Configuration)' == 'DevelopmentAudit'">$(DefineConstants);AAVE_DEVELOPMENT_AUDIT</DefineConstants>
+    <DefineConstants Condition="'$(Configuration)' == 'UnifiedTimeline'">$(DefineConstants);AAVE_UNIFIED_TIMELINE</DefineConstants>
+  </PropertyGroup>
+  <Import Project="$(MSBuildThisFileDirectory)local.props" Condition="Exists('$(MSBuildThisFileDirectory)local.props')" />
+</Project>

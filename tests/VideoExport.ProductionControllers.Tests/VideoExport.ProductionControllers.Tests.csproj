@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedPlaybackProof.cs" Link="RetainedPlaybackProof.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedPlaybackController.cs" Link="RetainedPlaybackController.cs" Condition="Exists('../../src/VideoExport.Plugin/RetainedPlaybackController.cs')" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedMenuPlaybackBoundary.cs" Link="RetainedMenuPlaybackBoundary.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedInstallSchedule.cs" Link="RetainedInstallSchedule.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedPatchGuard.cs" Link="RetainedPatchGuard.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CompatibilityBuild.cs" Link="CompatibilityBuild.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/MenuStartupNameProof.cs" Link="MenuStartupNameProof.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/AssemblySimpleNameCache.cs" Link="AssemblySimpleNameCache.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CharacterVoiceSessionTrace.cs" Link="CharacterVoiceSessionTrace.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CharacterVoiceSessionAdapter.cs" Link="CharacterVoiceSessionAdapter.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CharacterVoiceDelayClock.cs" Link="CharacterVoiceDelayClock.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/MonoMod.RuntimeDetour.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/MonoMod.Utils.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/MonoMod.Backports.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/MonoMod.ILHelpers.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Iced.dll" />
+    <None Include="$(AAInstallPath)/BepInEx/core/MonoMod.*.dll;$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll;$(AAInstallPath)/BepInEx/core/Iced.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

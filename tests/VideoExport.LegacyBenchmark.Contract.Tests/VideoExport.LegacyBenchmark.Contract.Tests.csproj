@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../VideoExport.LegacyBenchmark.Tests/BenchmarkContract.cs" Link="BenchmarkContract.cs" />
+    <Reference Include="F:/AzureArchive_101/BepInEx/core/Mono.Cecil.dll" Private="true" />
+  </ItemGroup>
+</Project>

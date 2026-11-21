@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Core/ExportBuildProfile.cs" Link="ExportBuildProfile.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/StaticInertScope.cs" Link="StaticInertScope.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/EffectsSourceInput.cs" Link="EffectsSourceInput.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/ExportHost.cs" Link="ExportHost.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/ExportHost.Strict.cs" Link="ExportHost.Strict.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/ExportHost.SinglePass.cs" Link="ExportHost.SinglePass.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/ExportHost.Bgm.cs" Link="ExportHost.Bgm.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/ExportHost.Retained.cs" Link="ExportHost.Retained.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/ExportHost.Voice.cs" Link="ExportHost.Voice.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/ExportHost.Recipe.cs" Link="ExportHost.Recipe.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/ExportHost.Framework.cs" Link="ExportHost.Framework.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedRecipeScope.cs" Link="RetainedRecipeScope.cs" />
+    <Compile Include="../../src/VideoExport.Core/RuntimeFactoryRecipeReceipt.cs" Link="RuntimeFactoryRecipeReceipt.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/NativeAutoSelection.cs" Link="NativeAutoSelection.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/StorySourcePath.cs" Link="StorySourcePath.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/EncodingModeSelection.cs" Link="EncodingModeSelection.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RenderControlV1.cs" Link="RenderControlV1.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CaptureLoopFactory.cs" Link="CaptureLoopFactory.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/StrictModAdmission.cs" Link="StrictModAdmission.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CharacterVoiceCompatibility.cs" Link="CharacterVoiceCompatibility.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportOptions.cs" Link="ExportOptions.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportErrorText.cs" Link="ExportErrorText.cs" />
+    <Compile Include="../../src/VideoExport.Core/OutputDirectoryPreference.cs" Link="OutputDirectoryPreference.cs" />
+    <Compile Include="../../src/VideoExport.Core/CanvasLayout.cs" Link="CanvasLayout.cs" />
+    <Compile Include="../../src/VideoExport.Core/PlaybackLaunchGate.cs" Link="PlaybackLaunchGate.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportUiFlow.cs" Link="ExportUiFlow.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportTimeline.cs" Link="ExportTimeline.cs" />
+    <Compile Include="../../src/VideoExport.Core/StrictFramePlan.cs" Link="StrictFramePlan.cs" />
+    <Compile Include="../../src/VideoExport.Core/PreparedFrameSchedule.cs" Link="PreparedFrameSchedule.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportEndFence.cs" Link="ExportEndFence.cs" />
+    <Compile Include="../../src/VideoExport.Core/PreparedAudioTrack.cs" Link="PreparedAudioTrack.cs" />
+    <Compile Include="../../src/VideoExport.Core/RawAudioPass.cs" Link="RawAudioPass.cs" />
+    <Compile Include="../../src/VideoExport.Core/TimestampedAudioWindow.cs" Link="TimestampedAudioWindow.cs" />
+    <Compile Include="../../src/VideoExport.Core/AudioTimelineAccumulator.cs" Link="AudioTimelineAccumulator.cs" />
+    <Compile Include="../../src/VideoExport.Core/StrictReplayLedger.cs" Link="StrictReplayLedger.cs" />
+    <Compile Include="../../src/VideoExport.Core/StrictPreflightReceipt.cs" Link="StrictPreflightReceipt.cs" />
+    <Compile Include="../../src/VideoExport.Core/StrictCapability.cs" Link="StrictCapability.cs" />
+    <Compile Include="../../src/VideoExport.Core/RepeatExportBaseline.cs" Link="RepeatExportBaseline.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportProgressMetrics.cs" Link="ExportProgressMetrics.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Core/OutputDimensions.cs" Link="OutputDimensions.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportOptions.cs" Link="ExportOptions.cs" />
+    <Compile Include="../../src/VideoExport.Core/OutputDirectoryPreference.cs" Link="OutputDirectoryPreference.cs" />
+    <Compile Include="../../src/VideoExport.Core/CanvasLayout.cs" Link="CanvasLayout.cs" />
+  </ItemGroup>
+</Project>

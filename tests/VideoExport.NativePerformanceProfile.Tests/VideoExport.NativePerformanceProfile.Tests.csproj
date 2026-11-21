@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <Compile Include="../VideoExport.NativePath.Tests/NativeStoryTestProfile.cs" Link="NativeStoryTestProfile.cs" Condition="Exists('../VideoExport.NativePath.Tests/NativeStoryTestProfile.cs')" />
+    <Compile Include="../VideoExport.NativePath.Tests/NativeBenchmarkMedia.cs" Link="NativeBenchmarkMedia.cs" />
+  </ItemGroup>
+</Project>

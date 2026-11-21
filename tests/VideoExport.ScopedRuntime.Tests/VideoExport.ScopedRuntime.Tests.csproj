@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/MultilingualCaptureAdapter.cs" Link="MultilingualCaptureAdapter.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RuntimeModBoundaries.cs" Link="RuntimeModBoundaries.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/EffectsSourceInput.cs" Link="EffectsSourceInput.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/EffectsSourcePreparation.cs" Link="EffectsSourcePreparation.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/EffectsSourceExecution.cs" Link="EffectsSourceExecution.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/EffectsPlaybackProofBuilder.cs" Link="EffectsPlaybackProofBuilder.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CompatibilityBuild.cs" Link="CompatibilityBuild.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RenderControlV1.cs" Link="RenderControlV1.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" />
+    <PackageReference Include="MonoMod.RuntimeDetour" Version="22.3.23.4" />
+    <PackageReference Include="MonoMod.Utils" Version="22.3.23.4" />
+  </ItemGroup>
+</Project>

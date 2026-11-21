@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../VideoExport.NativePath.Tests/NativePreEncodeObservation.cs" Link="NativePreEncodeObservation.cs" />
+    <Compile Include="../VideoExport.NativePath.Tests/GlyphSynchronizationComparison.cs" Link="GlyphSynchronizationComparison.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/MonoMod*.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Mono.Cecil*.dll" />
+  </ItemGroup>
+</Project>

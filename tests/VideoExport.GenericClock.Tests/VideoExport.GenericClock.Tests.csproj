@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>VideoExport.GenericClock.Tests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../VideoExport.GenericClock.Fixture/VideoExport.GenericClock.Fixture.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/AnimationTimestampClock.cs" Link="AnimationTimestampClock.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/GenericStopwatchBridge.cs" Link="GenericStopwatchBridge.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" Condition="Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll" Condition="Exists('$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll')" />
+    <PackageReference Include="MonoMod.RuntimeDetour" Version="22.3.23.4" Condition="Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+    <PackageReference Include="MonoMod.Utils" Version="22.3.23.4" Condition="Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+    <PackageReference Include="HarmonyX" Version="2.10.2" Condition="!Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.4" Condition="!Exists('$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll')" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>AAVE.RuntimeRecipe.Tests</AssemblyName>
+    <AAReferenceRoot Condition="'$(AAReferenceRoot)' == ''">F:\AzureArchive_101</AAReferenceRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <ProjectReference Include="../../src/VideoExport.RuntimeBootstrap/VideoExport.RuntimeBootstrap.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedPlaybackProof.cs" Link="RetainedPlaybackProof.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CharacterVoiceSessionTrace.cs" Link="CharacterVoiceSessionTrace.cs" />
+    <Reference Include="Il2CppInterop.Runtime"><HintPath>$(AAReferenceRoot)\BepInEx\core\Il2CppInterop.Runtime.dll</HintPath></Reference>
+    <Reference Include="Il2CppInterop.Common"><HintPath>$(AAReferenceRoot)\BepInEx\core\Il2CppInterop.Common.dll</HintPath></Reference>
+    <Reference Include="0Harmony"><HintPath>$(AAReferenceRoot)\BepInEx\core\0Harmony.dll</HintPath></Reference>
+    <Reference Include="Mono.Cecil"><HintPath>$(AAReferenceRoot)\BepInEx\core\Mono.Cecil.dll</HintPath></Reference>
+    <Reference Include="MonoMod.Utils"><HintPath>$(AAReferenceRoot)\BepInEx\core\MonoMod.Utils.dll</HintPath></Reference>
+    <Reference Include="MonoMod.RuntimeDetour"><HintPath>$(AAReferenceRoot)\BepInEx\core\MonoMod.RuntimeDetour.dll</HintPath></Reference>
+    <Reference Include="MonoMod.Backports"><HintPath>$(AAReferenceRoot)\BepInEx\core\MonoMod.Backports.dll</HintPath></Reference>
+    <Reference Include="MonoMod.ILHelpers"><HintPath>$(AAReferenceRoot)\BepInEx\core\MonoMod.ILHelpers.dll</HintPath></Reference>
+    <Reference Include="Iced"><HintPath>$(AAReferenceRoot)\BepInEx\core\Iced.dll</HintPath></Reference>
+    <None Include="$(AAReferenceRoot)\BepInEx\core\*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,66 @@
+{
+  "schema": "aave.runtime-attribution.feasibility.v1",
+  "timestampUtc": "2026-10-29T14:06:51.9454661+00:00",
+  "framework": ".NET 6.0.36",
+  "runtimeVersion": "6.0.36",
+  "architecture": "X64",
+  "harmony": "0Harmony, Version=2.10.2.0, Culture=neutral, PublicKeyToken=null",
+  "instrumentationFailure": null,
+  "PatchAttempts": [],
+  "checks": [
+    {
+      "name": "constructor_attribution_A",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "constructor_attribution_B",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "producer_method_captured",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "same_holder_distinct_identity",
+      "passed": false,
+      "detail": {
+        "holder": "Anonymously Hosted DynamicMethods Assembly, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+        "idA": null,
+        "idB": null
+      }
+    },
+    {
+      "name": "materialization_captured",
+      "passed": false,
+      "detail": null
+    },
+    {
+      "name": "delegate_output_unchanged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "preexisting_methods_not_falsely_claimed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "late_creation_without_assemblyload",
+      "passed": false,
+      "detail": {
+        "loadedDuringLate": [],
+        "attribution": null
+      }
+    },
+    {
+      "name": "late_delegate_output",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "failed": 6,
+  "verdict": "FAIL_ATTRIBUTION_PROBE"
+}
