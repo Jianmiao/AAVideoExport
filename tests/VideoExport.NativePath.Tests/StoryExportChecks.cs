@@ -245,7 +245,7 @@ public sealed class StoryExportChecks : MonoBehaviour
             var controls = typeof(NativeExportPanel).GetProperty("ShowPlaybackButtons", InstanceMembers)!;
             _originalShowPlaybackButtons = (bool)controls.GetValue(_panel)!;
             controls.SetValue(_panel, true);
-            ControlledStoryExportEvidence.Install(_host, _mixedRecipe, "自动");
+            ControlledStoryExportEvidence.Install(_host, _mixedRecipe, "AUTO");
             _mixedEvidenceInstalled = true;
             Plugin.Report("PATH-CHECK STORY mixed-evidence=authored-input; original-controls-visible=true; recipe=" + _mixedRecipe);
         }

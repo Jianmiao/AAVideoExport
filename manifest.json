@@ -1,7 +1,8 @@
 {
   "name": "AAVideoExport",
-  "version_number": "0.2.12",
+  "version_number": "0.3.0",
   "website_url": "https://github.com/Jianmiao/AAVideoExport",
   "description": "AAVE 统一逻辑时间轴与单遍音画导出：正式版不运行开发审计，保留原生 Mod 效果、高速编码流水线、取消恢复与 RenderControlV1。",
   "dependencies": []
 }
+
