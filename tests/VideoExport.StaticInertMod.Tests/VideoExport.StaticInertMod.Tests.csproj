@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
     <Compile Include="../../src/VideoExport.Plugin/StaticInertModEvidence.cs" Link="StaticInertModEvidence.cs" Condition="Exists('../../src/VideoExport.Plugin/StaticInertModEvidence.cs')" />
+    <Compile Include="../../legacy/0.2.12-per-mod/StaticInertModEvidence.cs" Link="StaticInertModEvidence.legacy.cs" Condition="!Exists('../../src/VideoExport.Plugin/StaticInertModEvidence.cs')" />
     <Compile Include="../../src/VideoExport.Plugin/StaticInertScope.cs" Link="StaticInertScope.cs" Condition="Exists('../../src/VideoExport.Plugin/StaticInertScope.cs')" />
     <Compile Include="../../src/VideoExport.Plugin/StrictCapabilityInventory.cs" Link="StrictCapabilityInventory.cs" />
     <Compile Include="../../src/VideoExport.Plugin/FrameworkGeneratedAssemblyScope.cs" Link="FrameworkGeneratedAssemblyScope.cs" />

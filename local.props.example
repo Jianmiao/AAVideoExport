@@ -1,6 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <!-- Copy to local.props, then point this to your own AA installation. -->
-    <AAInstallPath>C:/Path/To/AzureArchive</AAInstallPath>
-  </PropertyGroup>
-</Project>

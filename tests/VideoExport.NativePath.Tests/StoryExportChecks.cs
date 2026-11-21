@@ -38,7 +38,7 @@ public sealed class StoryExportChecks : MonoBehaviour
     private int _stage, _settleFrames, _attempt, _repeat = 2, _passed, _failed;
     private int _completedExports, _cancelledAttempts;
     private int _firstCompletedAttempt;
-    private bool _cancelFirst, _cancellationRequested;
+    private bool _cancelFirst, _cancelLast, _cancellationRequested;
     private double _cancellationStarted;
     private long _cancellationFrame;
     private double _deadline = 1200, _cleanupDeadline, _nextHeartbeat, _selectionDeadline, _nextCatalogSnapshot;
@@ -160,6 +160,7 @@ public sealed class StoryExportChecks : MonoBehaviour
                 throw new InvalidOperationException("AA_VIDEOEXPORT_TEST_TIMEOUT_SECONDS must be between 30 and 7200.");
         }
         _cancelFirst = Environment.GetEnvironmentVariable("AA_VIDEOEXPORT_TEST_CANCEL_FIRST") == "1";
+        _cancelLast = _cancelFirst && Environment.GetEnvironmentVariable("AA_VIDEOEXPORT_TEST_CANCEL_LAST") == "1";
         if (_performanceWindow != null || _wholeExportBenchmark)
         {
             if (_cancelFirst || _expectedRejection.Length != 0
@@ -173,8 +174,9 @@ public sealed class StoryExportChecks : MonoBehaviour
             _repeat = 1;
         }
         if (_cancelFirst && (_expectedRejection.Length != 0 || _repeat != 2
-            || string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AA_VIDEOEXPORT_TEST_MIXED_STORY_RECIPE"))))
-            throw new InvalidOperationException("Cancel-first acceptance requires the mixed-story recipe, no expected refusal, and two completed exports.");
+            || (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AA_VIDEOEXPORT_TEST_MIXED_STORY_RECIPE"))
+                && Environment.GetEnvironmentVariable("AA_VIDEOEXPORT_TEST_CANCEL_PLAIN") != "1")))
+            throw new InvalidOperationException("Cancel-first acceptance requires the mixed-story recipe (or explicit plain-story cancel mode), no expected refusal, and two completed exports.");
         _active = this;
         _hooks = new Harmony("halocue.aa.videoexport.storyacceptance");
         _hooks.Patch(RequiredMethod("Fail"), prefix: new HarmonyMethod(typeof(StoryExportChecks), nameof(ObserveFailure)));
@@ -245,7 +247,7 @@ public sealed class StoryExportChecks : MonoBehaviour
             var controls = typeof(NativeExportPanel).GetProperty("ShowPlaybackButtons", InstanceMembers)!;
             _originalShowPlaybackButtons = (bool)controls.GetValue(_panel)!;
             controls.SetValue(_panel, true);
-            ControlledStoryExportEvidence.Install(_host, _mixedRecipe, "自动");
+            ControlledStoryExportEvidence.Install(_host, _mixedRecipe, "AUTO");
             _mixedEvidenceInstalled = true;
             Plugin.Report("PATH-CHECK STORY mixed-evidence=authored-input; original-controls-visible=true; recipe=" + _mixedRecipe);
         }
@@ -593,7 +595,7 @@ public sealed class StoryExportChecks : MonoBehaviour
                 }
             }
         }
-        if (_cancelFirst && _attempt == 1 && (_singlePass ? _sawVideoPass && !_sawAudioPass : _sawAudioPass && !_sawVideoPass) && _captured >= 12
+        if (_cancelFirst && _attempt == (_cancelLast ? _repeat + 1 : 1) && (_singlePass ? _sawVideoPass && !_sawAudioPass : _sawAudioPass && !_sawVideoPass) && _captured >= 12
             && HostBool("Capturing", property: true) && HostBool("_strictPreparing") != _singlePass && !HostBool("_strictPriming"))
         {
             ControlledStoryExportEvidence.DeclareCancellation(_attempt, _captured);
@@ -700,6 +702,7 @@ public sealed class StoryExportChecks : MonoBehaviour
         }, new JsonSerializerOptions { WriteIndented = true }));
         _passed++;
         Plugin.Report("PATH-CHECK PASS deliberate-cancel-cleanup-before-real-retry attempt=" + _attempt);
+        if (_cancelLast) { Finish(); return; }
         _submitted = false; _settleFrames = 0; _stage = 5;
         Phase("settling-before-retry-after-cancellation");
     }
@@ -708,6 +711,7 @@ public sealed class StoryExportChecks : MonoBehaviour
     private void RequireCancellationScopesReleased()
     {
         if (!HeldScopesReleased(out string held)) throw new InvalidOperationException("Cancelled attempt retains production scope " + held);
+        if (Environment.GetEnvironmentVariable("AA_VIDEOEXPORT_TEST_CANCEL_PLAIN") == "1") return;
         foreach (var surface in new[] { ("NativeExportClock", "IsActive"), ("CharacterVoiceDelayClock", "Active"),
             ("ControlledBackgroundVideoAdapter", "Active"), ("MultilingualCaptureAdapter", "Active") })
         {
@@ -938,7 +942,7 @@ public sealed class StoryExportChecks : MonoBehaviour
             strict_planned_frames = _plannedFrames, single_live_pass = _singlePass, observed_pass_begins = _observedPassBegins, media = evidence
         }));
         Plugin.Report("PATH-CHECK PASS real-" + (_singlePass ? "single-pass" : "strict") + "-story-export-" + _attempt);
-        if (_completedExports < _repeat) { _settleFrames = 0; _stage = 5; Phase("settling-before-repeat"); }
+        if (_completedExports < _repeat || (_cancelLast && !_cancellationRequested)) { _settleFrames = 0; _stage = 5; Phase("settling-before-repeat"); }
         else
         {
             if (_repeat == 2) { _passed++; Plugin.Report(NativePreEncodeObservation.FontAtlasEquivalenceEnabled
@@ -1114,7 +1118,7 @@ public sealed class StoryExportChecks : MonoBehaviour
         _failed++;
         _stage = 90;
         _cleanupDeadline = _wall.Elapsed.TotalSeconds + 10;
-        Plugin.Report("PATH-CHECK FAIL native-story-export: " + error.GetType().Name + ": " + error.Message);
+        Plugin.Report("PATH-CHECK FAIL native-story-export: " + error.GetType().Name + ": " + error.Message + "\n" + error.StackTrace);
         if (_host != null && _submitted)
         {
             try { RequiredMethod("Cancel").Invoke(_host, null); }

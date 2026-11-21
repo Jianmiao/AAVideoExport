@@ -10,6 +10,8 @@ public enum StrictCapabilityLevel
 
 public sealed record StrictCapability
 {
+    public const string GenericStaticInertEvidence = "GenericStaticModPolicy.static-inert.v1";
+
     public StrictCapability(string moduleId, string fingerprint, StrictCapabilityLevel level, IReadOnlyList<string>? evidence)
     {
         if (string.IsNullOrWhiteSpace(moduleId)) throw new ArgumentException("A module id is required.", nameof(moduleId));
@@ -73,35 +75,56 @@ public sealed record StrictCapabilitySnapshot(
     {
         if (module.Level == StrictCapabilityLevel.Certified) return true;
         if (module.Level != StrictCapabilityLevel.Observed) return false;
-        if (string.Equals(module.ModuleId, "Azurite", StringComparison.OrdinalIgnoreCase)) return true;
-        if (module.ModuleId is "ExampleCore" or "ExampleDependent" or "ExampleStandalone")
-            return module.Evidence.Contains("StaticInertModEvidence.empty-load.v1", StringComparer.Ordinal)
-                && module.Evidence.Contains("StaticInertScope.retained.v1", StringComparer.Ordinal);
-        if (IsAdditionalFrameworkDeclaration(module.ModuleId))
-            return HasCompleteFrameworkEvidence(module);
-        string? required = module.ModuleId switch
+        if (HasGenericStaticInertProof(module)) return true;
+        if (HasGenericClockProof(module)) return true;
+        if (HasGenericRenderControlProof(module)) return true;
+        if (IsAdditionalFrameworkDeclaration(module.ModuleId)) return HasCompleteFrameworkEvidence(module);
+        return false;
+    }
+
+    private static bool HasGenericStaticInertProof(StrictCapability module)
+    {
+        string[] required =
         {
-            "FlandreScarletBackground" => "ControlledBackgroundVideoAdapter.pts-frames.v1",
-            "AAMultilingual" => "MultilingualCaptureAdapter.frame-owned.v1",
-            "Rukari.Lib" or "Rukari.Lib.Runtime" => "RuntimeModBoundaries.rukari-idle.v1",
-            "AzureArchive.VideoTools.Core" or "AzureArchive.VideoTools.Formats" => "RuntimeModBoundaries.effects-dependency.v1",
-            "AASkipIntro" => "AASkipIntroExportBoundary.retained.v1",
-            "MenuBgmSelector" => "RetainedMenuPlaybackBoundary.menu-bgm.v1",
-            "AAMenuPrototype" => "RetainedMenuPlaybackBoundary.menu-scene.v1",
-            "SfxFolderMod" => "RetainedMenuPlaybackBoundary.sfx-map.v1",
-            "Rukari.CharacterVoice" => "CharacterVoiceSessionAdapter.held-controller.v1",
-            "Anonymously Hosted DynamicMethods Assembly" => "RetainedRecipeScope.interop-initializer-final-il.v2",
-            "MonoMod.Utils.Cil.ILGeneratorProxy" or "MonoMod.RuntimeDetour.Runtime.NETCore3+Helpers" => "FrameworkGeneratedAssemblyScope.cached-bridges.v1",
-            _ => null
+            StrictCapability.GenericStaticInertEvidence, "managed-clock-call-sites=0", "harmony-patch-attributes=0",
+            "behaviour-callbacks=0", "render-audio-video-references=0", "pinvoke-methods=0", "game-or-harmony-references=0"
         };
-        return required != null && module.Evidence.Contains(required, StringComparer.Ordinal);
+        if (!required.All(value => module.Evidence.Contains(value, StringComparer.Ordinal))) return false;
+        return HasCanonicalSha256(module);
+    }
+
+    private static bool HasGenericClockProof(StrictCapability module)
+    {
+        const string marker = "GenericStopwatchBridge.managed-clock.v1";
+        if (!module.Evidence.Contains(marker, StringComparer.Ordinal)) return false;
+        string? calls = module.Evidence.FirstOrDefault(value => value.StartsWith("call-sites=", StringComparison.Ordinal));
+        string? patched = module.Evidence.FirstOrDefault(value => value.StartsWith("patched=", StringComparison.Ordinal));
+        string? unbridged = module.Evidence.FirstOrDefault(value => value.StartsWith("unbridged-clock-call-sites=", StringComparison.Ordinal));
+        if (calls == null || patched == null || unbridged == null) return false;
+        if (!int.TryParse(calls[11..], out int callCount) || !int.TryParse(patched[8..], out int patchedCount)) return false;
+        return callCount > 0 && callCount == patchedCount && unbridged == "unbridged-clock-call-sites=0" && HasCanonicalSha256(module);
+    }
+
+    private static bool HasGenericRenderControlProof(StrictCapability module)
+    {
+        const string marker = "RenderControlV1.participant.v1";
+        if (!module.Evidence.Contains(marker, StringComparer.Ordinal)) return false;
+        if (!module.Evidence.Contains("protocol=1", StringComparer.Ordinal)) return false;
+        return HasCanonicalSha256(module);
+    }
+
+    private static bool HasCanonicalSha256(StrictCapability module)
+    {
+        string? sha = module.Evidence.FirstOrDefault(value => value.StartsWith("sha256=", StringComparison.Ordinal));
+        return sha is { Length: 7 + 64 } && sha[7..].All(Uri.IsHexDigit);
     }
 
     // These names only select the expected evidence contract. Inventory must
     // first obtain it from a live proof of actual pinned producer/cache objects.
     private static bool IsAdditionalFrameworkDeclaration(string name)
     {
-        if (name is "Il2CppTrampolineDelegates" or "MonoMod.Utils.GetManagedSizeHelper") return true;
+        if (name is "Il2CppTrampolineDelegates" or "MonoMod.Utils.GetManagedSizeHelper"
+            or "MonoMod.Utils.Cil.ILGeneratorProxy" or "MonoMod.RuntimeDetour.Runtime.NETCore3+Helpers") return true;
         const string prefix = "HarmonyDTFAssembly";
         if (!name.StartsWith(prefix, StringComparison.Ordinal)) return false;
         string suffix = name[prefix.Length..];

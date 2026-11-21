@@ -742,6 +742,7 @@ public sealed partial class ExportHost : MonoBehaviour
         foreach (var tween in Object.FindObjectsOfType<UITweener>())
             if (tween != null && tween.ignoreTimeScale && tween.mStarted) tween.mStartTime -= previousUiTime;
         _autoSelection = new NativeAutoSelection(player, message => UnityEngine.Debug.Log("AA Video Export: " + message));
+        GenericStopwatchBridge.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.ElapsedSeconds : _captured / (double)_options.Fps);
         MoreEffectsCompatibility.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.ElapsedSeconds : _captured / (double)_options.Fps);
         FlandrePortraitClock.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.ElapsedSeconds : _captured / (double)_options.Fps);
         _characterVoiceClockFailure = null;
@@ -1159,6 +1160,7 @@ public sealed partial class ExportHost : MonoBehaviour
         }, "restoring idle dependency surfaces");
         RestoreCoordinated(MoreEffectsCompatibility.EndExport, "restoring adapted animation clock");
         RestoreCoordinated(FlandrePortraitClock.EndExport, "restoring portrait clock");
+        RestoreCoordinated(GenericStopwatchBridge.EndExport, "restoring generic managed clock");
         RestoreCoordinated(NativeExportClock.Restore, "restoring native clock");
         if (_captureLoop != null)
         {

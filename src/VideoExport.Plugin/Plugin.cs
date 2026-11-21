@@ -14,7 +14,7 @@ namespace AAVideoExport.Plugin;
 public sealed class Plugin : BasePlugin
 {
     public const string Guid = "halocue.aa.videoexport";
-    public const string Version = "0.2.12";
+    public const string Version = "0.3.0";
     internal static string FfmpegPath = "ffmpeg.exe";
     internal static string FfprobePath = "ffprobe.exe";
     internal static bool ReduceProgressUiWork = true;
@@ -68,6 +68,9 @@ public sealed class Plugin : BasePlugin
         {
             _performanceLog = Log;
             _harmony.PatchAll(typeof(Plugin).Assembly);
+            GenericStopwatchBridge.Initialize(_harmony, message => Log.LogInfo(message), typeof(Plugin).Assembly);
+            GenericStopwatchBridge.AttachLoadedModules(assembly =>
+                StrictCapabilityInventory.IsModAssembly(assembly, assembly.GetName().Name ?? ""));
             AASkipIntroExportBoundary.Initialize(_harmony);
             AutoSelectionHooks.Initialize(_harmony, () => ExportHost.Current?.AutoSelection,
                 error => ExportHost.Current?.AutoSelectionFailed(error), message => Log.LogInfo(message));
@@ -84,7 +87,7 @@ public sealed class Plugin : BasePlugin
             _host = AddComponent<ExportHost>();
             if (ExportBuildProfile.DevelopmentAuditEnabled)
                 RuntimeAttributionClient.TryMark("AAVE.Plugin.Load.ready", message => Log.LogWarning(message));
-            Log.LogInfo($"AA Video Export loaded [{Version}; single-pass={ExportBuildProfile.SinglePassEnabled}; development-audit={ExportBuildProfile.DevelopmentAuditEnabled}]. Ctrl+Shift+E opens settings. RenderControlV1 preserves Azurite ownership boundaries.");
+            Log.LogInfo($"AA Video Export loaded [{Version}; single-pass={ExportBuildProfile.SinglePassEnabled}; development-audit={ExportBuildProfile.DevelopmentAuditEnabled}]. Ctrl+Shift+E opens settings. RenderControlV1 requires explicit participant ownership.");
         }
         catch
         {
@@ -116,6 +119,7 @@ public sealed class Plugin : BasePlugin
             AutoSelectionHooks.Shutdown();
             MoreEffectsCompatibility.Shutdown();
             FlandrePortraitClock.Shutdown();
+            GenericStopwatchBridge.Shutdown();
             _harmony.UnpatchSelf();
             throw;
         }
@@ -169,6 +173,7 @@ public sealed class Plugin : BasePlugin
         if (!MoreEffectsCompatibility.Shutdown()) return false;
         if (!FlandrePortraitClock.Shutdown()) return false;
         AutoSelectionHooks.Shutdown();
+        GenericStopwatchBridge.Shutdown();
         _harmony?.UnpatchSelf();
         if (_host != null) UnityEngine.Object.Destroy(_host);
         return true;

@@ -1,7 +1,0 @@
-{
-  "name": "AAVideoExport",
-  "version_number": "0.2.4",
-  "website_url": "https://github.com/Jianmiao/AAVideoExport",
-  "description": "AA 原生逐帧视频导出：可选 GPU 硬件或 CPU 软件编码、离线音频、超分辨率及 RenderControlV1 协作接口。",
-  "dependencies": []
-}

@@ -2,7 +2,9 @@
   <PropertyGroup>
     <AssemblyName>AAVideoExport</AssemblyName>
     <RootNamespace>AAVideoExport.Plugin</RootNamespace>
-    <Version>0.2.12</Version>
+    <Deterministic>true</Deterministic>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Version>0.3.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>

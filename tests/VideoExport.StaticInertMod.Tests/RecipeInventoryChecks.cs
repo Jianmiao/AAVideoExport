@@ -34,7 +34,7 @@ internal static class RecipeInventoryChecks
         });
     }
     private static StrictCapability Capability(Assembly assembly,RetainedRecipeScope? scope)=>(StrictCapability)typeof(StrictCapabilityInventory).GetMethod("CreateCapability",Flags)!
-        .Invoke(null,new object?[]{assembly,assembly.GetName().Name!,false,null,null,scope,null})!;
+        .Invoke(null,new object?[]{assembly,assembly.GetName().Name!,null,null,scope,null})!;
     private static void Check(bool value,string reason){if(!value)throw new Exception(reason);}
     private sealed class Backend(Assembly holder):IRecipeScopeBackend
     {

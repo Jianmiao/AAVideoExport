@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>VideoExport.GenericPolicy.Tests</AssemblyName>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/GenericStaticModPolicy.cs" Link="GenericStaticModPolicy.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/ModClockAudit.cs" Link="ModClockAudit.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll" Condition="Exists('$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll')" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.4" Condition="!Exists('$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll')" />
+  </ItemGroup>
+</Project>
