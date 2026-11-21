@@ -5,7 +5,153 @@ using AAVideoExport.Integration;
 using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
-var tests = new (string Name, Action Run)[]
+var staticInertAuditTests = new (string Name, Action Run)[]
+{
+    ("static inert scope acquisition rejects before native story load", () =>
+    {
+        var host=CreateHost();Field<NativeExportPanel>(host,"_panel").Options=Options();
+        StaticInertModEvidence.Present=true;StaticInertModEvidence.RejectAcquisition=true;
+        try
+        {
+            Call(host,"Prepare",Field<NativeExportPanel>(host,"_panel").Options);
+            Check(UnityEngine.Debug.Messages.Any(m=>m.Contains("strict_static_inert_invalid")),"Prepare did not acquire real retained inert scope");
+            Check(ScenarioResourceManager.Instance!.LoadedNames.Count==0 && !RenderControlV1.IsRenderingOwned,"Inert failure ran after source load/handoff");
+        }
+        finally { host.Shutdown();StaticInertModEvidence.Reset(); }
+    }),
+};
+
+var preparationTests = new (string Name, Action Run)[]
+{
+    ("startup boundary acquisition failure occurs before native story loading", () =>
+    {
+        var host = CreateHost();
+        Field<NativeExportPanel>(host, "_panel").Options = Options();
+        AASkipIntroExportBoundary.Present = true;
+        AASkipIntroExportBoundary.RejectAcquisition = true;
+        try
+        {
+            Call(host, "Prepare", Field<NativeExportPanel>(host, "_panel").Options);
+            Check(UnityEngine.Debug.Messages.Any(m => m.Contains("strict_startup_boundary_invalid")),
+                "export preparation did not acquire the retained startup controller");
+            Check(ScenarioResourceManager.Instance!.LoadedNames.Count == 0 && !RenderControlV1.IsRenderingOwned,
+                "failed startup controller allowed native story load or render handoff");
+        }
+        finally { host.Shutdown(); AASkipIntroExportBoundary.Reset(); }
+    }),
+    ("strict preparation rejects incomplete More Effects before reading story", () =>
+    {
+        var host = CreateHost();
+        var panel = Field<NativeExportPanel>(host, "_panel");
+        panel.Options = Options();
+        MoreEffectsCompatibility.IsLoaded = true;
+        MoreEffectsCompatibility.FullClockCoverage = false;
+        MoreEffectsCompatibility.Status = "partial";
+        MoreEffectsCompatibility.FailureReason = "fixture reason";
+        int acquisitions = 0;
+        Action onAcquire = () => acquisitions++;
+        RenderControlV1.BeforeAcquire += onAcquire;
+        try
+        {
+            Call(host, "Prepare", panel.Options);
+            Check(ScenarioResourceManager.Instance!.LoadedNames.Count == 0, "strict admission ran after story loading");
+            Check(Field<Task<ExportSession>?>(host, "_prepare") == null, "strict admission failure still started encoder preparation");
+            Check(acquisitions == 0 && !RenderControlV1.IsRenderingOwned, "strict rejection acquired rendering ownership");
+            Check(Field<string>(host, "_status").Contains("逐帧对齐", StringComparison.Ordinal), "strict admission failure lost localized guidance");
+            Check(UnityEngine.Debug.Messages.Any(m => m.Contains("strict_mod_clock_unsupported", StringComparison.Ordinal)
+                && m.Contains("fixture reason", StringComparison.Ordinal)), "strict admission diagnostic did not reach the log");
+        }
+        finally
+        {
+            RenderControlV1.BeforeAcquire -= onAcquire;
+            MoreEffectsCompatibility.ResetAdmission();
+            host.Shutdown();
+        }
+    }),
+    ("strict preparation rejects exact unsupported Character Voice before reading story", () =>
+    {
+        var host = CreateHost();
+        var panel = Field<NativeExportPanel>(host, "_panel");
+        panel.Options = Options();
+        MoreEffectsCompatibility.CharacterVoiceExactUnsupported = true;
+        try
+        {
+            Call(host, "Prepare", panel.Options);
+            Check(ScenarioResourceManager.Instance!.LoadedNames.Count == 0, "Character Voice gate ran after story loading");
+            Check(Field<Task<ExportSession>?>(host, "_prepare") == null, "Character Voice gate still started encoder preparation");
+            Check(Field<string>(host, "_status").Contains("人物配音支持", StringComparison.Ordinal), "Character Voice error was not localized");
+            Check(UnityEngine.Debug.Messages.Any(m => m.Contains("strict_character_voice_clock_unsupported", StringComparison.Ordinal)),
+                "Character Voice strict diagnostic did not reach the log");
+        }
+        finally
+        {
+            MoreEffectsCompatibility.ResetAdmission();
+            host.Shutdown();
+        }
+    }),
+};
+
+var capabilityAuditTests = new (string Name, Action Run)[]
+{
+    ("strict preparation rejects an opaque loaded module before story and render handoff", () =>
+    {
+        var host = CreateHost();
+        var panel = Field<NativeExportPanel>(host, "_panel");
+        panel.Options = Options();
+        StrictCapabilityInventory.Snapshot = StrictCapabilitySnapshot.Create(new[]
+        {
+            new StrictCapability("Unknown.Mod", new string('a', 64), StrictCapabilityLevel.Opaque,
+                new[] { "assembly-not-yet-certified" })
+        });
+        int acquisitions = 0;
+        Action onAcquire = () => acquisitions++;
+        RenderControlV1.BeforeAcquire += onAcquire;
+        try
+        {
+            Call(host, "Prepare", panel.Options);
+            Check(ScenarioResourceManager.Instance!.LoadedNames.Count == 0, "opaque capability gate ran after story loading");
+            Check(Field<Task<ExportSession>?>(host, "_prepare") == null, "opaque capability gate started encoder preparation");
+            Check(acquisitions == 0 && !RenderControlV1.IsRenderingOwned, "opaque capability gate acquired rendering ownership");
+            Check(Field<string>(host, "_status").Contains("尚未通过严格同步认证", StringComparison.Ordinal),
+                "opaque capability error was not localized");
+            Check(UnityEngine.Debug.Messages.Any(m => m.Contains("strict_capability_unsupported", StringComparison.Ordinal)
+                && m.Contains("Unknown.Mod", StringComparison.Ordinal)), "opaque capability diagnostic did not reach the log");
+        }
+        finally
+        {
+            RenderControlV1.BeforeAcquire -= onAcquire;
+            StrictCapabilityInventory.Reset();
+            host.Shutdown();
+        }
+    }),
+    ("strict capture rejects a late opaque assembly before the next frame", () =>
+    {
+        var player = new Test();
+        var host = CapturingHost(player);
+        Set(host, "_options", Options() with { StrictSynchronization = true });
+        var empty = StrictCapabilitySnapshot.Create(Array.Empty<StrictCapability>());
+        Set(host, "_strictCapabilitySnapshot", empty);
+        StrictCapabilityInventory.Snapshot = StrictCapabilitySnapshot.Create(new[]
+        {
+            new StrictCapability("Late.Unknown", new string('b', 64), StrictCapabilityLevel.Opaque,
+                new[] { "assembly-loaded-during-capture" })
+        });
+        StrictCapabilityInventory.AssemblyGeneration = 1;
+        try
+        {
+            host.Update();
+            Check(!host.Capturing, "late opaque capability did not stop capture; status=" + Field<string>(host, "_status"));
+            Check(Field<NativeExportPanel>(host, "_panel").StatusIsError,
+                "late capability failure was not surfaced as an error; status=" + Field<string>(host, "_status") +
+                "; messages=" + string.Join("|", UnityEngine.Debug.Messages));
+            Check(UnityEngine.Debug.Messages.Any(m => m.Contains("strict_capability_unsupported", StringComparison.Ordinal)
+                && m.Contains("Late.Unknown", StringComparison.Ordinal)), "late capability diagnostic did not reach the log");
+        }
+        finally { host.Shutdown(); }
+    }),
+};
+
+var commonTests = new (string Name, Action Run)[]
 {
     ("active choice without AUTO stops the actual host and restores its session", () =>
     {
@@ -119,8 +265,13 @@ var tests = new (string Name, Action Run)[]
         Check(!panel.StatusIsError, "successful retry kept the error color state");
         host.Shutdown();
     }),
-    ("software preparation passes libx264 and software mode to the actual session boundary", () =>
+    ("software preparation admits absent or fully covered More Effects at the actual session boundary", () =>
     {
+        foreach (bool loaded in new[] { false, true })
+        {
+        MoreEffectsCompatibility.IsLoaded = loaded;
+        MoreEffectsCompatibility.FullClockCoverage = loaded;
+        MoreEffectsCompatibility.Status = loaded ? "full" : "waiting";
         var host = CreateHost();
         var panel = Field<NativeExportPanel>(host, "_panel");
         string workspace = Path.Combine(Path.GetTempPath(), "aave-software-host-" + Guid.NewGuid().ToString("N"));
@@ -143,8 +294,10 @@ var tests = new (string Name, Action Run)[]
         finally
         {
             host.Shutdown();
+            MoreEffectsCompatibility.ResetAdmission();
             File.Delete(story); Directory.Delete(saves); Directory.Delete(Path.Combine(workspace, "data")); Directory.Delete(workspace);
             UserSettings.Instance = null;
+        }
         }
     }),
     ("idle shutdown marks provider unavailable without reacquiring or faulting", () =>
@@ -280,6 +433,7 @@ var tests = new (string Name, Action Run)[]
                 Plugin.FailPerformanceLog = false;
                 var nextSession = new ExportSession(options, "", "", "fixture", 48000, 2, true);
                 Set(host, "_session", nextSession);
+                if (ExportBuildProfile.SinglePassEnabled) Set(host, "_frozenSave", new GenericScenarioExcelTable());
                 Call(host, "Begin", new Test());
                 Check(host.Capturing, "failed export prevented a fresh capture");
                 Call(host, "Cancel");
@@ -344,19 +498,47 @@ var tests = new (string Name, Action Run)[]
         host.Shutdown();
     })
 };
-int failed = 0;
-foreach (var test in tests)
+if (!ExportBuildProfile.DevelopmentAuditEnabled)
 {
-    Object.ResetRegistry();
-    UnityEngine.Debug.Messages.Clear();
-    Plugin.SavedOutputDirectory = "";
-    FfmpegCapabilities.ProbeOverride = null;
-    ScenarioResourceManager.Instance = new();
-    try { test.Run(); Console.WriteLine("PASS " + test.Name); }
-    catch (Exception ex) { failed++; Console.WriteLine("FAIL " + test.Name + ": " + ex); }
+    int commonResult = RunTests(preparationTests.Concat(commonTests).ToArray(), noAudits: true);
+    int timelineResult = ExportBuildProfile.SinglePassEnabled
+        ? SinglePassHostRegression.Run()
+        : ProductionHostRegression.Run();
+    return commonResult == 0 && timelineResult == 0 ? 0 : 1;
 }
-Console.WriteLine($"{tests.Length - failed}/{tests.Length} passed (production ExportHost lifecycle; fake native/encoder boundaries)");
-return failed == 0 ? 0 : 1;
+
+return RunTests(staticInertAuditTests.Concat(preparationTests).Concat(capabilityAuditTests)
+    .Concat(commonTests).Concat(StrictHostRegression.Cases)
+    .Concat(StrictHostRegression.EffectsSourceReadinessCases).ToArray(), noAudits: false);
+
+static int RunTests((string Name, Action Run)[] tests, bool noAudits)
+{
+    int failed = 0;
+    foreach (var test in tests)
+    {
+        Object.ResetRegistry();
+        UnityEngine.Debug.Messages.Clear();
+        Plugin.SavedOutputDirectory = "";
+        FfmpegCapabilities.ProbeOverride = null;
+        ScenarioResourceManager.Instance = new();
+        NativeCaptureScope.AudioSampleCounts.Clear();
+        NativeCaptureScope.AudioBlocks.Clear();
+        NativeBgmSessionAdapter.Reset();
+        ProductionAuditTrap.Calls.Clear();
+        ProductionAuditTrap.Enabled = noAudits;
+        try
+        {
+            MoreEffectsCompatibility.ResetAdmission(); StrictCapabilityInventory.Reset(); StaticInertModEvidence.Reset(); AASkipIntroExportBoundary.Reset(); CharacterVoiceDelayClock.Reset(); CharacterVoiceSessionAdapter.Reset(); RetainedMenuPlaybackBoundary.Reset(); RuntimeAttributionClient.Reset(); FrameworkGeneratedAssemblyScope.Reset(); MultilingualCaptureAdapter.Reset(); RuntimeModBoundaries.EndExport();
+            test.Run();
+            Check(!noAudits || ProductionAuditTrap.Calls.Count == 0, "Common production lifecycle reached an audit boundary.");
+            Console.WriteLine("PASS " + test.Name);
+        }
+        catch (Exception ex) { failed++; Console.WriteLine("FAIL " + test.Name + ": " + ex); }
+        finally { ProductionAuditTrap.Enabled = false; }
+    }
+    Console.WriteLine($"{tests.Length - failed}/{tests.Length} passed (production ExportHost lifecycle; fake native/encoder boundaries; throwing audit boundaries={noAudits})");
+    return failed == 0 ? 0 : 1;
+}
 
 static ExportHost CreateHost()
 {
@@ -372,6 +554,9 @@ static ExportHost CapturingHost(Test player)
     Set(host, "_options", options);
     Set(host, "_session", new ExportSession(options, "", "", "fixture", 48000, 2, true));
     Set(host, "_cancellation", new CancellationTokenSource());
+    if (ExportBuildProfile.SinglePassEnabled) Set(host, "_frozenSave", new GenericScenarioExcelTable());
+    if (ExportBuildProfile.DevelopmentAuditEnabled)
+        typeof(ExportHost).GetField("_staticInertScope",BindingFlags.Instance|BindingFlags.NonPublic)?.SetValue(host,StaticInertScope.Acquire());
     Call(host, "Begin", player);
     return host;
 }

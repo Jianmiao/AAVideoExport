@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/EffectsSourceInput.cs" Link="EffectsSourceInput.cs" />
+    <Reference Include="AzureArchive.VideoTools.Core"><HintPath>F:\AzureArchive_101\mods\更多的画面效果\1.6.7\AzureArchive.VideoTools.Core.dll</HintPath></Reference>
+    <Reference Include="AzureArchive.VideoTools.Formats"><HintPath>F:\AzureArchive_101\mods\更多的画面效果\1.6.7\AzureArchive.VideoTools.Formats.dll</HintPath></Reference>
+    <Reference Include="Rukari.Lib"><HintPath>F:\AzureArchive_101\mods\RukariLib\0.4.6\Rukari.Lib.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

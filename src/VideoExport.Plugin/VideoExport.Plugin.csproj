@@ -2,12 +2,13 @@
   <PropertyGroup>
     <AssemblyName>AAVideoExport</AssemblyName>
     <RootNamespace>AAVideoExport.Plugin</RootNamespace>
-    <Version>0.2.4</Version>
+    <Version>0.2.12</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../VideoExport.Core/VideoExport.Core.csproj" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll" Private="false" />
     <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Core.dll" Private="false" />
     <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Unity.Common.dll" Private="false" />
     <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Unity.IL2CPP.dll" Private="false" />

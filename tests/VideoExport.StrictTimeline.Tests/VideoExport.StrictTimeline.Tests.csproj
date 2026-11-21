@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Core/StrictFramePlan.cs" Link="StrictFramePlan.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportEndFence.cs" Link="ExportEndFence.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportTimeline.cs" Link="ExportTimeline.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportOptions.cs" Link="ExportOptions.cs" />
+    <Compile Include="../../src/VideoExport.Core/CanvasLayout.cs" Link="CanvasLayout.cs" />
+    <Compile Include="../../src/VideoExport.Core/OutputDirectoryPreference.cs" Link="OutputDirectoryPreference.cs" />
+  </ItemGroup>
+</Project>

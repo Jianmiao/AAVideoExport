@@ -39,6 +39,14 @@ internal static partial class Program
         // The harness also supplies controlled FFmpeg failures to the probe/preflight tests.
         if (args.FirstOrDefault() == "-hide_banner")
             return RunFfmpegFixture(args);
+        if (args.Contains("--strict-audio-only", StringComparer.Ordinal))
+        {
+            await Test("strict audio timeline accumulator accepts split and merged mixer blocks", TestAudioTimelineAccumulator);
+            await Test("strict audio timeline accumulator rejects invalid input without changing its timeline", TestAudioTimelineAccumulatorValidation);
+            await Test("prepared audio seals exact sample totals and replays PCM on the fixed frame grid", TestPreparedAudioTrack);
+            Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
+            return failed == 0 ? 0 : 1;
+        }
         if (args.Contains("--canvas-only", StringComparer.Ordinal))
         {
             await TestCanvasLayouts();
@@ -89,9 +97,21 @@ internal static partial class Program
             Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
             return failed == 0 ? 0 : 1;
         }
+        if (args.Contains("--progress-metrics-only", StringComparer.Ordinal))
+        {
+            await Test("export progress metrics distinguish strict preparation from replay", TestExportProgressMetrics);
+            Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
+            return failed == 0 ? 0 : 1;
+        }
         if (args.Contains("--encoder-path-only", StringComparer.Ordinal))
         {
             await TestEncoderPaths();
+            Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
+            return failed == 0 ? 0 : 1;
+        }
+        if (args.Contains("--strict-software-arguments-only", StringComparer.Ordinal))
+        {
+            await TestStrictSoftwareArguments();
             Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
             return failed == 0 ? 0 : 1;
         }
@@ -118,6 +138,32 @@ internal static partial class Program
         }
         Directory.CreateDirectory(Root);
         Console.WriteLine("Retained test artifacts: " + Root);
+        if (args.Contains("--strict-software-repeat", StringComparer.Ordinal))
+        {
+            await TestStrictSoftwareArguments();
+            string? source = args.FirstOrDefault(a => a.StartsWith("--repeat-input=", StringComparison.Ordinal))?[15..];
+            await Test("strict libx264 production parameters repeat exact decoded pixels three times", () => TestStrictSoftwareRepeat(source));
+            Console.WriteLine($"RESULT: {passed} passed; {failed} failed. Artifacts retained at {Root}");
+            return failed == 0 ? 0 : 1;
+        }
+        if (args.Contains("--hardware-only", StringComparer.Ordinal) || args.Contains("--qsv-preflight-only", StringComparer.Ordinal))
+        {
+            await Test("exact Intel QSV 1080p60 preflight in the production 10-second budget", TestQsvPreflightDiagnostics);
+            if (args.Contains("--qsv-preflight-only", StringComparer.Ordinal))
+            {
+                Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
+                return failed == 0 ? 0 : 1;
+            }
+            capabilities = await FfmpegCapabilities.ProbeHardwareAsync(ffmpeg, "Intel Arc");
+            var intel = capabilities.Encoders.First(e => e.Name == "h264_qsv");
+            Console.WriteLine("QSV DISCOVERY: " + intel.Detail);
+            if (intel.Available)
+                await Test("Intel QSV 1080p60 VBR and CBR synthetic encoding", TestHardware);
+            else
+                await Test("Intel QSV 1080p60 VBR and CBR synthetic encoding", () => throw new Exception("Required Intel encoder failed discovery: " + intel.Detail));
+            Console.WriteLine($"RESULT: {passed} passed; {failed} failed. Artifacts retained at {Root}");
+            return failed == 0 ? 0 : 1;
+        }
         if (args.Contains("--sr720-media-only", StringComparer.Ordinal))
         {
             await Test720pMedia();
@@ -153,6 +199,11 @@ internal static partial class Program
         if (args.Contains("--audio-tolerance-only", StringComparer.Ordinal))
         {
             await TestAudioTimelineTolerances();
+            await Test("rational video/audio frame budget", TestExportTimeline);
+            await Test("strict audio timeline accumulator accepts split and merged mixer blocks", TestAudioTimelineAccumulator);
+            await Test("strict per-frame audio budget and startup empty block", TestAudioFrameBudgets);
+            await Test("strict audio timeline accumulator rejects invalid input without changing its timeline", TestAudioTimelineAccumulatorValidation);
+            await Test("prepared audio seals exact sample totals and replays PCM on the fixed frame grid", TestPreparedAudioTrack);
             Console.WriteLine($"RESULT: {passed} passed; {failed} failed.");
             return failed == 0 ? 0 : 1;
         }
@@ -189,10 +240,12 @@ internal static partial class Program
         await TestExportErrorText();
         await TestUiFlow();
         await TestUiRefreshCadence();
+        await Test("export progress metrics distinguish strict preparation from replay", TestExportProgressMetrics);
         await TestPlaybackLaunchGate();
         await Test("reject invalid export settings", () => { ValidateSettings(); return Task.CompletedTask; });
         await TestCanvasLayouts();
         await TestEncoderPaths();
+        await TestStrictSoftwareArguments();
         await Test("hardware availability hides software and failed probes with stable distinct choices", () => { TestHardwareAvailability(); return Task.CompletedTask; });
         await Test("hardware selection prefers the GPU vendor and allows only working hardware", () => { TestHardwareSelection(); return Task.CompletedTask; });
         await Test("hardware selection rejects software, missing hardware and invalid settings", () => { TestHardwareSelectionFailures(); return Task.CompletedTask; });
@@ -205,6 +258,11 @@ internal static partial class Program
         await Test("qtrle + PCM16 MOV: exact pixels, sample timing and stereo audio", TestMov);
         await Test("zero-length mixer writes preserve PCM samples and duration", TestEmptyAudioFrames);
         await TestAudioTimelineTolerances();
+        await Test("rational video/audio frame budget", TestExportTimeline);
+        await Test("strict audio timeline accumulator accepts split and merged mixer blocks", TestAudioTimelineAccumulator);
+        await Test("strict per-frame audio budget and startup empty block", TestAudioFrameBudgets);
+        await Test("strict audio timeline accumulator rejects invalid input without changing its timeline", TestAudioTimelineAccumulatorValidation);
+        await Test("prepared audio seals exact sample totals and replays PCM on the fixed frame grid", TestPreparedAudioTrack);
         await Test("H.264 + PCM24 MKV: 24-bit samples and frame count", TestMkv);
         await Test("audio can be explicitly disabled", TestSilent);
         await Test("48 kHz capture resamples to 44.1 kHz stereo output", TestResample);
@@ -235,6 +293,34 @@ internal static partial class Program
             failed++;
             Console.Error.WriteLine("FAIL " + name + Environment.NewLine + exception);
         }
+    }
+
+    private static Task TestExportProgressMetrics()
+    {
+        var preparation = new ExportProgressMetrics(
+            CapturedFrames: 910,
+            EncodedFrames: 0,
+            CaptureElapsedSeconds: 31,
+            EncodingElapsedSeconds: 0,
+            BufferedFrames: 0,
+            StrictAudioPreparation: true);
+        Equal(910d / 31d, preparation.RenderFramesPerSecond, "preparation render rate");
+        Equal(0d, preparation.EncodeFramesPerSecond, "preparation does not claim an encode rate");
+        Equal(910L, preparation.PendingFrames, "preparation pending frames are explicit");
+
+        var replay = new ExportProgressMetrics(
+            CapturedFrames: 120,
+            EncodedFrames: 116,
+            CaptureElapsedSeconds: 4,
+            EncodingElapsedSeconds: 2,
+            BufferedFrames: 4,
+            StrictAudioPreparation: false);
+        Equal(30d, replay.RenderFramesPerSecond, "replay render rate");
+        Equal(58d, replay.EncodeFramesPerSecond, "replay encode rate uses writer wall time");
+        Equal(4L, replay.PendingFrames, "replay pending frames");
+        Equal(0d, ExportProgressMetrics.FramesPerSecondForDisplay(1, 0), "zero elapsed rate is safe");
+        Equal(0d, ExportProgressMetrics.FramesPerSecondForDisplay(-1, 1), "negative frame count is safe");
+        return Task.CompletedTask;
     }
 
     private static ExportOptions Options(string name) => new()

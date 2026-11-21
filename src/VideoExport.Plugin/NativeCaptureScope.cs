@@ -14,6 +14,7 @@ internal sealed class NativeCaptureScope : IDisposable
     private readonly List<(Camera Camera, bool Enabled)> _displayCameras = new();
     private readonly int _fps;
     private readonly int _vsync;
+    private readonly int _renderInterval;
     private readonly float _delta;
     private readonly float _scale;
     private readonly bool _background;
@@ -34,12 +35,23 @@ internal sealed class NativeCaptureScope : IDisposable
     private bool _disposed;
     private float[] _audioBuffer = Array.Empty<float>();
     private long _audioFrames;
+    private long _audioRawSampleFrames;
+    private double _audioRawDspEpochSeconds;
+    private NativeAudioSampleClock? _audioClock;
     private long _emptyAudioFrames;
     private bool _reportedFirstAudio;
     public Camera LastCamera { get; private set; } = null!;
     public bool AutomaticCameraCapture { get; }
     public int SampleRate { get; }
     public int Channels { get; }
+    /// <summary>
+    /// Sample clock for the most recent native mixer block. The host resets
+    /// this clock immediately before authored playback begins so the raw pass
+    /// has a stable zero tied to the same DSP epoch as the story commands.
+    /// </summary>
+    public long LastAudioRawStartSample { get; private set; }
+    public long AudioRawSampleFrames => _audioRawSampleFrames;
+    public double AudioRawDspEpochSeconds => _audioClock == null ? AudioSettings.dspTime : _audioRawDspEpochSeconds;
     internal long VisibilityTicks { get; private set; }
     internal long CameraRenderTicks { get; private set; }
     internal long PanelRefreshCount { get; private set; }
@@ -54,6 +66,7 @@ internal sealed class NativeCaptureScope : IDisposable
             // Every Unity snapshot occurs after synchronous participant restoration.
             _fps = Application.targetFrameRate;
             _vsync = QualitySettings.vSyncCount;
+            _renderInterval = OnDemandRendering.renderFrameInterval;
             _delta = Time.captureDeltaTime;
             _scale = Time.timeScale;
             _background = Application.runInBackground;
@@ -107,6 +120,7 @@ internal sealed class NativeCaptureScope : IDisposable
             player.auto = true;
             if (player.selectionManager != null) player.selectionManager.OnAutoModeChanged(true);
             QualitySettings.vSyncCount = 0;
+            OnDemandRendering.renderFrameInterval = 1;
             Application.targetFrameRate = -1;
             Application.runInBackground = true;
             Time.timeScale = 1;
@@ -123,6 +137,7 @@ internal sealed class NativeCaptureScope : IDisposable
             // Even muted exports must drive the game mixer: native voice completion waits on it.
             _audio = AudioRenderer.Start();
             if (!_audio) throw new ExportException("offline_audio_unavailable", "Unity 离线音频渲染未启动。请停止其他音频导出后重试。");
+            ResetAudioTimeline();
         }
         catch { Dispose(); throw; }
     }
@@ -324,9 +339,19 @@ internal sealed class NativeCaptureScope : IDisposable
         int length = checked(perChannel * Channels);
         if (_audioBuffer.Length != length) _audioBuffer = new float[length];
         var samples = _audioBuffer;
+        double dspBefore = AudioSettings.dspTime;
+        LastAudioRawStartSample = _audioClock?.NextRawSample ?? 0;
         fixed (float* buffer = samples)
             if (!AudioRenderer.Internal_AudioRenderer_Render(buffer, length))
                 throw new ExportException("audio_render_failed", $"Unity 音频渲染失败：样本帧={perChannel}，声道={Channels}。");
+        double dspAfter = AudioSettings.dspTime;
+        if (_audioClock == null)
+        {
+            _audioRawDspEpochSeconds = dspBefore;
+            _audioClock = new NativeAudioSampleClock(_audioRawDspEpochSeconds, SampleRate);
+        }
+        LastAudioRawStartSample = _audioClock.ObserveBlock(dspBefore, dspAfter, perChannel);
+        _audioRawSampleFrames = _audioClock.NextRawSample;
         _audioFrames++;
         if (perChannel == 0)
         {
@@ -340,6 +365,25 @@ internal sealed class NativeCaptureScope : IDisposable
             Debug.Log($"AA Video Export: first PCM frame; capture_frame={_audioFrames}, sample_frames={perChannel}, rate={SampleRate}, channels={Channels}.");
         }
         return (samples, length);
+    }
+
+    /// <summary>
+    /// Discards only the primer's sample-clock position. Primer PCM is not
+    /// authored story content; resetting before the first AdvanceScenario
+    /// makes raw sample zero the exact start of the captured story interval.
+    /// </summary>
+    public void ResetAudioTimeline()
+    {
+        _audioRawSampleFrames = 0;
+        LastAudioRawStartSample = 0;
+        // Establish the exact epoch on the first authored native block. The
+        // player can spend a few managed instructions between reset and the
+        // first mixer call; using the reset timestamp would manufacture a gap.
+        _audioRawDspEpochSeconds = AudioSettings.dspTime;
+        _audioClock = null;
+        _audioFrames = 0;
+        _emptyAudioFrames = 0;
+        _reportedFirstAudio = false;
     }
 
     public void Dispose()
@@ -376,6 +420,7 @@ internal sealed class NativeCaptureScope : IDisposable
                 Restore(() => Application.targetFrameRate = _fps);
                 Restore(() => Application.runInBackground = _background);
                 Restore(() => QualitySettings.vSyncCount = _vsync);
+                Restore(() => OnDemandRendering.renderFrameInterval = _renderInterval);
             }
         }
         catch

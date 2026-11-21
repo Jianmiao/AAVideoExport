@@ -127,6 +127,8 @@ internal sealed record ProcessResult(int ExitCode)
 internal static class MediaVerifier
 {
     internal static long Frames;
+    internal static Task CheckCompletionAsync(string executable, string path, ExportOptions options, long frames, TimeSpan timeout, CancellationToken token)
+        => VerifyAsync(executable, path, options, frames, timeout, token);
     internal static Task VerifyAsync(string executable, string path, ExportOptions options, long frames, TimeSpan timeout, CancellationToken token)
     {
         token.ThrowIfCancellationRequested(); Frames = frames;

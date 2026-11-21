@@ -77,7 +77,10 @@ internal static class EncoderArguments
         // SVT's VBR/CBR modes reject FFmpeg maxrate (SVT reserves it for capped CRF).
         if (encoder != "libsvtav1") args.AddRange(new[] { "-maxrate", cbr ? rate : (options.BitrateKbps * 3 / 2) + "k", "-bufsize", buffer });
         if (encoder.EndsWith("_nvenc", StringComparison.Ordinal))
+        {
             args.AddRange(new[] { "-preset", "p4", "-rc", cbr ? "cbr" : "vbr" });
+            if (cbr) args.AddRange(new[] { "-minrate", rate });
+        }
         else if (encoder.EndsWith("_qsv", StringComparison.Ordinal))
         {
             args.AddRange(new[] { "-preset", "veryfast" });
@@ -88,11 +91,24 @@ internal static class EncoderArguments
             if (cbr) args.AddRange(new[] { "-minrate", rate });
         }
         else if (encoder.EndsWith("_amf", StringComparison.Ordinal))
+        {
             args.AddRange(new[] { "-quality", "speed", "-rc", cbr ? "cbr" : "vbr_peak" });
+            if (cbr) args.AddRange(new[] { "-minrate", rate });
+        }
         else if (encoder == "libx264")
         {
             args.AddRange(new[] { "-preset", "veryfast" });
-            if (cbr) args.AddRange(new[] { "-minrate", rate, "-x264-params", "nal-hrd=cbr:force-cfr=1" });
+            if (cbr) args.AddRange(new[] { "-minrate", rate });
+            string parameters = cbr ? "nal-hrd=cbr:force-cfr=1" : "";
+            if (options.StrictSynchronization)
+            {
+                // strict-libx264-single-thread-v1: frame-threaded x264 with
+                // VBV produced different decoded pixels from identical input.
+                // Keep the bitrate/VBV contract; serialize this encoder only.
+                args.AddRange(new[] { "-threads:v", "1" });
+                parameters += (parameters.Length == 0 ? "" : ":") + "lookahead-threads=1";
+            }
+            if (parameters.Length != 0) args.AddRange(new[] { "-x264-params", parameters });
         }
         else if (encoder == "libx265")
         {

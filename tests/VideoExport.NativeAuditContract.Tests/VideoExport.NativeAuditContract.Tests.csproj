@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType></PropertyGroup><ItemGroup>
+<ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+<Compile Include="../VideoExport.NativePath.Tests/NativeAuditOutputContract.cs" Link="NativeAuditOutputContract.cs" Condition="Exists('../VideoExport.NativePath.Tests/NativeAuditOutputContract.cs')" />
+</ItemGroup></Project>

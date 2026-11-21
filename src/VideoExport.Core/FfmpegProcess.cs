@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Text;
 
 namespace AAVideoExport.Core;
@@ -11,7 +12,8 @@ internal sealed class FfmpegProcess : IDisposable
     internal Stream Input => process.StandardInput.BaseStream;
     internal bool HasExited { get { try { return process.HasExited; } catch (InvalidOperationException) { return true; } } }
 
-    internal FfmpegProcess(string executable, IEnumerable<string> arguments, bool input = false, string? workingDirectory = null, string? gpuEncoder = null)
+    internal FfmpegProcess(string executable, IEnumerable<string> arguments, bool input = false, string? workingDirectory = null,
+        string? gpuEncoder = null, Action<string>? stdoutLineSink = null)
     {
         var start = new ProcessStartInfo(executable)
         {
@@ -29,7 +31,9 @@ internal sealed class FfmpegProcess : IDisposable
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         { process.Dispose(); throw new ExportException("process_start_failed", "Could not start " + Path.GetFileName(executable) + ": " + ex.Message, ex); }
         stderr = ReadBoundedAsync(process.StandardError, 32768);
-        stdout = ReadBoundedAsync(process.StandardOutput, 262144);
+        stdout = stdoutLineSink is null
+            ? ReadBoundedAsync(process.StandardOutput, 262144)
+            : ReadLinesAsync(process.StandardOutput, stdoutLineSink);
     }
 
     private static async Task<string> ReadBoundedAsync(StreamReader reader, int limit)
@@ -48,6 +52,23 @@ internal sealed class FfmpegProcess : IDisposable
         catch (ObjectDisposedException) { }
         catch (IOException) { }
         return result.ToString();
+    }
+
+    private static async Task<string> ReadLinesAsync(StreamReader reader, Action<string> lineSink)
+    {
+        Exception? sinkFailure = null;
+        string? line;
+        while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) is not null)
+        {
+            // Always drain stdout after a consumer failure. Otherwise the
+            // child can block on a full pipe and hide the validation error
+            // behind the process timeout.
+            if (sinkFailure is not null) continue;
+            try { lineSink(line); }
+            catch (Exception ex) { sinkFailure = ex; }
+        }
+        if (sinkFailure is not null) ExceptionDispatchInfo.Capture(sinkFailure).Throw();
+        return string.Empty;
     }
 
     internal async Task<ProcessResult> WaitAsync(TimeSpan timeout, CancellationToken cancellationToken)
@@ -96,6 +117,23 @@ internal sealed class FfmpegProcess : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         using var process = new FfmpegProcess(executable, arguments, workingDirectory: workingDirectory, gpuEncoder: gpuEncoder);
+        return await process.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Runs a media tool while consuming stdout one line at a time.  This is
+    /// intentionally separate from <see cref="RunAsync"/>: bounded text is
+    /// useful for diagnostics, but it cannot represent an arbitrarily long
+    /// ffprobe packet/frame listing without silently dropping its beginning.
+    /// </summary>
+    internal static async Task<ProcessResult> RunLinesAsync(string executable, IEnumerable<string> arguments,
+        Action<string> lineSink, TimeSpan timeout, CancellationToken cancellationToken,
+        string? workingDirectory = null, string? gpuEncoder = null)
+    {
+        ArgumentNullException.ThrowIfNull(lineSink);
+        cancellationToken.ThrowIfCancellationRequested();
+        using var process = new FfmpegProcess(executable, arguments, workingDirectory: workingDirectory,
+            gpuEncoder: gpuEncoder, stdoutLineSink: lineSink);
         return await process.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
     }
 }

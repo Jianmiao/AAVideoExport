@@ -48,7 +48,8 @@ function Compile-Project([string]$Project, [string]$Name, [string[]]$ExtraRefs, 
     $executable = $null -ne $projectXml.SelectSingleNode('//OutputType[text()="Exe"]')
     $dll = Join-Path $OutputDirectory ($Name + '.dll')
     $metadata = Join-Path $OutputDirectory ($Name + '.AssemblyInfo.cs')
-    $assemblyVersion = if ($Name -in @('AAVideoExport','AAVideoExport.Core')) { '0.2.4.0' } else { '1.0.0.0' }
+    $versionNode = $projectXml.SelectSingleNode('//Version')
+    $assemblyVersion = if ($versionNode) { ([version]($versionNode.InnerText + '.0')).ToString() } else { '1.0.0.0' }
     [IO.File]::WriteAllText($metadata,
         '[assembly: System.Reflection.AssemblyVersion("' + $assemblyVersion + '")]' +
         '[assembly: System.Reflection.AssemblyFileVersion("' + $assemblyVersion + '")]')

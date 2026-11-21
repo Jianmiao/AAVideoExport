@@ -1,0 +1,13 @@
+{
+  "schema": "aave.runtime-bootstrap.tests.v1",
+  "runtime": "6.0.36",
+  "checks": [
+    {
+      "name": "early bootstrap assembly exists",
+      "passed": false,
+      "detail": null
+    }
+  ],
+  "failed": 1,
+  "scope": "Isolated fixtures only; no AA startup, Mod certification, or export-effects proof."
+}

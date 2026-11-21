@@ -1,7 +1,7 @@
 {
   "name": "AAVideoExport",
-  "version_number": "0.2.4",
+  "version_number": "0.2.12",
   "website_url": "https://github.com/Jianmiao/AAVideoExport",
-  "description": "AA 原生逐帧视频导出：可选 GPU 硬件或 CPU 软件编码、离线音频、超分辨率及 RenderControlV1 协作接口。",
+  "description": "AAVE 统一逻辑时间轴与单遍音画导出：正式版不运行开发审计，保留原生 Mod 效果、高速编码流水线、取消恢复与 RenderControlV1。",
   "dependencies": []
 }

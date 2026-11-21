@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType></PropertyGroup><ItemGroup>
+<Compile Include="../VideoExport.NativePath.Tests/NativeVoiceObservation.cs" Link="NativeVoiceObservation.cs" Condition="Exists('../VideoExport.NativePath.Tests/NativeVoiceObservation.cs')" />
+<Compile Include="../VideoExport.NativePath.Tests/NativePcmObservation.cs" Link="NativePcmObservation.cs" Condition="Exists('../VideoExport.NativePath.Tests/NativePcmObservation.cs')" />
+</ItemGroup></Project>

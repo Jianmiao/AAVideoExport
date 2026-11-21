@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType></PropertyGroup><ItemGroup>
+<Compile Include="../../src/VideoExport.Plugin/RetainedInstallSchedule.cs" Link="RetainedInstallSchedule.cs" />
+<Compile Include="../../src/VideoExport.Plugin/MenuStartupNameProof.cs" Link="MenuStartupNameProof.cs" />
+<Compile Include="../../src/VideoExport.RuntimeBootstrap/StartupConfigSnapshot.cs" Link="StartupConfigSnapshot.cs" />
+</ItemGroup></Project>

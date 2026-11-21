@@ -136,6 +136,11 @@ public sealed partial class NativeExportPanel : IDisposable
     }
 
     public double CaptureElapsedSeconds { get; set; }
+    public double RenderFramesPerSecond { get; set; }
+    public double EncodeFramesPerSecond { get; set; }
+    public int BufferedFrames { get; set; }
+    public bool StrictAudioPreparation { get; set; }
+    public bool StrictVideoReplay { get; set; }
     public string ExportStage { get; set; } = "准备中";
     public long EncodedFrames { get; set; }
     public Action<ExportOptions>? ExportRequested { get; set; }
@@ -483,9 +488,9 @@ public sealed partial class NativeExportPanel : IDisposable
         _settingsRoot = Child(_root.transform, "Export settings");
         var settings = _settingsRoot.transform;
         BuildSharedFields(settings);
-        // Playback is owned by AA itself. The exporter captures the selected
-        // story until its native Test.End(), so there is no separate timing,
-        // branch, or maximum-duration page to configure here.
+        // AA chooses the authored AUTO route in the preparation pass. Video
+        // replays the resulting fixed timeline; users do not enter a guessed
+        // duration or replacement branch here.
         BuildSettingsViewport(settings);
         BuildVideo(_settingsContent!.transform);
         BuildAudio(_settingsContent.transform);
@@ -542,10 +547,20 @@ public sealed partial class NativeExportPanel : IDisposable
             : _frames > 0 ? "总时长未知 · 已输出帧数实时更新" : "等待本阶段处理完成", 72, 256, 530, 26, 17, Muted);
         DynamicLabel(parent, () => $"已用时  {(int)_elapsed.Elapsed.TotalMinutes:00}:{_elapsed.Elapsed.Seconds:00}",
             666, 256, 242, 26, 17, Muted);
-        DynamicLabel(parent, () => $"已渲染  {Math.Max(0, _frames):N0} 帧", 72, 298, 274, 27, 18);
-        DynamicLabel(parent, () => $"已编码  {Math.Max(0, EncodedFrames):N0} 帧", 355, 298, 274, 27, 18);
+        DynamicLabel(parent, () => $"已渲染  {Math.Max(0, _frames):N0} 帧 · {RenderFramesPerSecond:0.0} 帧/秒",
+            72, 298, 300, 27, 16);
+        DynamicLabel(parent, () => StrictAudioPreparation
+                ? "已编码  0 帧 · 等待视频重放"
+                : $"已编码  {Math.Max(0, EncodedFrames):N0} 帧 · {EncodeFramesPerSecond:0.0} 帧/秒",
+            390, 298, 300, 27, 16);
         DynamicLabel(parent, () => $"视频时长  {Math.Max(0, _frames) / (double)Math.Max(1, ActiveOptions.Fps):0.0} 秒",
-            638, 298, 274, 27, 18);
+            708, 298, 204, 27, 16);
+        DynamicLabel(parent, () => StrictAudioPreparation
+                ? "两遍生成 · 第 1/2 遍：预渲染音频，视频暂不编码"
+                : StrictVideoReplay
+                    ? $"两遍生成 · 第 2/2 遍：渲染与编码并行 · 队列 {Math.Max(0, BufferedFrames):N0} 帧"
+                    : $"编码队列 {Math.Max(0, BufferedFrames):N0} 帧",
+            72, 329, 836, 24, 15, Muted);
 
         Label(parent, "本次导出设置", 44, 365, 892, 31, 22);
         Rounded(parent, "Frozen settings card", 44, 405, 892, 223, 16, Paper, 4);

@@ -3,7 +3,21 @@
   <ItemGroup>
     <Compile Include="../../src/VideoExport.Plugin/AnimationTimestampClock.cs" Link="AnimationTimestampClock.cs" />
     <Compile Include="../../src/VideoExport.Plugin/MoreEffectsCompatibility.cs" Link="MoreEffectsCompatibility.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/StrictModAdmission.cs" Link="StrictModAdmission.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/CharacterVoiceCompatibility.cs" Link="CharacterVoiceCompatibility.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportErrorText.cs" Link="ExportErrorText.cs" />
     <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" Condition="Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+    <!--
+      AA ships 0Harmony 2.10.2, whose assembly metadata binds to the
+      22.3.23.4 MonoMod assemblies. The newer MonoMod binaries in the AA
+      installation (22.7.31.1) are not a substitute for that binding. Keep
+      these test-only package references conditional so the fixture uses the
+      same MonoMod dependency versions as the selected AA Harmony binary;
+      without an AA install, HarmonyX's normal transitive dependencies remain
+      in use.
+    -->
+    <PackageReference Include="MonoMod.RuntimeDetour" Version="22.3.23.4" Condition="Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+    <PackageReference Include="MonoMod.Utils" Version="22.3.23.4" Condition="Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
     <PackageReference Include="HarmonyX" Version="2.10.2" Condition="!Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
   </ItemGroup>
 </Project>

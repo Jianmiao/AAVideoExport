@@ -35,6 +35,9 @@ public sealed record ExportOptions
     // The older fixed-resolution research callers retain their measured filter.
     internal string EffectiveUpscaleAlgorithm => SuperResolutionEnabled ? UpscaleAlgorithm : "bilinear";
     public int Fps { get; init; } = 30;
+    // Native strict export uses a sealed preparation pass. Legacy core callers
+    // must opt in with a plan; no tolerance or automatic pad/trim then applies.
+    public bool StrictSynchronization { get; init; }
     // Offline audio is emitted in mixer blocks. Permit a small final tail,
     // with comparable time limits at each supported output frame rate.
     internal int AudioTimelineToleranceFrames => Fps switch
@@ -85,6 +88,7 @@ public sealed record ExportOptions
         Require(Codec == "qtrle" || BitrateKbps is >= 100 and <= 500000, "Bitrate must be 100–500000 kbps.");
         Require(AudioQuality is "none" or "aac128" or "aac192" or "aac320" or "pcm16" or "pcm24", "Unsupported audio quality.");
         Require(AudioSampleRate is 44100 or 48000, "Audio sample rate must be 44100 or 48000 Hz.");
+        Require(!StrictSynchronization || Container is "mp4" or "mov", "严格同步目前支持 MP4 或 MOV；MKV 的毫秒时间精度不能通过逐样本终验。");
         Require(Supersampling == 1, "Rendering is fixed at 1x; use the selected output dimensions.");
         Require(Encoder == "auto" || EncoderCatalog.All.Any(e => e.Name == Encoder && e.Codec == Codec), "The selected encoder does not support this codec.");
     }
@@ -173,7 +177,10 @@ public sealed class ExportException : Exception
     }
 }
 
-public sealed record ExportResult(string OutputPath, long Frames, double DurationSeconds, string Encoder, long FileBytes, string? CoverPath);
+public sealed record ExportResult(string OutputPath, long Frames, double DurationSeconds, string Encoder, long FileBytes, string? CoverPath)
+{
+    public string? RuntimeRecipeReceiptPath { get; init; }
+}
 
 public sealed record EncoderCapability(string Name, string Codec, bool Hardware, bool Available, string Detail);
 

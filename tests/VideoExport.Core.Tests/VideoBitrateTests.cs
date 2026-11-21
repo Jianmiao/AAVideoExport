@@ -21,6 +21,12 @@ internal static partial class Program
                 if (arguments[arguments.IndexOf("-b:v") + 1] != "4000k")
                     throw new Exception($"Default Mbps conversion changed the bitrate sent to {encoder}.");
             }
+            foreach (string encoder in new[] { "h264_nvenc", "h264_qsv", "h264_amf" })
+            {
+                var arguments = EncoderArguments.Video(new ExportOptions { RateControl = "cbr" }, encoder, false).ToList();
+                if (!arguments.Contains("-minrate") || arguments[arguments.IndexOf("-minrate") + 1] != "4000k")
+                    throw new Exception($"CBR did not pin the minimum bitrate sent to {encoder}.");
+            }
             return Task.CompletedTask;
         });
         await Test("Mbps input rejects empty, ambiguous, non-finite and out-of-range values", () =>

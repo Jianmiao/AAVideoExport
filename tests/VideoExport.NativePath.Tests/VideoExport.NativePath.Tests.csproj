@@ -1,12 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>AAVideoExport.NativePath.Tests</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AAVideoExportVersion Condition="'$(AAVideoExportVersion)' == ''">0.2.9</AAVideoExportVersion>
+    <AAVideoExportAssemblyDirectory Condition="'$(AAVideoExportAssemblyDirectory)' == ''">$(AAInstallPath)/mods/AAVideoExport/$(AAVideoExportVersion)</AAVideoExportAssemblyDirectory>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/VideoExport.Plugin/CompilerAttributes.cs" Link="CompilerAttributes.cs" />
-    <Reference Include="$(AAInstallPath)/mods/AAVideoExport/0.1.0/AAVideoExport.dll" Private="false" />
-    <Reference Include="$(AAInstallPath)/mods/AAVideoExport/0.1.0/AAVideoExport.Core.dll" Private="false" />
+    <Reference Include="$(AAVideoExportAssemblyDirectory)/AAVideoExport.dll" Private="false" />
+    <Reference Include="$(AAVideoExportAssemblyDirectory)/AAVideoExport.Core.dll" Private="false" />
     <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Core.dll" Private="false" />
     <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Unity.IL2CPP.dll" Private="false" />
     <Reference Include="$(AAInstallPath)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />

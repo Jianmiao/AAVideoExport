@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net6.0</TargetFramework><AssemblyName>AAVE.Probe.ProducerB</AssemblyName></PropertyGroup>
+  <ItemGroup><Compile Include="..\FixtureProducer.cs" Link="FixtureProducer.cs" /></ItemGroup>
+</Project>

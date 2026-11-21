@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Plugin/RuntimeAttributionClient.cs" Link="RuntimeAttributionClient.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/AssemblySimpleNameCache.cs" Link="AssemblySimpleNameCache.cs" />
+  </ItemGroup>
+</Project>

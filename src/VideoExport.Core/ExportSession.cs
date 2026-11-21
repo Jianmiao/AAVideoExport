@@ -24,10 +24,14 @@ public sealed class ExportSession : IDisposable
     private FileStream? audioStream;
     private long framesWritten;
     private long audioSampleFrames;
+    private StrictFramePlan? strictPlan;
+    private bool liveTimeline;
+    private long nextAudioFrame;
     private SessionState state;
     private bool disposed;
     private bool movedCover;
     private bool committed;
+    private RuntimeFactoryRecipeSidecar? runtimeSidecar;
     private readonly Stopwatch encodingTimer = new();
     private Direct3DAnimeUpscaler? direct3DUpscaler;
     private QueuedVideoFrameWriter? queuedVideoWriter;
@@ -41,7 +45,63 @@ public sealed class ExportSession : IDisposable
     public long FramesWritten => queuedVideoWriter?.WrittenFrames ?? Interlocked.Read(ref framesWritten);
     public int UpscaleReadbackFrames { get; private set; }
     public long AudioSampleFrames => Interlocked.Read(ref audioSampleFrames);
+    public long ExpectedAudioSampleFramesForFrame(long videoFrameIndex) =>
+        ExportTimeline.AudioSampleFramesForVideoFrame(videoFrameIndex, options.Fps, captureSampleRate);
     public string OutputPath { get; }
+    public Action? BeforeOutputCommit { get; set; }
+    public RuntimeFactoryRecipeReceipt? RuntimeFactoryRecipe { get; set; }
+    /// <summary>
+    /// Acquires an optional synchronous validation scope immediately before
+    /// final publication, after potentially slow receipt persistence. The
+    /// scope is disposed on the same worker after output moves/state commit;
+    /// it must not dispatch to Unity or require main-thread work while held.
+    /// </summary>
+    public Func<IDisposable?>? AcquireOutputCommitScope { get; set; }
+    public PreparedAudioTrack CreateAudioPreparationTrack() =>
+        new(Path.Combine(temporaryDirectory, "prepared-audio.f32le"), options.Fps, captureSampleRate, captureChannels);
+
+    public void BindStrictTimeline(StrictFramePlan plan)
+    {
+        RequireWriting();
+        if (!options.StrictSynchronization || liveTimeline || strictPlan != null || FramesAccepted != 0 || AudioSampleFrames != 0)
+            throw new ExportException("invalid_state", "The strict timeline must be bound once before any output frames.");
+        plan.ValidateCaptureIdentity(plan.SourceIdentity, options.Fps, captureSampleRate, captureChannels);
+        strictPlan = plan;
+    }
+
+    /// <summary>
+    /// Starts strict first-pass capture before its final duration is known.
+    /// The caller must seal the actual timeline before completing the export.
+    /// </summary>
+    public void BeginLiveTimeline()
+    {
+        lock (gate)
+        {
+            RequireWriting();
+            if (!options.StrictSynchronization || liveTimeline || strictPlan != null || FramesAccepted != 0 || AudioSampleFrames != 0)
+                throw new ExportException("invalid_state", "A live timeline must begin once before any output frames.");
+            liveTimeline = true;
+        }
+    }
+
+    /// <summary>
+    /// Seals the natural playback endpoint. Captured frames may still be in
+    /// external readback or the bounded encoder queue; Complete checks their
+    /// exact accepted/written totals after all remaining work has arrived.
+    /// </summary>
+    public void SealLiveTimeline(StrictFramePlan plan)
+    {
+        lock (gate)
+        {
+            RequireWriting();
+            if (!liveTimeline || strictPlan != null)
+                throw new ExportException("invalid_state", "Only an unsealed live timeline can be sealed.");
+            ArgumentNullException.ThrowIfNull(plan);
+            plan.ValidateCaptureIdentity(plan.SourceIdentity, options.Fps, captureSampleRate, captureChannels);
+            if (FramesAccepted > plan.FrameCount) plan.ValidateVideoComplete(FramesAccepted);
+            strictPlan = plan;
+        }
+    }
     public TimeSpan PreflightDuration { get; private set; }
     public TimeSpan EncodingDuration { get; private set; }
     public TimeSpan FinalizationDuration { get; private set; }
@@ -184,6 +244,7 @@ public sealed class ExportSession : IDisposable
 
     private void WriteVideoFrame(ReadOnlySpan<byte> pixels)
     {
+        ValidateVideoFrame(FramesWritten);
         int timedOut = 0;
         using var timeout = new CancellationTokenSource();
         using var registration = timeout.Token.Register(() =>
@@ -233,6 +294,7 @@ public sealed class ExportSession : IDisposable
         RequireWriting();
         if (rgba is null || length != frameBytes || length > rgba.Length)
             throw new ExportException("invalid_frame", "Each frame must match the planned capture dimensions and contain packed RGBA bytes.");
+        ValidateVideoFrame(FramesAccepted);
         try
         {
             // Waiting synchronously applies backpressure; Cancel kills FFmpeg to unblock an outstanding pipe write.
@@ -273,6 +335,7 @@ public sealed class ExportSession : IDisposable
         RequireWriting();
         if (rgba == IntPtr.Zero || length != frameBytes)
             throw new ExportException("invalid_frame", "Each native frame must contain exactly the planned packed RGBA bytes.");
+        ValidateVideoFrame(FramesAccepted);
         try
         {
             encodingTimer.Start();
@@ -299,17 +362,87 @@ public sealed class ExportSession : IDisposable
         }
     }
 
-    public void WriteAudio(float[] samples, int length)
+    public void WriteAudio(float[] samples, int length) => WriteAudio(samples, 0, length);
+
+    /// <summary>
+    /// Consumes a borrowed interleaved PCM slice synchronously without a
+    /// staging array. The caller may reuse the buffer when this method returns.
+    /// </summary>
+    public void WriteAudio(float[] samples, int offset, int length)
     {
         RequireWriting();
         if (options.AudioQuality == "none") throw new ExportException("invalid_state", "Audio capture is disabled for this export.");
-        if (samples is null || length < 0 || length > samples.Length || length % captureChannels != 0)
+        RequireTimeline();
+        ValidateAudio(samples, offset, length);
+        WriteAudioSamples(samples, offset, length);
+    }
+
+    /// <summary>
+    /// Writes the audio block belonging to one video frame and verifies that
+    /// Unity's offline renderer returned the exact rational sample budget for
+    /// that frame. The legacy WriteAudio method remains available for callers
+    /// that provide one already-timed contiguous stream.
+    /// </summary>
+    public void WriteAudioFrame(long videoFrameIndex, float[] samples, int length)
+    {
+        RequireWriting();
+        if (options.AudioQuality == "none") throw new ExportException("invalid_state", "Audio capture is disabled for this export.");
+        RequireTimeline();
+        ValidateAudio(samples, 0, length);
+        long actual = length / captureChannels;
+        long expected = ExpectedAudioSampleFramesForFrame(videoFrameIndex);
+        if (options.StrictSynchronization)
+        {
+            if (strictPlan == null || videoFrameIndex != nextAudioFrame)
+                throw new ExportException("audio_frame_order_mismatch", "Strict output audio must follow the sealed video frame order.");
+            strictPlan.ValidateNextVideoFrame(videoFrameIndex);
+        }
+        // Unity can expose one startup mixer callback with no samples before
+        // the first real block. It carries no timeline data and is safe to
+        // omit; an empty block after audio has started is a real gap and must
+        // fail instead of being hidden by end padding.
+        if (!options.StrictSynchronization && actual == 0 && AudioSampleFrames == 0)
+        {
+            WriteAudioSamples(samples, 0, length);
+            return;
+        }
+        if (actual != expected)
+            throw new ExportException("audio_frame_timing_mismatch",
+                $"Audio sample budget differs on video frame {videoFrameIndex}: expected={expected}, actual={actual}, fps={options.Fps}, capture_rate={captureSampleRate}.");
+        WriteAudioSamples(samples, 0, length);
+        nextAudioFrame++;
+    }
+
+    private void RequireTimeline()
+    {
+        if (options.StrictSynchronization && strictPlan == null && !liveTimeline)
+            throw new ExportException("invalid_state", "Strict capture requires a bound plan or an initialized live timeline.");
+    }
+
+    private void ValidateVideoFrame(long frameIndex)
+    {
+        if (!options.StrictSynchronization) return;
+        lock (gate)
+        {
+            RequireTimeline();
+            strictPlan?.ValidateNextVideoFrame(frameIndex);
+        }
+    }
+
+    private void ValidateAudio(float[] samples, int offset, int length)
+    {
+        if (samples is null || offset < 0 || length < 0 || offset > samples.Length || length > samples.Length - offset ||
+            offset % captureChannels != 0 || length % captureChannels != 0)
             throw new ExportException("invalid_audio", "Audio must contain complete interleaved capture-channel sample frames.");
-        for (int i = 0; i < length; i++)
+        for (int i = offset; i < offset + length; i++)
             if (!float.IsFinite(samples[i])) throw new ExportException("invalid_audio", "Audio samples must be finite numbers.");
+    }
+
+    private void WriteAudioSamples(float[] samples, int offset, int length)
+    {
         try
         {
-            audioStream!.Write(MemoryMarshal.AsBytes(samples.AsSpan(0, length)));
+            audioStream!.Write(MemoryMarshal.AsBytes(samples.AsSpan(offset, length)));
             Interlocked.Add(ref audioSampleFrames, length / captureChannels);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ObjectDisposedException)
@@ -330,12 +463,19 @@ public sealed class ExportSession : IDisposable
         }
         using var registration = cancellationToken.Register(Cancel);
         Stopwatch? finalizationTimer = null;
+        Exception? completionError = null;
         try
         {
             ThrowIfCancelled();
             if (FramesAccepted == 0) throw new ExportException("invalid_state", "An export needs at least one captured frame.");
             double duration = (double)FramesAccepted / options.Fps;
-            if (options.AudioQuality != "none" && (AudioSampleFrames == 0 || Math.Abs((double)AudioSampleFrames / captureSampleRate - duration) > options.AudioTimelineToleranceSeconds + 2d / captureSampleRate))
+            if (options.StrictSynchronization)
+            {
+                if (strictPlan == null) throw new ExportException("invalid_state", "Strict completion requires a sealed timeline.");
+                strictPlan.ValidateVideoComplete(FramesAccepted);
+                if (options.AudioQuality != "none") strictPlan.ValidateAudioComplete(AudioSampleFrames);
+            }
+            else if (options.AudioQuality != "none" && (AudioSampleFrames == 0 || Math.Abs((double)AudioSampleFrames / captureSampleRate - duration) > options.AudioTimelineToleranceSeconds + 2d / captureSampleRate))
                 throw new ExportException("audio_timeline_mismatch",
                     $"Captured audio is missing or exceeds the output frame-rate tolerance. Video={duration:R}s, audio={(double)AudioSampleFrames / captureSampleRate:R}s, fps={options.Fps}, tolerance_frames={options.AudioTimelineToleranceFrames}, tolerance_seconds={options.AudioTimelineToleranceSeconds:R}.");
             audioStream?.Flush(flushToDisk: true);
@@ -359,6 +499,7 @@ public sealed class ExportSession : IDisposable
             ThrowIfCancelled();
             if (FramesAccepted != FramesWritten)
                 throw new ExportException("verification_failed", "Captured and encoded frame counts differ after GPU drain.");
+            if (options.StrictSynchronization) strictPlan!.ValidateVideoComplete(FramesWritten);
             videoProcess!.CloseInput();
             TimeSpan timeout = TimeSpan.FromSeconds(Math.Clamp(duration * 3 + 60, 120, 7200));
             videoProcess.WaitAsync(timeout, cancellation.Token).GetAwaiter().GetResult().EnsureSuccess("Video encoding");
@@ -370,18 +511,30 @@ public sealed class ExportSession : IDisposable
             args.AddRange(new[] { "-map", "0:v:0", "-c:v", "copy" });
             if (options.AudioQuality != "none")
             {
-                args.AddRange(new[] { "-map", "1:a:0", "-af", "apad,atrim=duration=" + EncoderCatalog.Number(duration) });
+                args.AddRange(new[] { "-map", "1:a:0", "-af", options.StrictSynchronization
+                    ? "asetpts=PTS-STARTPTS,aresample=" + options.AudioSampleRate + ",atrim=end_sample=" +
+                        ExportTimeline.AudioSampleFramesForVideoFrames(FramesWritten, options.Fps, options.AudioSampleRate)
+                    : "asetpts=PTS-STARTPTS,apad,atrim=duration=" + EncoderCatalog.Number(duration) });
                 args.AddRange(EncoderArguments.Audio(options));
             }
             else args.Add("-an");
             // Matroska stores millisecond timestamps. Quantize them back onto the capture frame grid
             // when copying into a QuickTime track, preserving B-frame PTS/DTS without re-encoding.
             if (options.Container is "mp4" or "mov") args.AddRange(new[] { "-r", options.Fps.ToString(), "-video_track_timescale", options.Fps.ToString() });
+            if (options.StrictSynchronization && options.Container is "mp4" or "mov")
+            {
+                int a = options.AudioSampleRate, b = options.Fps;
+                while (b != 0) { int remainder = a % b; a = b; b = remainder; }
+                args.AddRange(new[] { "-movie_timescale", checked(options.AudioSampleRate / a * options.Fps).ToString() });
+            }
             if (options.Codec == "hevc" && options.Container is "mp4" or "mov") args.AddRange(new[] { "-tag:v", "hvc1" });
             if (options.FastStart && options.Container is "mp4" or "mov") args.AddRange(new[] { "-movflags", "+faststart" });
             args.Add(stagedOutput);
             FfmpegProcess.RunAsync(ffmpegPath, args, timeout, cancellation.Token).GetAwaiter().GetResult().EnsureSuccess("Audio/video mux");
-            MediaVerifier.VerifyAsync(ffprobePath, stagedOutput, options, FramesWritten, timeout, cancellation.Token).GetAwaiter().GetResult();
+            if (ExportBuildProfile.DevelopmentAuditEnabled)
+                MediaVerifier.VerifyAsync(ffprobePath, stagedOutput, options, FramesWritten, timeout, cancellation.Token).GetAwaiter().GetResult();
+            else
+                MediaVerifier.CheckCompletionAsync(ffprobePath, stagedOutput, options, FramesWritten, timeout, cancellation.Token).GetAwaiter().GetResult();
             string? stagedCover = null;
             if (coverPath is not null)
             {
@@ -391,19 +544,36 @@ public sealed class ExportSession : IDisposable
                 if (new FileInfo(stagedCover).Length == 0) throw new ExportException("verification_failed", "The exported cover is empty.");
             }
             long fileBytes = new FileInfo(stagedOutput).Length;
-            lock (gate)
+            ThrowIfCancelled();
+            // Receipt flush can be slow on external storage; keep it outside
+            // the cancellation/state lock. Recheck cancellation before publish.
+            if (ExportBuildProfile.DevelopmentAuditEnabled) BeforeOutputCommit?.Invoke();
+            if (ExportBuildProfile.DevelopmentAuditEnabled && RuntimeFactoryRecipe is { } recipe)
+                runtimeSidecar = recipe.Stage(temporaryDirectory, stagedOutput, OutputPath, FramesWritten,
+                    options.Fps, options.Width, options.Height, strictPlan?.SourceIdentity ?? "");
+            // Revalidate and serialize boundary admission with publication.
+            // A fault recorded while the receipt was flushing must not slip
+            // through the earlier check. Do not hold this scope during muxing
+            // or receipt IO; only destination moves need the commit barrier.
+            using (ExportBuildProfile.DevelopmentAuditEnabled ? AcquireOutputCommitScope?.Invoke() : null)
             {
-                ThrowIfCancelled();
-                EnsureDestinationsFree();
-                if (stagedCover is not null) { File.Move(stagedCover, coverPath!, overwrite: false); movedCover = true; }
-                File.Move(stagedOutput, OutputPath, overwrite: false);
-                committed = true;
-                state = SessionState.Complete;
+                lock (gate)
+                {
+                    ThrowIfCancelled();
+                    EnsureDestinationsFree();
+                    runtimeSidecar?.Publish();
+                    if (stagedCover is not null) { File.Move(stagedCover, coverPath!, overwrite: false); movedCover = true; }
+                    File.Move(stagedOutput, OutputPath, overwrite: false);
+                    committed = true;
+                    state = SessionState.Complete;
+                }
             }
-            return new ExportResult(OutputPath, FramesWritten, duration, encoder, fileBytes, coverPath);
+            return new ExportResult(OutputPath, FramesWritten, duration, encoder, fileBytes, coverPath)
+                { RuntimeRecipeReceiptPath = runtimeSidecar?.Destination };
         }
         catch (Exception ex)
         {
+            completionError = ex;
             lock (gate) { if (state != SessionState.Cancelled) state = SessionState.Failed; }
             if (cancellation.IsCancellationRequested || ex is OperationCanceledException)
                 throw new ExportException("cancelled", "Export cancelled.", ex);
@@ -414,9 +584,14 @@ public sealed class ExportSession : IDisposable
         }
         finally
         {
-            DisposeResources();
-            Cleanup();
-            if (finalizationTimer is not null) FinalizationDuration = finalizationTimer.Elapsed;
+            try { DisposeResources(); }
+            finally
+            {
+                string? residual = Cleanup();
+                if (finalizationTimer is not null) FinalizationDuration = finalizationTimer.Elapsed;
+                if (residual != null)
+                    throw new ExportException("output_cleanup_incomplete", "The movie was not published and an owned runtime receipt could not be rolled back: " + residual, completionError);
+            }
         }
     }
 
@@ -449,6 +624,8 @@ public sealed class ExportSession : IDisposable
     {
         if (File.Exists(OutputPath) || Directory.Exists(OutputPath) || (coverPath is not null && (File.Exists(coverPath) || Directory.Exists(coverPath))))
             throw new ExportException("output_exists", "The video or cover filename already exists. Choose a different title.");
+        if (runtimeSidecar != null && (File.Exists(runtimeSidecar.Destination) || Directory.Exists(runtimeSidecar.Destination)))
+            throw new ExportException("output_exists", "The runtime receipt filename already exists. Choose a different title; the existing file was preserved.");
     }
 
     private void DisposeResources()
@@ -462,22 +639,25 @@ public sealed class ExportSession : IDisposable
         direct3DUpscaler = null;
     }
 
-    private void Cleanup()
+    private string? Cleanup()
     {
+        string? residual = null;
+        if (!committed && runtimeSidecar != null) runtimeSidecar.TryRollback(out residual);
         if (movedCover && !committed && coverPath is not null)
         {
             try { File.Delete(coverPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
-        if (temporaryDirectory.Length == 0) return;
+        if (temporaryDirectory.Length == 0) return residual;
         // Only this randomly named child directory is ever removed; never the user's output directory.
         string parent = Path.GetFullPath(options.OutputDirectory);
-        if (!string.Equals(Path.GetDirectoryName(temporaryDirectory), Path.TrimEndingDirectorySeparator(parent), StringComparison.OrdinalIgnoreCase)) return;
+        if (!string.Equals(Path.GetDirectoryName(temporaryDirectory), Path.TrimEndingDirectorySeparator(parent), StringComparison.OrdinalIgnoreCase)) return residual;
         try
         {
             if (Directory.Exists(temporaryDirectory) && (File.GetAttributes(temporaryDirectory) & FileAttributes.ReparsePoint) == 0)
                 Directory.Delete(temporaryDirectory, recursive: true);
         }
         catch (IOException) { } catch (UnauthorizedAccessException) { }
+        return residual;
     }
 
     public void Dispose()
@@ -485,7 +665,8 @@ public sealed class ExportSession : IDisposable
         lock (gate) { if (disposed) return; }
         Cancel();
         DisposeResources();
-        Cleanup();
+        string? residual = Cleanup();
+        if (residual != null) throw new ExportException("output_cleanup_incomplete", "Owned runtime receipt cleanup remains pending: " + residual);
         lock (gate) { disposed = true; }
         cancellation.Dispose();
     }

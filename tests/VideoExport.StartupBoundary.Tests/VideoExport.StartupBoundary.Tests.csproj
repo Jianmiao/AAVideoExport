@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/AASkipIntroExportBoundary.cs" Link="AASkipIntroExportBoundary.cs" Condition="Exists('../../src/VideoExport.Plugin/AASkipIntroExportBoundary.cs')" />
+    <Compile Include="../../../AA-SkipIntro-Mod/src/AASkipIntro/CreatorSplashPatch.cs" Link="InspectedCreatorSplashPatch.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" Condition="Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+    <PackageReference Include="MonoMod.RuntimeDetour" Version="22.3.23.4" Condition="Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+    <PackageReference Include="MonoMod.Utils" Version="22.3.23.4" Condition="Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+    <PackageReference Include="HarmonyX" Version="2.10.2" Condition="!Exists('$(AAInstallPath)/BepInEx/core/0Harmony.dll')" />
+  </ItemGroup>
+</Project>

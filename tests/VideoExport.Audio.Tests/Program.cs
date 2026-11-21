@@ -36,6 +36,20 @@ if (args.Contains("--repro"))
 
 var tests = new (string Name, Action Run)[]
 {
+    ("capture owns every render frame and restores the post-handoff interval", () =>
+    {
+        UnityEngine.Rendering.OnDemandRendering.renderFrameInterval = 4;
+        Action acquire = () => UnityEngine.Rendering.OnDemandRendering.renderFrameInterval = 2;
+        RenderControlV1.BeforeAcquire += acquire;
+        try
+        {
+            using var capture = NewCapture();
+            Equal(1, UnityEngine.Rendering.OnDemandRendering.renderFrameInterval);
+            capture.Dispose();
+            Equal(2, UnityEngine.Rendering.OnDemandRendering.renderFrameInterval);
+        }
+        finally { RenderControlV1.BeforeAcquire -= acquire; UnityEngine.Rendering.OnDemandRendering.renderFrameInterval = 1; }
+    }),
     ("coordination restoration precedes capture snapshots and release follows all native restoration", () =>
     {
         int before = 0, after = 0;

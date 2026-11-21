@@ -1,10 +1,198 @@
 using AAVideoExport.Plugin;
 using UnityEngine;
 
+
+
 // Exercise the production clock against explicit time/readback boundaries.
 // These tests cannot prove Harmony intercepts Unity's native coroutine calls.
 var tests = new (string Name, Action Run)[]
 {
+    ("native authored 8100ms wait completes at243 frames instead of rounding float seconds upward", () =>
+    {
+        Start();
+        var player = new Test();
+        var host = new ExportHost(player) { Capturing = true, CaptureFps = 30 };
+        ExportHost.Current = host;
+        var animation = new ScenarioAnimation.WaitAnimation(8100 / 1000f, player);
+        RememberParsedWaits(player, "#wait;8100", animation);
+        var iterator = new ScenarioAnimation.WaitAnimation._WaitTask_d__4 { __4__this = animation,
+            delayInSeconds = animation.delayInSeconds, __2__current = new WaitForSeconds(animation.delayInSeconds) };
+        InvokeScaledWaitPostfix(iterator, true);
+        var converted = iterator.__2__current as WaitForSecondsRealtime
+            ?? throw new Exception("Owned scaled native wait was not converted.");
+        host.CapturedFrame = 242; Check(Poll(converted));
+        host.CapturedFrame = 243; Check(!Poll(converted));
+    }),
+    ("authored integer wait retains milliseconds beyond float integer precision", () =>
+    {
+        Start();
+        var player = new Test();
+        var host = new ExportHost(player) { Capturing = true, CaptureFps = 1000, CapturedFrame = 700 };
+        ExportHost.Current = host;
+        var animation = new ScenarioAnimation.WaitAnimation(16777217 / 1000f, player);
+        RememberParsedWaits(player, "#WAIT;16777217", animation);
+        var converted = ConvertWait(animation);
+        host.CapturedFrame = 16777916; Check(Poll(converted));
+        host.CapturedFrame = 16777917; Check(!Poll(converted));
+    }),
+    ("integer millisecond waits ceil fractional frames and retain one native yield for zero", () =>
+    {
+        Start();
+        foreach (var sample in new (long Milliseconds, int Fps, long Frames)[]
+        {
+            (0, 30, 1), (1, 30, 1), (100, 30, 3), (333, 30, 10), (334, 30, 11),
+            (8100, 30, 243), (8101, 30, 244), (8100, 60, 486), (2147483700, 30, 64424511),
+            (100000000000000000, 60, 6000000000000000)
+        })
+        {
+            long frame = 500;
+            var wait = new WaitForSecondsRealtime(sample.Milliseconds / 1000f);
+            NativeExportClock.RegisterFrameWaitMilliseconds(wait, sample.Milliseconds, frame, sample.Fps, () => frame);
+            frame = 500 + sample.Frames - 1; Check(Poll(wait));
+            frame++; Check(!Poll(wait));
+        }
+        Check(NativeExportClock.ActiveWaitCount == 0);
+    }),
+    ("native wait changed by another hook keeps its actual yielded duration", () =>
+    {
+        Start();
+        var player = new Test();
+        var host = new ExportHost(player) { Capturing = true, CaptureFps = 30 };
+        ExportHost.Current = host;
+        var animation = new ScenarioAnimation.WaitAnimation(8.1f, player);
+        RememberParsedWaits(player, "#wait;8100", animation);
+        var iterator = new ScenarioAnimation.WaitAnimation._WaitTask_d__4 { __4__this = animation,
+            delayInSeconds = 8.2f, __2__current = new WaitForSeconds(8.2f) };
+        InvokeScaledWaitPostfix(iterator, true);
+        var converted = (WaitForSecondsRealtime)iterator.__2__current!;
+        host.CapturedFrame = 243; Check(Poll(converted));
+        host.CapturedFrame = 246; Check(!Poll(converted));
+    }),
+    ("mismatched authored and native wait lists never assign an unrelated integer duration", () =>
+    {
+        Start();
+        var player = new Test();
+        var host = new ExportHost(player) { Capturing = true, CaptureFps = 30 };
+        ExportHost.Current = host;
+        var animation = new ScenarioAnimation.WaitAnimation(8.1f, player);
+        RememberParsedWaits(player, "#wait;8100\n#wait;8101", animation);
+        var converted = ConvertWait(animation);
+        host.CapturedFrame = 243; Check(Poll(converted));
+        host.CapturedFrame = 244; Check(!Poll(converted));
+    }),
+    ("distinct integer durations sharing one native float are not rebound by list order", () =>
+    {
+        Start();
+        var player = new Test();
+        var host = new ExportHost(player) { Capturing = true, CaptureFps = 1000 };
+        ExportHost.Current = host;
+        var first = new ScenarioAnimation.WaitAnimation(16777216 / 1000f, player);
+        var second = new ScenarioAnimation.WaitAnimation(16777217 / 1000f, player);
+        Check(first.delayInSeconds == second.delayInSeconds);
+        RememberParsedWaits(player, "#wait;16777216\n#wait;16777217", first, second);
+        var converted = ConvertWait(first);
+        host.CapturedFrame = 16777216; Check(Poll(converted));
+        host.CapturedFrame = 16777217; Check(!Poll(converted));
+    }),
+    ("concrete row binding preserves ordered overlapping native authored waits", () =>
+    {
+        Start();
+        var player = new Test();
+        var host = new ExportHost(player) { Capturing = true, CaptureFps = 30 };
+        ExportHost.Current = host;
+        var first = new ScenarioAnimation.WaitAnimation(8.1f, player);
+        var second = new ScenarioAnimation.WaitAnimation(8.101f, player);
+        RememberParsedWaits(player, "#wait;8100\r\n#wait;8101", first, second);
+        var secondWait = ConvertWait(second);
+        var firstWait = ConvertWait(first);
+        host.CapturedFrame = 243; Check(!Poll(firstWait)); Check(Poll(secondWait));
+        host.CapturedFrame = 244; Check(!Poll(secondWait));
+    }),
+    ("authored bindings do not cross capture restoration", () =>
+    {
+        Start();
+        var player = new Test();
+        var host = new ExportHost(player) { Capturing = true, CaptureFps = 30 };
+        ExportHost.Current = host;
+        var animation = new ScenarioAnimation.WaitAnimation(8.1f, player);
+        RememberParsedWaits(player, "#wait;8100", animation);
+        NativeExportClock.Restore();
+        Start();
+        var converted = ConvertWait(animation);
+        host.CapturedFrame = 243; Check(Poll(converted));
+        host.CapturedFrame = 244; Check(!Poll(converted));
+    }),
+    ("foreign owners and finished iterators retain the native yield object", () =>
+    {
+        Start();
+        var player = new Test();
+        ExportHost.Current = new ExportHost(player) { Capturing = true, CaptureFps = 30 };
+        var foreign = new Test();
+        var animation = new ScenarioAnimation.WaitAnimation(8.1f, foreign);
+        RememberParsedWaits(foreign, "#wait;8100", animation);
+        var original = new WaitForSeconds(8.1f);
+        var iterator = new ScenarioAnimation.WaitAnimation._WaitTask_d__4 { __4__this = animation,
+            delayInSeconds = 8.1f, __2__current = original };
+        InvokeScaledWaitPostfix(iterator, true);
+        Check(ReferenceEquals(original, iterator.__2__current));
+        iterator.__4__this = new ScenarioAnimation.WaitAnimation(8.1f, player);
+        InvokeScaledWaitPostfix(iterator, false);
+        Check(ReferenceEquals(original, iterator.__2__current));
+        Check(NativeExportClock.RegisteredWaitCount == 0);
+    }),
+    ("authored integer wait cancellation preserves its exact remaining frame duration", () =>
+    {
+        Start();
+        long frame = 100;
+        var wait = new WaitForSecondsRealtime(8.1f);
+        NativeExportClock.RegisterFrameWaitMilliseconds(wait, 8100, 0, 30, () => frame);
+        Time.realtimeSinceStartup = 1000;
+        NativeExportClock.Restore();
+        Equal(1000 + 143f / 30, wait.m_WaitUntilTime);
+        Check(NativeExportClock.ActiveWaitCount == 0);
+    }),
+    ("converted scaled waits end on exact authored frames independent of float time origin", () =>
+    {
+        StartAt(12345);
+        long frame = 360;
+        var wait = new WaitForSecondsRealtime(2);
+        NativeExportClock.RegisterFrameWait(wait, 2, frame, 30, () => frame);
+        Advance(1e8f);
+        frame = 419; Check(Poll(wait));
+        Time.realtimeSinceStartup = 9e8f;
+        frame = 420; Check(!Poll(wait));
+        Check(NativeExportClock.ActiveWaitCount == 0);
+    }),
+    ("authored tenth-second waits consume three frames at30fps", () =>
+    {
+        Start();
+        long frame = 0;
+        var wait = new WaitForSecondsRealtime(.1f);
+        NativeExportClock.RegisterFrameWait(wait, .1f, 0, 30, () => frame);
+        frame = 2; Check(Poll(wait));
+        frame = 3; Check(!Poll(wait));
+    }),
+    ("converted scaled wait cancellation preserves remaining seconds", () =>
+    {
+        Start();
+        long frame = 30;
+        var wait = new WaitForSecondsRealtime(2);
+        NativeExportClock.RegisterFrameWait(wait, 2, 0, 30, () => frame);
+        Time.realtimeSinceStartup = 1000;
+        NativeExportClock.Restore();
+        Equal(1001, wait.m_WaitUntilTime);
+        Check(!NativeExportClock.TryKeepWaiting(wait, out _));
+    }),
+    ("a pre-existing wait adopted after a wall stall retains its video deadline", () =>
+    {
+        StartAt(315);
+        var old = new WaitForSecondsRealtime(10) { m_WaitUntilTime = 321 };
+        Time.realtimeSinceStartup = 500;
+        Advance(105);
+        Check(Poll(old));
+        Advance(106);
+        Check(!Poll(old));
+    }),
     ("waits outside an export retain native ownership", () =>
     {
         var old = new WaitForSecondsRealtime(10) { m_WaitUntilTime = 321 };
@@ -14,8 +202,7 @@ var tests = new (string Name, Action Run)[]
     }),
     ("first poll adopts an existing native deadline without restarting it", () =>
     {
-        Start();
-        Time.realtimeSinceStartup = 315;
+        StartAt(315);
         var old = new WaitForSecondsRealtime(10) { m_WaitUntilTime = 321 };
         Check(Poll(old));
         Check(NativeExportClock.RegisteredWaitCount == 1);
@@ -27,8 +214,7 @@ var tests = new (string Name, Action Run)[]
     }),
     ("expired native waits complete immediately on adoption", () =>
     {
-        Start();
-        Time.realtimeSinceStartup = 500;
+        StartAt(500);
         var old = new WaitForSecondsRealtime(10) { m_WaitUntilTime = 499 };
         Check(!Poll(old));
         Equal(-1, old.m_WaitUntilTime);
@@ -71,6 +257,15 @@ var tests = new (string Name, Action Run)[]
         Equal(101, NativeExportClock.Now);
         ClockInput.Now = 102;
         Equal(101, NativeExportClock.Now);
+    }),
+    ("late adoption does not restart an already expired video wait", () =>
+    {
+        StartAt(315);
+        var old = new WaitForSecondsRealtime(10) { m_WaitUntilTime = 321 };
+        Time.realtimeSinceStartup = 316;
+        Advance(110);
+        Check(!Poll(old));
+        Equal(-1, old.m_WaitUntilTime);
     }),
     ("changing duration does not restart an active wait", () =>
     {
@@ -119,8 +314,7 @@ var tests = new (string Name, Action Run)[]
         Equal(-1, completed.m_WaitUntilTime);
         Check(!NativeExportClock.IsActive);
         Check(!NativeExportClock.TryKeepWaiting(pending, out _));
-        Start();
-        Time.realtimeSinceStartup = 1000;
+        StartAt(1000);
         Check(NativeExportClock.RegisteredWaitCount == 0);
         Check(Poll(pending));
         Check(NativeExportClock.RegisteredWaitCount == 1);
@@ -163,18 +357,37 @@ int passed = 0;
 foreach (var test in tests)
 {
     try { test.Run(); Console.WriteLine("PASS " + test.Name); passed++; }
-    finally { NativeExportClock.Restore(); }
+    finally { NativeExportClock.Restore(); ExportHost.Current = null; }
 }
 Console.WriteLine($"{passed}/{tests.Length} passed (clock logic; native hook dispatch requires AA acceptance)");
+UnifiedTimelineClockChecks.Run();
 
-static void Start()
+static void Start() => StartAt(0);
+static void StartAt(float realtime)
 {
     Time.frameCount++;
-    Time.realtimeSinceStartup = 0;
+    Time.realtimeSinceStartup = realtime;
     ClockInput.Now = 100;
     NativeExportClock.Begin(100, 1f / 60, () => ClockInput.Now);
 }
 static void Advance(float now) { ClockInput.Now = now; Time.frameCount++; }
+static void InvokeScaledWaitPostfix(object iterator, bool result) =>
+    typeof(NativeScaledWaitHooks).GetMethod("Postfix", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!
+        .Invoke(null, new object[] { iterator, result });
+static void RememberParsedWaits(Test player, string script, params ScenarioAnimation.WaitAnimation[] animations)
+{
+    var parsed = new Utils.ScenarioUtil.ScriptInfo();
+    parsed.scenarioAnimations.AddRange(animations);
+    typeof(NativeAuthoredWaitHooks).GetMethod("Postfix", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!
+        .Invoke(null, new object[] { new GenericScenarioExcel { ScriptKr = script }, player, parsed });
+}
+static WaitForSecondsRealtime ConvertWait(ScenarioAnimation.WaitAnimation animation)
+{
+    var iterator = new ScenarioAnimation.WaitAnimation._WaitTask_d__4 { __4__this = animation,
+        delayInSeconds = animation.delayInSeconds, __2__current = new WaitForSeconds(animation.delayInSeconds) };
+    InvokeScaledWaitPostfix(iterator, true);
+    return (WaitForSecondsRealtime)iterator.__2__current!;
+}
 static bool Poll(WaitForSecondsRealtime wait)
 {
     Check(NativeExportClock.TryKeepWaiting(wait, out bool waiting));
@@ -194,10 +407,8 @@ namespace UnityEngine
         public static int frameCount;
         public static float realtimeSinceStartup;
     }
-    internal sealed class WaitForSecondsRealtime
+    internal sealed class WaitForSecondsRealtime : Il2CppSystem.Object
     {
-        private static long _next;
-        public IntPtr Pointer { get; } = new IntPtr(++_next);
         public float waitTime;
         public float m_WaitUntilTime = -1;
         public WaitForSecondsRealtime(float seconds) => waitTime = seconds;

@@ -1,0 +1,2808 @@
+[
+  {
+    "file": "BepInEx.Preloader.Core.dll",
+    "FullName": "BepInEx.Preloader.Core, Version=6.0.0.0, Culture=neutral, PublicKeyToken=null",
+    "mvid": "490d9677-6379-44b6-a2c0-fab5ace9028e",
+    "methods": [
+      {
+        "method": "System.Void BepInEx.Preloader.Core.Patching.AssemblyPatcher::AddPatchersFromDirectory(System.String)",
+        "calls": [
+          {
+            "offset": "IL_0009",
+            "opcode": "call",
+            "target": "System.Boolean System.IO.Directory::Exists(System.String)"
+          },
+          {
+            "offset": "IL_0013",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatchDefinition\u003E::.ctor()"
+          },
+          {
+            "offset": "IL_001F",
+            "opcode": "ldftn",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherPluginMetadata BepInEx.Preloader.Core.Patching.AssemblyPatcher::ToPatcherPlugin(Mono.Cecil.TypeDefinition,System.String)"
+          },
+          {
+            "offset": "IL_0025",
+            "opcode": "newobj",
+            "target": "System.Void System.Func\u00603\u003CMono.Cecil.TypeDefinition,System.String,BepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_002B",
+            "opcode": "ldftn",
+            "target": "System.Boolean BepInEx.Preloader.Core.Patching.AssemblyPatcher::HasPatcherPlugins(Mono.Cecil.AssemblyDefinition)"
+          },
+          {
+            "offset": "IL_0031",
+            "opcode": "newobj",
+            "target": "System.Void System.Func\u00602\u003CMono.Cecil.AssemblyDefinition,System.Boolean\u003E::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_0037",
+            "opcode": "call",
+            "target": "System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.Collections.Generic.List\u00601\u003C!!0\u003E\u003E BepInEx.Bootstrap.TypeLoader::FindPluginTypes\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E(System.String,System.Func\u00603\u003CMono.Cecil.TypeDefinition,System.String,!!0\u003E,System.Func\u00602\u003CMono.Cecil.AssemblyDefinition,System.Boolean\u003E,System.String)"
+          },
+          {
+            "offset": "IL_003C",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.Dictionary\u00602/Enumerator\u003C!0,!1\u003E System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E\u003E::GetEnumerator()"
+          },
+          {
+            "offset": "IL_0049",
+            "opcode": "call",
+            "target": "System.Collections.Generic.KeyValuePair\u00602\u003C!0,!1\u003E System.Collections.Generic.Dictionary\u00602/Enumerator\u003CSystem.String,System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E\u003E::get_Current()"
+          },
+          {
+            "offset": "IL_0051",
+            "opcode": "call",
+            "target": "!0 System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E\u003E::get_Key()"
+          },
+          {
+            "offset": "IL_0059",
+            "opcode": "call",
+            "target": "!1 System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E\u003E::get_Value()"
+          },
+          {
+            "offset": "IL_0062",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_006D",
+            "opcode": "call",
+            "target": "System.Reflection.Assembly System.Reflection.Assembly::LoadFrom(System.String)"
+          },
+          {
+            "offset": "IL_0076",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.List\u00601/Enumerator\u003C!0\u003E System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E::GetEnumerator()"
+          },
+          {
+            "offset": "IL_0084",
+            "opcode": "call",
+            "target": "!0 System.Collections.Generic.List\u00601/Enumerator\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E::get_Current()"
+          },
+          {
+            "offset": "IL_008F",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.Preloader.Core.Patching.PatcherPluginMetadata::get_TypeName()"
+          },
+          {
+            "offset": "IL_0094",
+            "opcode": "callvirt",
+            "target": "System.Type System.Reflection.Assembly::GetType(System.String)"
+          },
+          {
+            "offset": "IL_009A",
+            "opcode": "call",
+            "target": "System.Object System.Activator::CreateInstance(System.Type)"
+          },
+          {
+            "offset": "IL_00A9",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_00AE",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.BasePatcher::set_Context(BepInEx.Preloader.Core.Patching.PatcherContext)"
+          },
+          {
+            "offset": "IL_00B4",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_00B9",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_PatcherPlugins()"
+          },
+          {
+            "offset": "IL_00C0",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_00C7",
+            "opcode": "callvirt",
+            "target": "System.Reflection.MethodInfo[] System.Type::GetMethods(System.Reflection.BindingFlags)"
+          },
+          {
+            "offset": "IL_00DF",
+            "opcode": "call",
+            "target": "!!0[] BepInEx.MetadataHelper::GetAttributes\u003CBepInEx.Preloader.Core.Patching.TargetAssemblyAttribute\u003E(System.Reflection.MemberInfo)"
+          },
+          {
+            "offset": "IL_00E8",
+            "opcode": "call",
+            "target": "!!0[] BepInEx.MetadataHelper::GetAttributes\u003CBepInEx.Preloader.Core.Patching.TargetTypeAttribute\u003E(System.Reflection.MemberInfo)"
+          },
+          {
+            "offset": "IL_00FE",
+            "opcode": "callvirt",
+            "target": "System.Reflection.ParameterInfo[] System.Reflection.MethodBase::GetParameters()"
+          },
+          {
+            "offset": "IL_011D",
+            "opcode": "callvirt",
+            "target": "System.Type System.Reflection.ParameterInfo::get_ParameterType()"
+          },
+          {
+            "offset": "IL_0127",
+            "opcode": "call",
+            "target": "System.Type System.Type::GetTypeFromHandle(System.RuntimeTypeHandle)"
+          },
+          {
+            "offset": "IL_012C",
+            "opcode": "call",
+            "target": "System.Boolean System.Type::op_Equality(System.Type,System.Type)"
+          },
+          {
+            "offset": "IL_0137",
+            "opcode": "callvirt",
+            "target": "System.Type System.Reflection.ParameterInfo::get_ParameterType()"
+          },
+          {
+            "offset": "IL_0141",
+            "opcode": "call",
+            "target": "System.Type System.Type::GetTypeFromHandle(System.RuntimeTypeHandle)"
+          },
+          {
+            "offset": "IL_0146",
+            "opcode": "callvirt",
+            "target": "System.Type System.Type::MakeByRefType()"
+          },
+          {
+            "offset": "IL_014B",
+            "opcode": "call",
+            "target": "System.Boolean System.Type::op_Equality(System.Type,System.Type)"
+          },
+          {
+            "offset": "IL_015B",
+            "opcode": "callvirt",
+            "target": "System.Type System.Reflection.ParameterInfo::get_ParameterType()"
+          },
+          {
+            "offset": "IL_0165",
+            "opcode": "call",
+            "target": "System.Type System.Type::GetTypeFromHandle(System.RuntimeTypeHandle)"
+          },
+          {
+            "offset": "IL_016A",
+            "opcode": "call",
+            "target": "System.Boolean System.Type::op_Equality(System.Type,System.Type)"
+          },
+          {
+            "offset": "IL_0181",
+            "opcode": "callvirt",
+            "target": "System.Type System.Reflection.ParameterInfo::get_ParameterType()"
+          },
+          {
+            "offset": "IL_018B",
+            "opcode": "call",
+            "target": "System.Type System.Type::GetTypeFromHandle(System.RuntimeTypeHandle)"
+          },
+          {
+            "offset": "IL_0190",
+            "opcode": "call",
+            "target": "System.Boolean System.Type::op_Inequality(System.Type,System.Type)"
+          },
+          {
+            "offset": "IL_0199",
+            "opcode": "callvirt",
+            "target": "System.Type System.Reflection.MethodInfo::get_ReturnType()"
+          },
+          {
+            "offset": "IL_01A3",
+            "opcode": "call",
+            "target": "System.Type System.Type::GetTypeFromHandle(System.RuntimeTypeHandle)"
+          },
+          {
+            "offset": "IL_01A8",
+            "opcode": "call",
+            "target": "System.Boolean System.Type::op_Inequality(System.Type,System.Type)"
+          },
+          {
+            "offset": "IL_01B1",
+            "opcode": "callvirt",
+            "target": "System.Type System.Reflection.MethodInfo::get_ReturnType()"
+          },
+          {
+            "offset": "IL_01BB",
+            "opcode": "call",
+            "target": "System.Type System.Type::GetTypeFromHandle(System.RuntimeTypeHandle)"
+          },
+          {
+            "offset": "IL_01C0",
+            "opcode": "call",
+            "target": "System.Boolean System.Type::op_Inequality(System.Type,System.Type)"
+          },
+          {
+            "offset": "IL_01C8",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_01DB",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_01ED",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_01F6",
+            "opcode": "call",
+            "target": "System.String HarmonyLib.GeneralExtensions::FullDescription(System.Reflection.MethodBase)"
+          },
+          {
+            "offset": "IL_01FB",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_0207",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0210",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_022E",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.PatchDefinition::.ctor(BepInEx.Preloader.Core.Patching.TargetAssemblyAttribute,BepInEx.Preloader.Core.Patching.BasePatcher,System.Reflection.MethodInfo)"
+          },
+          {
+            "offset": "IL_0235",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.AssemblyPatcher::\u003CAddPatchersFromDirectory\u003Eg__AddDefinition|17_0(BepInEx.Preloader.Core.Patching.PatchDefinition,BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec__DisplayClass17_0\u0026)"
+          },
+          {
+            "offset": "IL_025F",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.PatchDefinition::.ctor(BepInEx.Preloader.Core.Patching.TargetTypeAttribute,BepInEx.Preloader.Core.Patching.BasePatcher,System.Reflection.MethodInfo)"
+          },
+          {
+            "offset": "IL_0266",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.AssemblyPatcher::\u003CAddPatchersFromDirectory\u003Eg__AddDefinition|17_0(BepInEx.Preloader.Core.Patching.PatchDefinition,BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec__DisplayClass17_0\u0026)"
+          },
+          {
+            "offset": "IL_028F",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_02A2",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_02B4",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_02BD",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.Preloader.Core.Patching.PatcherPluginMetadata::get_TypeName()"
+          },
+          {
+            "offset": "IL_02C2",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_02CE",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_02E4",
+            "opcode": "callvirt",
+            "target": "System.String System.Object::ToString()"
+          },
+          {
+            "offset": "IL_02ED",
+            "opcode": "call",
+            "target": "System.String BepInEx.Bootstrap.TypeLoader::TypeLoadExceptionToString(System.Reflection.ReflectionTypeLoadException)"
+          },
+          {
+            "offset": "IL_02F2",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_02FB",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_0304",
+            "opcode": "call",
+            "target": "System.Boolean System.Collections.Generic.List\u00601/Enumerator\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E::MoveNext()"
+          },
+          {
+            "offset": "IL_0318",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          },
+          {
+            "offset": "IL_0320",
+            "opcode": "callvirt",
+            "target": "System.Reflection.AssemblyName System.Reflection.Assembly::GetName()"
+          },
+          {
+            "offset": "IL_0328",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_032F",
+            "opcode": "call",
+            "target": "System.Boolean System.Linq.Enumerable::Any\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E)"
+          },
+          {
+            "offset": "IL_0349",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_035E",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0367",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_036C",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Int32\u003E(!!0)"
+          },
+          {
+            "offset": "IL_0378",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0381",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_0395",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_03A1",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_03AA",
+            "opcode": "callvirt",
+            "target": "System.String System.Reflection.AssemblyName::get_Name()"
+          },
+          {
+            "offset": "IL_03AF",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_03BB",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_03C4",
+            "opcode": "callvirt",
+            "target": "System.Version System.Reflection.AssemblyName::get_Version()"
+          },
+          {
+            "offset": "IL_03C9",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Version\u003E(!!0)"
+          },
+          {
+            "offset": "IL_03D5",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_03DE",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_03E5",
+            "opcode": "call",
+            "target": "System.Boolean System.Collections.Generic.Dictionary\u00602/Enumerator\u003CSystem.String,System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatcherPluginMetadata\u003E\u003E::MoveNext()"
+          },
+          {
+            "offset": "IL_03F9",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          },
+          {
+            "offset": "IL_0400",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_0405",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatchDefinition\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_PatchDefinitions()"
+          },
+          {
+            "offset": "IL_0410",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatchDefinition\u003E::AddRange(System.Collections.Generic.IEnumerable\u00601\u003C!0\u003E)"
+          }
+        ]
+      },
+      {
+        "method": "System.Void BepInEx.Preloader.Core.Patching.AssemblyPatcher::PatchAndLoad()",
+        "calls": [
+          {
+            "offset": "IL_0000",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec__DisplayClass21_0::.ctor()"
+          },
+          {
+            "offset": "IL_000E",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_0013",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.Dictionary\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_AvailableAssemblies()"
+          },
+          {
+            "offset": "IL_0018",
+            "opcode": "call",
+            "target": "System.StringComparer System.StringComparer::get_InvariantCultureIgnoreCase()"
+          },
+          {
+            "offset": "IL_001D",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::.ctor(System.Collections.Generic.IDictionary\u00602\u003C!0,!1\u003E,System.Collections.Generic.IEqualityComparer\u00601\u003C!0\u003E)"
+          },
+          {
+            "offset": "IL_0024",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IEnumerable\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherPluginsSafe()"
+          },
+          {
+            "offset": "IL_0029",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.IEnumerator\u00601\u003C!0\u003E System.Collections.Generic.IEnumerable\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E::GetEnumerator()"
+          },
+          {
+            "offset": "IL_0034",
+            "opcode": "callvirt",
+            "target": "!0 System.Collections.Generic.IEnumerator\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E::get_Current()"
+          },
+          {
+            "offset": "IL_003D",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.BasePatcher::Initialize()"
+          },
+          {
+            "offset": "IL_0047",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_005A",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_006C",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0075",
+            "opcode": "callvirt",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherPluginInfoAttribute BepInEx.Preloader.Core.Patching.BasePatcher::get_Info()"
+          },
+          {
+            "offset": "IL_007A",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.Preloader.Core.Patching.PatcherPluginInfoAttribute::get_GUID()"
+          },
+          {
+            "offset": "IL_007F",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_008B",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0094",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Exception\u003E(!!0)"
+          },
+          {
+            "offset": "IL_009D",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_00A6",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.IEnumerator::MoveNext()"
+          },
+          {
+            "offset": "IL_00B5",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          },
+          {
+            "offset": "IL_00BC",
+            "opcode": "call",
+            "target": "System.StringComparer System.StringComparer::get_InvariantCultureIgnoreCase()"
+          },
+          {
+            "offset": "IL_00C1",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::.ctor(System.Collections.Generic.IEqualityComparer\u00601\u003C!0\u003E)"
+          },
+          {
+            "offset": "IL_00CB",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.String\u003E::.ctor()"
+          },
+          {
+            "offset": "IL_00D2",
+            "opcode": "call",
+            "target": "System.StringComparer System.StringComparer::get_InvariantCultureIgnoreCase()"
+          },
+          {
+            "offset": "IL_00D7",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::.ctor(System.Collections.Generic.IEqualityComparer\u00601\u003C!0\u003E)"
+          },
+          {
+            "offset": "IL_00E2",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_00F5",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0107",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_010F",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_0114",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatchDefinition\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_PatchDefinitions()"
+          },
+          {
+            "offset": "IL_0119",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatchDefinition\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_011E",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Int32\u003E(!!0)"
+          },
+          {
+            "offset": "IL_012A",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0133",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_0139",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_013E",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatchDefinition\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_PatchDefinitions()"
+          },
+          {
+            "offset": "IL_0143",
+            "opcode": "call",
+            "target": "System.Collections.Generic.List\u00601\u003C!!0\u003E System.Linq.Enumerable::ToList\u003CBepInEx.Preloader.Core.Patching.PatchDefinition\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E)"
+          },
+          {
+            "offset": "IL_0148",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.List\u00601/Enumerator\u003C!0\u003E System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.PatchDefinition\u003E::GetEnumerator()"
+          },
+          {
+            "offset": "IL_0154",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec__DisplayClass21_1::.ctor()"
+          },
+          {
+            "offset": "IL_0167",
+            "opcode": "call",
+            "target": "!0 System.Collections.Generic.List\u00601/Enumerator\u003CBepInEx.Preloader.Core.Patching.PatchDefinition\u003E::get_Current()"
+          },
+          {
+            "offset": "IL_0178",
+            "opcode": "callvirt",
+            "target": "BepInEx.Preloader.Core.Patching.TargetAssemblyAttribute BepInEx.Preloader.Core.Patching.PatchDefinition::get_TargetAssembly()"
+          },
+          {
+            "offset": "IL_0184",
+            "opcode": "call",
+            "target": "System.String BepInEx.Preloader.Core.Patching.TargetAssemblyAttribute::get_TargetAssembly()"
+          },
+          {
+            "offset": "IL_0194",
+            "opcode": "callvirt",
+            "target": "BepInEx.Preloader.Core.Patching.TargetTypeAttribute BepInEx.Preloader.Core.Patching.PatchDefinition::get_TargetType()"
+          },
+          {
+            "offset": "IL_0199",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.Preloader.Core.Patching.TargetTypeAttribute::get_TargetAssembly()"
+          },
+          {
+            "offset": "IL_01A9",
+            "opcode": "callvirt",
+            "target": "BepInEx.Preloader.Core.Patching.TargetAssemblyAttribute BepInEx.Preloader.Core.Patching.PatchDefinition::get_TargetAssembly()"
+          },
+          {
+            "offset": "IL_01BD",
+            "opcode": "call",
+            "target": "System.Boolean System.String::op_Equality(System.String,System.String)"
+          },
+          {
+            "offset": "IL_01C5",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_01CA",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.Dictionary\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_AvailableAssemblies()"
+          },
+          {
+            "offset": "IL_01CF",
+            "opcode": "call",
+            "target": "System.Collections.Generic.List\u00601\u003C!!0\u003E System.Linq.Enumerable::ToList\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E)"
+          },
+          {
+            "offset": "IL_01D4",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.List\u00601/Enumerator\u003C!0\u003E System.Collections.Generic.List\u00601\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E\u003E::GetEnumerator()"
+          },
+          {
+            "offset": "IL_01DF",
+            "opcode": "call",
+            "target": "!0 System.Collections.Generic.List\u00601/Enumerator\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E\u003E::get_Current()"
+          },
+          {
+            "offset": "IL_01F4",
+            "opcode": "call",
+            "target": "!0 System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::get_Key()"
+          },
+          {
+            "offset": "IL_01F9",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::Contains(!0)"
+          },
+          {
+            "offset": "IL_0204",
+            "opcode": "call",
+            "target": "!1 System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::get_Value()"
+          },
+          {
+            "offset": "IL_020B",
+            "opcode": "call",
+            "target": "!0 System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::get_Key()"
+          },
+          {
+            "offset": "IL_0212",
+            "opcode": "callvirt",
+            "target": "System.Boolean BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec__DisplayClass21_1::\u003CPatchAndLoad\u003Eg__RunPatcher|4(Mono.Cecil.AssemblyDefinition,System.String,BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec__DisplayClass21_2\u0026)"
+          },
+          {
+            "offset": "IL_021A",
+            "opcode": "call",
+            "target": "System.Boolean System.Collections.Generic.List\u00601/Enumerator\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E\u003E::MoveNext()"
+          },
+          {
+            "offset": "IL_022B",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          },
+          {
+            "offset": "IL_0232",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_0237",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.Dictionary\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_AvailableAssemblies()"
+          },
+          {
+            "offset": "IL_0240",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.Dictionary\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::TryGetValue(!0,!1\u0026)"
+          },
+          {
+            "offset": "IL_0258",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::Contains(!0)"
+          },
+          {
+            "offset": "IL_0267",
+            "opcode": "callvirt",
+            "target": "System.Boolean BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec__DisplayClass21_1::\u003CPatchAndLoad\u003Eg__RunPatcher|4(Mono.Cecil.AssemblyDefinition,System.String,BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec__DisplayClass21_2\u0026)"
+          },
+          {
+            "offset": "IL_026D",
+            "opcode": "call",
+            "target": "System.AppDomain System.AppDomain::get_CurrentDomain()"
+          },
+          {
+            "offset": "IL_0272",
+            "opcode": "callvirt",
+            "target": "System.Reflection.Assembly[] System.AppDomain::GetAssemblies()"
+          },
+          {
+            "offset": "IL_0287",
+            "opcode": "callvirt",
+            "target": "System.String System.Reflection.Assembly::get_FullName()"
+          },
+          {
+            "offset": "IL_028E",
+            "opcode": "call",
+            "target": "System.Boolean BepInEx.Utility::TryParseAssemblyName(System.String,System.Reflection.AssemblyName\u0026)"
+          },
+          {
+            "offset": "IL_0297",
+            "opcode": "callvirt",
+            "target": "System.String System.Reflection.Assembly::get_FullName()"
+          },
+          {
+            "offset": "IL_02A0",
+            "opcode": "callvirt",
+            "target": "System.String System.Reflection.AssemblyName::get_Name()"
+          },
+          {
+            "offset": "IL_02AA",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.String\u003E::ContainsKey(!0)"
+          },
+          {
+            "offset": "IL_02BB",
+            "opcode": "callvirt",
+            "target": "System.Reflection.MethodInfo BepInEx.Preloader.Core.Patching.PatchDefinition::get_MethodInfo()"
+          },
+          {
+            "offset": "IL_02C0",
+            "opcode": "callvirt",
+            "target": "System.Type System.Reflection.MemberInfo::get_DeclaringType()"
+          },
+          {
+            "offset": "IL_02C5",
+            "opcode": "callvirt",
+            "target": "System.String System.Object::ToString()"
+          },
+          {
+            "offset": "IL_02CA",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.String\u003E::set_Item(!0,!1)"
+          },
+          {
+            "offset": "IL_02DF",
+            "opcode": "call",
+            "target": "System.Boolean System.Collections.Generic.List\u00601/Enumerator\u003CBepInEx.Preloader.Core.Patching.PatchDefinition\u003E::MoveNext()"
+          },
+          {
+            "offset": "IL_02F3",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          },
+          {
+            "offset": "IL_02FC",
+            "opcode": "ldftn",
+            "target": "System.Boolean BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec__DisplayClass21_0::\u003CPatchAndLoad\u003Eb__0(System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E)"
+          },
+          {
+            "offset": "IL_0302",
+            "opcode": "newobj",
+            "target": "System.Void System.Func\u00602\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E,System.Boolean\u003E::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_0307",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E System.Linq.Enumerable::Where\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E,System.Func\u00602\u003C!!0,System.Boolean\u003E)"
+          },
+          {
+            "offset": "IL_031A",
+            "opcode": "ldftn",
+            "target": "System.String BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec::\u003CPatchAndLoad\u003Eb__21_1(System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E)"
+          },
+          {
+            "offset": "IL_0320",
+            "opcode": "newobj",
+            "target": "System.Void System.Func\u00602\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E,System.String\u003E::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_032B",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IEnumerable\u00601\u003C!!1\u003E System.Linq.Enumerable::Select\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E,System.String\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E,System.Func\u00602\u003C!!0,!!1\u003E)"
+          },
+          {
+            "offset": "IL_0330",
+            "opcode": "call",
+            "target": "System.StringComparer System.StringComparer::get_InvariantCultureIgnoreCase()"
+          },
+          {
+            "offset": "IL_0335",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::.ctor(System.Collections.Generic.IEnumerable\u00601\u003C!0\u003E,System.Collections.Generic.IEqualityComparer\u00601\u003C!0\u003E)"
+          },
+          {
+            "offset": "IL_0341",
+            "opcode": "ldftn",
+            "target": "System.Boolean BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec__DisplayClass21_0::\u003CPatchAndLoad\u003Eb__2(System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,System.String\u003E)"
+          },
+          {
+            "offset": "IL_0347",
+            "opcode": "newobj",
+            "target": "System.Void System.Func\u00602\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,System.String\u003E,System.Boolean\u003E::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_034C",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E System.Linq.Enumerable::Where\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,System.String\u003E\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E,System.Func\u00602\u003C!!0,System.Boolean\u003E)"
+          },
+          {
+            "offset": "IL_0351",
+            "opcode": "call",
+            "target": "System.Collections.Generic.List\u00601\u003C!!0\u003E System.Linq.Enumerable::ToList\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,System.String\u003E\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E)"
+          },
+          {
+            "offset": "IL_0358",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,System.String\u003E\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_0360",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_0366",
+            "opcode": "newobj",
+            "target": "System.Void System.Text.StringBuilder::.ctor()"
+          },
+          {
+            "offset": "IL_0370",
+            "opcode": "call",
+            "target": "System.Text.StringBuilder System.Text.StringBuilder::AppendLine(System.String)"
+          },
+          {
+            "offset": "IL_0375",
+            "opcode": "call",
+            "target": "System.String System.Environment::get_NewLine()"
+          },
+          {
+            "offset": "IL_0389",
+            "opcode": "ldftn",
+            "target": "System.String BepInEx.Preloader.Core.Patching.AssemblyPatcher/\u003C\u003Ec::\u003CPatchAndLoad\u003Eb__21_3(System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,System.String\u003E)"
+          },
+          {
+            "offset": "IL_038F",
+            "opcode": "newobj",
+            "target": "System.Void System.Func\u00602\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,System.String\u003E,System.String\u003E::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_039A",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IEnumerable\u00601\u003C!!1\u003E System.Linq.Enumerable::Select\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,System.String\u003E,System.String\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E,System.Func\u00602\u003C!!0,!!1\u003E)"
+          },
+          {
+            "offset": "IL_039F",
+            "opcode": "call",
+            "target": "!!0[] System.Linq.Enumerable::ToArray\u003CSystem.String\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E)"
+          },
+          {
+            "offset": "IL_03A4",
+            "opcode": "call",
+            "target": "System.String System.String::Join(System.String,System.String[])"
+          },
+          {
+            "offset": "IL_03A9",
+            "opcode": "callvirt",
+            "target": "System.Text.StringBuilder System.Text.StringBuilder::AppendLine(System.String)"
+          },
+          {
+            "offset": "IL_03B3",
+            "opcode": "callvirt",
+            "target": "System.Text.StringBuilder System.Text.StringBuilder::AppendLine(System.String)"
+          },
+          {
+            "offset": "IL_03B8",
+            "opcode": "callvirt",
+            "target": "System.String System.Object::ToString()"
+          },
+          {
+            "offset": "IL_03BD",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,System.Object)"
+          },
+          {
+            "offset": "IL_03C2",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.String\u003E::.ctor()"
+          },
+          {
+            "offset": "IL_03CE",
+            "opcode": "callvirt",
+            "target": "!0 BepInEx.Configuration.ConfigEntry\u00601\u003CSystem.Boolean\u003E::get_Value()"
+          },
+          {
+            "offset": "IL_03DA",
+            "opcode": "callvirt",
+            "target": "!0 BepInEx.Configuration.ConfigEntry\u00601\u003CSystem.Boolean\u003E::get_Value()"
+          },
+          {
+            "offset": "IL_03E5",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_03EA",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.Preloader.Core.Patching.PatcherContext::get_DumpedAssembliesPath()"
+          },
+          {
+            "offset": "IL_03EF",
+            "opcode": "call",
+            "target": "System.Boolean System.IO.Directory::Exists(System.String)"
+          },
+          {
+            "offset": "IL_03F7",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_03FC",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.Preloader.Core.Patching.PatcherContext::get_DumpedAssembliesPath()"
+          },
+          {
+            "offset": "IL_0401",
+            "opcode": "call",
+            "target": "System.IO.DirectoryInfo System.IO.Directory::CreateDirectory(System.String)"
+          },
+          {
+            "offset": "IL_0408",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.Dictionary\u00602/Enumerator\u003C!0,!1\u003E System.Collections.Generic.Dictionary\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::GetEnumerator()"
+          },
+          {
+            "offset": "IL_0416",
+            "opcode": "call",
+            "target": "System.Collections.Generic.KeyValuePair\u00602\u003C!0,!1\u003E System.Collections.Generic.Dictionary\u00602/Enumerator\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::get_Current()"
+          },
+          {
+            "offset": "IL_041F",
+            "opcode": "call",
+            "target": "!0 System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::get_Key()"
+          },
+          {
+            "offset": "IL_0428",
+            "opcode": "call",
+            "target": "System.String System.IO.Path::GetFileNameWithoutExtension(System.String)"
+          },
+          {
+            "offset": "IL_0431",
+            "opcode": "call",
+            "target": "System.String System.IO.Path::GetExtension(System.String)"
+          },
+          {
+            "offset": "IL_043A",
+            "opcode": "call",
+            "target": "!1 System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::get_Value()"
+          },
+          {
+            "offset": "IL_0449",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::Contains(!0)"
+          },
+          {
+            "offset": "IL_046B",
+            "opcode": "call",
+            "target": "System.String System.String::Format(System.String,System.Object)"
+          },
+          {
+            "offset": "IL_0473",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_0478",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.Preloader.Core.Patching.PatcherContext::get_DumpedAssembliesPath()"
+          },
+          {
+            "offset": "IL_0483",
+            "opcode": "call",
+            "target": "System.String System.String::Concat(System.String,System.String,System.String)"
+          },
+          {
+            "offset": "IL_0488",
+            "opcode": "call",
+            "target": "System.String System.IO.Path::Combine(System.String,System.String)"
+          },
+          {
+            "offset": "IL_0496",
+            "opcode": "call",
+            "target": "System.Boolean BepInEx.Utility::TryOpenFileStream(System.String,System.IO.FileMode,System.IO.FileStream\u0026,System.IO.FileAccess,System.IO.FileShare)"
+          },
+          {
+            "offset": "IL_04A1",
+            "opcode": "callvirt",
+            "target": "System.Void Mono.Cecil.AssemblyDefinition::Write(System.IO.Stream)"
+          },
+          {
+            "offset": "IL_04A8",
+            "opcode": "callvirt",
+            "target": "System.Void System.IO.Stream::Dispose()"
+          },
+          {
+            "offset": "IL_04B3",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.String\u003E::set_Item(!0,!1)"
+          },
+          {
+            "offset": "IL_04C4",
+            "opcode": "call",
+            "target": "System.Boolean System.Collections.Generic.Dictionary\u00602/Enumerator\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::MoveNext()"
+          },
+          {
+            "offset": "IL_04D8",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          },
+          {
+            "offset": "IL_04E3",
+            "opcode": "callvirt",
+            "target": "!0 BepInEx.Configuration.ConfigEntry\u00601\u003CSystem.Boolean\u003E::get_Value()"
+          },
+          {
+            "offset": "IL_04EE",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_0502",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0514",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0526",
+            "opcode": "call",
+            "target": "!!0[] System.Linq.Enumerable::ToArray\u003CSystem.String\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E)"
+          },
+          {
+            "offset": "IL_052B",
+            "opcode": "call",
+            "target": "System.String System.String::Join(System.String,System.String[])"
+          },
+          {
+            "offset": "IL_0530",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_0539",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_053F",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_0553",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0565",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_056D",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_0572",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.Preloader.Core.Patching.PatcherContext::get_DumpedAssembliesPath()"
+          },
+          {
+            "offset": "IL_0577",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_0580",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_0586",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_0592",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,System.Object)"
+          },
+          {
+            "offset": "IL_0597",
+            "opcode": "call",
+            "target": "System.Void System.Diagnostics.Debugger::Break()"
+          },
+          {
+            "offset": "IL_059D",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.Dictionary\u00602/Enumerator\u003C!0,!1\u003E System.Collections.Generic.Dictionary\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::GetEnumerator()"
+          },
+          {
+            "offset": "IL_05AB",
+            "opcode": "call",
+            "target": "System.Collections.Generic.KeyValuePair\u00602\u003C!0,!1\u003E System.Collections.Generic.Dictionary\u00602/Enumerator\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::get_Current()"
+          },
+          {
+            "offset": "IL_05B4",
+            "opcode": "call",
+            "target": "!0 System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::get_Key()"
+          },
+          {
+            "offset": "IL_05BD",
+            "opcode": "call",
+            "target": "!1 System.Collections.Generic.KeyValuePair\u00602\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::get_Value()"
+          },
+          {
+            "offset": "IL_05CC",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::Contains(!0)"
+          },
+          {
+            "offset": "IL_05DB",
+            "opcode": "callvirt",
+            "target": "!0 BepInEx.Configuration.ConfigEntry\u00601\u003CSystem.Boolean\u003E::get_Value()"
+          },
+          {
+            "offset": "IL_05E8",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.String\u003E::TryGetValue(!0,!1\u0026)"
+          },
+          {
+            "offset": "IL_05F1",
+            "opcode": "call",
+            "target": "System.Reflection.Assembly System.Reflection.Assembly::LoadFrom(System.String)"
+          },
+          {
+            "offset": "IL_05FA",
+            "opcode": "newobj",
+            "target": "System.Void System.IO.MemoryStream::.ctor()"
+          },
+          {
+            "offset": "IL_0605",
+            "opcode": "callvirt",
+            "target": "System.Void Mono.Cecil.AssemblyDefinition::Write(System.IO.Stream)"
+          },
+          {
+            "offset": "IL_0612",
+            "opcode": "callvirt",
+            "target": "System.Byte[] System.IO.MemoryStream::ToArray()"
+          },
+          {
+            "offset": "IL_0618",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_061D",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.String\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_AvailableAssembliesPaths()"
+          },
+          {
+            "offset": "IL_0624",
+            "opcode": "callvirt",
+            "target": "!1 System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.String\u003E::get_Item(!0)"
+          },
+          {
+            "offset": "IL_0629",
+            "opcode": "callvirt",
+            "target": "!2 System.Func\u00603\u003CSystem.Byte[],System.String,System.Reflection.Assembly\u003E::Invoke(!0,!1)"
+          },
+          {
+            "offset": "IL_0638",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          },
+          {
+            "offset": "IL_063F",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_0644",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.Reflection.Assembly\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_LoadedAssemblies()"
+          },
+          {
+            "offset": "IL_064D",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.Reflection.Assembly\u003E::Add(!0,!1)"
+          },
+          {
+            "offset": "IL_0653",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_0667",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0679",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0682",
+            "opcode": "callvirt",
+            "target": "System.String Mono.Cecil.AssemblyDefinition::get_FullName()"
+          },
+          {
+            "offset": "IL_0687",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_0693",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_069C",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_06A3",
+            "opcode": "callvirt",
+            "target": "System.Void Mono.Cecil.AssemblyDefinition::Dispose()"
+          },
+          {
+            "offset": "IL_06AA",
+            "opcode": "call",
+            "target": "System.Boolean System.Collections.Generic.Dictionary\u00602/Enumerator\u003CSystem.String,Mono.Cecil.AssemblyDefinition\u003E::MoveNext()"
+          },
+          {
+            "offset": "IL_06BE",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          },
+          {
+            "offset": "IL_06C5",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IEnumerable\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherPluginsSafe()"
+          },
+          {
+            "offset": "IL_06CA",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.IEnumerator\u00601\u003C!0\u003E System.Collections.Generic.IEnumerable\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E::GetEnumerator()"
+          },
+          {
+            "offset": "IL_06D5",
+            "opcode": "callvirt",
+            "target": "!0 System.Collections.Generic.IEnumerator\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E::get_Current()"
+          },
+          {
+            "offset": "IL_06DE",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.BasePatcher::Finalizer()"
+          },
+          {
+            "offset": "IL_06E8",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_Logger()"
+          },
+          {
+            "offset": "IL_06FB",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_070D",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0716",
+            "opcode": "callvirt",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherPluginInfoAttribute BepInEx.Preloader.Core.Patching.BasePatcher::get_Info()"
+          },
+          {
+            "offset": "IL_071B",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.Preloader.Core.Patching.PatcherPluginInfoAttribute::get_GUID()"
+          },
+          {
+            "offset": "IL_0720",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_072C",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0735",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Exception\u003E(!!0)"
+          },
+          {
+            "offset": "IL_073E",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_0747",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.IEnumerator::MoveNext()"
+          },
+          {
+            "offset": "IL_0756",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "file": "BepInEx.Unity.IL2CPP.dll",
+    "FullName": "BepInEx.Unity.IL2CPP, Version=6.0.0.0, Culture=neutral, PublicKeyToken=null",
+    "mvid": "bbc7391c-010a-4f1b-8966-22a54b549a1d",
+    "methods": [
+      {
+        "method": "System.Void BepInEx.Unity.IL2CPP.IL2CPPChainloader::Initialize(System.String)",
+        "calls": [
+          {
+            "offset": "IL_0002",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Bootstrap.BaseChainloader\u00601\u003CBepInEx.Unity.IL2CPP.BasePlugin\u003E::Initialize(System.String)"
+          },
+          {
+            "offset": "IL_0008",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Unity.IL2CPP.IL2CPPChainloader::set_Instance(BepInEx.Unity.IL2CPP.IL2CPPChainloader)"
+          },
+          {
+            "offset": "IL_0017",
+            "opcode": "call",
+            "target": "System.Type System.Type::GetTypeFromHandle(System.RuntimeTypeHandle)"
+          },
+          {
+            "offset": "IL_001C",
+            "opcode": "callvirt",
+            "target": "System.Reflection.Assembly System.Type::get_Assembly()"
+          },
+          {
+            "offset": "IL_002C",
+            "opcode": "call",
+            "target": "System.Boolean System.Runtime.InteropServices.NativeLibrary::TryLoad(System.String,System.Reflection.Assembly,System.Nullable\u00601\u003CSystem.Runtime.InteropServices.DllImportSearchPath\u003E,System.IntPtr\u0026)"
+          },
+          {
+            "offset": "IL_0039",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,System.Object)"
+          },
+          {
+            "offset": "IL_0045",
+            "opcode": "call",
+            "target": "System.IntPtr System.Runtime.InteropServices.NativeLibrary::GetExport(System.IntPtr,System.String)"
+          },
+          {
+            "offset": "IL_004B",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.PreloaderLogger::get_Log()"
+          },
+          {
+            "offset": "IL_005F",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0071",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_007A",
+            "opcode": "call",
+            "target": "System.Int64 System.IntPtr::ToInt64()"
+          },
+          {
+            "offset": "IL_0084",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Int64\u003E(!!0,System.String)"
+          },
+          {
+            "offset": "IL_008D",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_009C",
+            "opcode": "ldftn",
+            "target": "System.IntPtr BepInEx.Unity.IL2CPP.IL2CPPChainloader::OnInvokeMethod(System.IntPtr,System.IntPtr,System.IntPtr,System.IntPtr)"
+          },
+          {
+            "offset": "IL_00A2",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Unity.IL2CPP.IL2CPPChainloader/RuntimeInvokeDetourDelegate::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_00B5",
+            "opcode": "call",
+            "target": "BepInEx.Unity.IL2CPP.Hook.INativeDetour BepInEx.Unity.IL2CPP.Hook.INativeDetour::CreateAndApply\u003CBepInEx.Unity.IL2CPP.IL2CPPChainloader/RuntimeInvokeDetourDelegate\u003E(System.IntPtr,T,T\u0026)"
+          },
+          {
+            "offset": "IL_00BA",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Unity.IL2CPP.IL2CPPChainloader::set_RuntimeInvokeDetour(BepInEx.Unity.IL2CPP.Hook.INativeDetour)"
+          },
+          {
+            "offset": "IL_00BF",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Preloader.Core.PreloaderLogger::get_Log()"
+          },
+          {
+            "offset": "IL_00CB",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,System.Object)"
+          }
+        ]
+      },
+      {
+        "method": "BepInEx.Unity.IL2CPP.BasePlugin BepInEx.Unity.IL2CPP.IL2CPPChainloader::LoadPlugin(BepInEx.PluginInfo,System.Reflection.Assembly)",
+        "calls": [
+          {
+            "offset": "IL_0002",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.PluginInfo::get_TypeName()"
+          },
+          {
+            "offset": "IL_0007",
+            "opcode": "callvirt",
+            "target": "System.Type System.Reflection.Assembly::GetType(System.String)"
+          },
+          {
+            "offset": "IL_000C",
+            "opcode": "call",
+            "target": "System.Object System.Activator::CreateInstance(System.Type)"
+          },
+          {
+            "offset": "IL_0026",
+            "opcode": "callvirt",
+            "target": "System.Void System.Action\u00603\u003CBepInEx.PluginInfo,System.Reflection.Assembly,BepInEx.Unity.IL2CPP.BasePlugin\u003E::Invoke(!0,!1,!2)"
+          },
+          {
+            "offset": "IL_002C",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Unity.IL2CPP.BasePlugin::Load()"
+          }
+        ]
+      },
+      {
+        "method": "System.Void BepInEx.Unity.IL2CPP.Preloader::Run()",
+        "calls": [
+          {
+            "offset": "IL_0000",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Preloader.RuntimeFixes.HarmonyBackendFix::Initialize()"
+          },
+          {
+            "offset": "IL_0005",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Preloader.RuntimeFixes.ConsoleSetOutFix::Apply()"
+          },
+          {
+            "offset": "IL_000A",
+            "opcode": "call",
+            "target": "System.String BepInEx.Paths::get_ExecutablePath()"
+          },
+          {
+            "offset": "IL_000F",
+            "opcode": "call",
+            "target": "System.String BepInEx.Paths::get_GameDataPath()"
+          },
+          {
+            "offset": "IL_0014",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Unity.Common.UnityInfo::Initialize(System.String,System.String)"
+          },
+          {
+            "offset": "IL_001B",
+            "opcode": "call",
+            "target": "System.Void BepInEx.ConsoleManager::Initialize(System.Boolean,System.Boolean)"
+          },
+          {
+            "offset": "IL_0020",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Preloader.Core.Logging.PreloaderConsoleListener::.ctor()"
+          },
+          {
+            "offset": "IL_0025",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Unity.IL2CPP.Preloader::set_PreloaderLog(BepInEx.Preloader.Core.Logging.PreloaderConsoleListener)"
+          },
+          {
+            "offset": "IL_002A",
+            "opcode": "call",
+            "target": "System.Collections.Generic.ICollection\u00601\u003CBepInEx.Logging.ILogListener\u003E BepInEx.Logging.Logger::get_Listeners()"
+          },
+          {
+            "offset": "IL_002F",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Logging.PreloaderConsoleListener BepInEx.Unity.IL2CPP.Preloader::get_PreloaderLog()"
+          },
+          {
+            "offset": "IL_0034",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.ICollection\u00601\u003CBepInEx.Logging.ILogListener\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_0039",
+            "opcode": "call",
+            "target": "System.Boolean BepInEx.ConsoleManager::get_ConsoleEnabled()"
+          },
+          {
+            "offset": "IL_0040",
+            "opcode": "call",
+            "target": "System.Void BepInEx.ConsoleManager::CreateConsole()"
+          },
+          {
+            "offset": "IL_0045",
+            "opcode": "call",
+            "target": "System.Collections.Generic.ICollection\u00601\u003CBepInEx.Logging.ILogListener\u003E BepInEx.Logging.Logger::get_Listeners()"
+          },
+          {
+            "offset": "IL_004A",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Logging.ConsoleLogListener::.ctor()"
+          },
+          {
+            "offset": "IL_004F",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.ICollection\u00601\u003CBepInEx.Logging.ILogListener\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_0054",
+            "opcode": "call",
+            "target": "System.Void BepInEx.IL2CPP.RuntimeFixes.RedirectStdErrFix::Apply()"
+          },
+          {
+            "offset": "IL_0059",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Unity.IL2CPP.Preloader::get_Log()"
+          },
+          {
+            "offset": "IL_005E",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Preloader.Core.Logging.ChainloaderLogHelper::PrintLogInfo(BepInEx.Logging.ManualLogSource)"
+          },
+          {
+            "offset": "IL_006D",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_007C",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0082",
+            "opcode": "call",
+            "target": "AssetRipper.Primitives.UnityVersion BepInEx.Unity.Common.UnityInfo::get_Version()"
+          },
+          {
+            "offset": "IL_0087",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CAssetRipper.Primitives.UnityVersion\u003E(!!0)"
+          },
+          {
+            "offset": "IL_008D",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_009C",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_00AB",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_00B1",
+            "opcode": "call",
+            "target": "System.Version System.Environment::get_Version()"
+          },
+          {
+            "offset": "IL_00B6",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Version\u003E(!!0)"
+          },
+          {
+            "offset": "IL_00BC",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_00CB",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_00DA",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_00E0",
+            "opcode": "call",
+            "target": "System.String System.Runtime.InteropServices.RuntimeInformation::get_FrameworkDescription()"
+          },
+          {
+            "offset": "IL_00E5",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_00EB",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_00FA",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0109",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_010F",
+            "opcode": "call",
+            "target": "System.String BepInEx.Paths::get_ExecutablePath()"
+          },
+          {
+            "offset": "IL_0114",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_011A",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_0129",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0138",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_013E",
+            "opcode": "call",
+            "target": "System.String BepInEx.Unity.IL2CPP.Il2CppInteropManager::get_IL2CPPInteropAssemblyPath()"
+          },
+          {
+            "offset": "IL_0143",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_0149",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_0158",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0167",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_016D",
+            "opcode": "call",
+            "target": "System.String BepInEx.Paths::get_BepInExRootPath()"
+          },
+          {
+            "offset": "IL_0172",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_0178",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_0182",
+            "opcode": "call",
+            "target": "System.Boolean MonoMod.Utils.PlatformHelper::Is(MonoMod.Utils.Platform)"
+          },
+          {
+            "offset": "IL_0189",
+            "opcode": "call",
+            "target": "System.Boolean System.Environment::get_Is64BitProcess()"
+          },
+          {
+            "offset": "IL_0195",
+            "opcode": "call",
+            "target": "System.IntPtr System.Runtime.InteropServices.NativeLibrary::Load(System.String)"
+          },
+          {
+            "offset": "IL_01A1",
+            "opcode": "call",
+            "target": "System.Boolean System.Runtime.InteropServices.NativeLibrary::TryGetExport(System.IntPtr,System.String,System.IntPtr\u0026)"
+          },
+          {
+            "offset": "IL_01AE",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,System.Object)"
+          },
+          {
+            "offset": "IL_01B8",
+            "opcode": "call",
+            "target": "System.Type System.Type::GetTypeFromHandle(System.RuntimeTypeHandle)"
+          },
+          {
+            "offset": "IL_01BD",
+            "opcode": "callvirt",
+            "target": "System.Reflection.Assembly System.Type::get_Assembly()"
+          },
+          {
+            "offset": "IL_01CC",
+            "opcode": "ldftn",
+            "target": "System.IntPtr BepInEx.Unity.IL2CPP.Preloader::DllImportResolver(System.String,System.Reflection.Assembly,System.Nullable\u00601\u003CSystem.Runtime.InteropServices.DllImportSearchPath\u003E)"
+          },
+          {
+            "offset": "IL_01D2",
+            "opcode": "newobj",
+            "target": "System.Void System.Runtime.InteropServices.DllImportResolver::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_01DD",
+            "opcode": "call",
+            "target": "System.Void System.Runtime.InteropServices.NativeLibrary::SetDllImportResolver(System.Reflection.Assembly,System.Runtime.InteropServices.DllImportResolver)"
+          },
+          {
+            "offset": "IL_01E2",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Unity.IL2CPP.Il2CppInteropManager::Initialize()"
+          },
+          {
+            "offset": "IL_01F5",
+            "opcode": "ldftn",
+            "target": "System.Reflection.Assembly BepInEx.Unity.IL2CPP.Preloader/\u003C\u003Ec::\u003CRun\u003Eb__10_0(System.Byte[],System.String)"
+          },
+          {
+            "offset": "IL_01FB",
+            "opcode": "newobj",
+            "target": "System.Void System.Func\u00603\u003CSystem.Byte[],System.String,System.Reflection.Assembly\u003E::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_0206",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.AssemblyPatcher::.ctor(System.Func\u00603\u003CSystem.Byte[],System.String,System.Reflection.Assembly\u003E)"
+          },
+          {
+            "offset": "IL_020F",
+            "opcode": "call",
+            "target": "System.String BepInEx.Paths::get_PatcherPluginPath()"
+          },
+          {
+            "offset": "IL_0214",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.AssemblyPatcher::AddPatchersFromDirectory(System.String)"
+          },
+          {
+            "offset": "IL_0219",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Unity.IL2CPP.Preloader::get_Log()"
+          },
+          {
+            "offset": "IL_0223",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExInfoLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0231",
+            "opcode": "callvirt",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_0236",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_PatcherPlugins()"
+          },
+          {
+            "offset": "IL_023B",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_0240",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Int32\u003E(!!0)"
+          },
+          {
+            "offset": "IL_024C",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0255",
+            "opcode": "callvirt",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_025A",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_PatcherPlugins()"
+          },
+          {
+            "offset": "IL_025F",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_0273",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(!!0)"
+          },
+          {
+            "offset": "IL_027F",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0286",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::LogInfo(BepInEx.Core.Logging.Interpolation.BepInExInfoLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_0295",
+            "opcode": "call",
+            "target": "System.String BepInEx.Unity.IL2CPP.Il2CppInteropManager::get_IL2CPPInteropAssemblyPath()"
+          },
+          {
+            "offset": "IL_029B",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.AssemblyPatcher::LoadAssemblyDirectories(System.String[])"
+          },
+          {
+            "offset": "IL_02A0",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Unity.IL2CPP.Preloader::get_Log()"
+          },
+          {
+            "offset": "IL_02AA",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExInfoLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_02B8",
+            "opcode": "callvirt",
+            "target": "BepInEx.Preloader.Core.Patching.PatcherContext BepInEx.Preloader.Core.Patching.AssemblyPatcher::get_PatcherContext()"
+          },
+          {
+            "offset": "IL_02BD",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E BepInEx.Preloader.Core.Patching.PatcherContext::get_PatcherPlugins()"
+          },
+          {
+            "offset": "IL_02C2",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CBepInEx.Preloader.Core.Patching.BasePatcher\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_02C7",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Int32\u003E(!!0)"
+          },
+          {
+            "offset": "IL_02D3",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_02DA",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::LogInfo(BepInEx.Core.Logging.Interpolation.BepInExInfoLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_02E1",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Preloader.Core.Patching.AssemblyPatcher::PatchAndLoad()"
+          },
+          {
+            "offset": "IL_02EE",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          },
+          {
+            "offset": "IL_02F4",
+            "opcode": "call",
+            "target": "System.Collections.Generic.ICollection\u00601\u003CBepInEx.Logging.ILogListener\u003E BepInEx.Logging.Logger::get_Listeners()"
+          },
+          {
+            "offset": "IL_02F9",
+            "opcode": "call",
+            "target": "BepInEx.Preloader.Core.Logging.PreloaderConsoleListener BepInEx.Unity.IL2CPP.Preloader::get_PreloaderLog()"
+          },
+          {
+            "offset": "IL_02FE",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.ICollection\u00601\u003CBepInEx.Logging.ILogListener\u003E::Remove(!0)"
+          },
+          {
+            "offset": "IL_0304",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Unity.IL2CPP.IL2CPPChainloader::.ctor()"
+          },
+          {
+            "offset": "IL_0309",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Unity.IL2CPP.Preloader::set_Chainloader(BepInEx.Unity.IL2CPP.IL2CPPChainloader)"
+          },
+          {
+            "offset": "IL_030E",
+            "opcode": "call",
+            "target": "BepInEx.Unity.IL2CPP.IL2CPPChainloader BepInEx.Unity.IL2CPP.Preloader::get_Chainloader()"
+          },
+          {
+            "offset": "IL_0314",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Bootstrap.BaseChainloader\u00601\u003CBepInEx.Unity.IL2CPP.BasePlugin\u003E::Initialize(System.String)"
+          },
+          {
+            "offset": "IL_031D",
+            "opcode": "call",
+            "target": "BepInEx.Logging.ManualLogSource BepInEx.Unity.IL2CPP.Preloader::get_Log()"
+          },
+          {
+            "offset": "IL_0325",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Logging.ManualLogSource::Log(BepInEx.Logging.LogLevel,System.Object)"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "file": "BepInEx.Core.dll",
+    "FullName": "BepInEx.Core, Version=6.0.0.0, Culture=neutral, PublicKeyToken=null",
+    "mvid": "1258560f-9c0e-485f-83dd-ca64bc82153e",
+    "methods": [
+      {
+        "method": "System.Void BepInEx.Bootstrap.BaseChainloader\u00601::Initialize(System.String)",
+        "calls": [
+          {
+            "offset": "IL_000D",
+            "opcode": "newobj",
+            "target": "System.Void System.InvalidOperationException::.ctor(System.String)"
+          },
+          {
+            "offset": "IL_001B",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Paths::SetExecutablePath(System.String,System.String,System.String,System.Boolean,System.String[])"
+          },
+          {
+            "offset": "IL_0021",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::InitializeLoggers()"
+          },
+          {
+            "offset": "IL_0026",
+            "opcode": "call",
+            "target": "System.String BepInEx.Paths::get_PluginPath()"
+          },
+          {
+            "offset": "IL_002B",
+            "opcode": "call",
+            "target": "System.Boolean System.IO.Directory::Exists(System.String)"
+          },
+          {
+            "offset": "IL_0032",
+            "opcode": "call",
+            "target": "System.String BepInEx.Paths::get_PluginPath()"
+          },
+          {
+            "offset": "IL_0037",
+            "opcode": "call",
+            "target": "System.IO.DirectoryInfo System.IO.Directory::CreateDirectory(System.String)"
+          },
+          {
+            "offset": "IL_003D",
+            "opcode": "call",
+            "target": "System.String BepInEx.Paths::get_PatcherPluginPath()"
+          },
+          {
+            "offset": "IL_0042",
+            "opcode": "call",
+            "target": "System.Boolean System.IO.Directory::Exists(System.String)"
+          },
+          {
+            "offset": "IL_0049",
+            "opcode": "call",
+            "target": "System.String BepInEx.Paths::get_PatcherPluginPath()"
+          },
+          {
+            "offset": "IL_004E",
+            "opcode": "call",
+            "target": "System.IO.DirectoryInfo System.IO.Directory::CreateDirectory(System.String)"
+          },
+          {
+            "offset": "IL_0061",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,System.Object)"
+          }
+        ]
+      },
+      {
+        "method": "System.Void BepInEx.Bootstrap.BaseChainloader\u00601::Execute()",
+        "calls": [
+          {
+            "offset": "IL_0001",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::DiscoverPlugins()"
+          },
+          {
+            "offset": "IL_0011",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_001C",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.ICollection\u00601\u003CBepInEx.PluginInfo\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_0021",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Int32\u003E(T)"
+          },
+          {
+            "offset": "IL_002C",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0033",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.ICollection\u00601\u003CBepInEx.PluginInfo\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_0047",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(T)"
+          },
+          {
+            "offset": "IL_0052",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0058",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_005F",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::LoadPlugins(System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E)"
+          },
+          {
+            "offset": "IL_0071",
+            "opcode": "callvirt",
+            "target": "System.Void System.Action::Invoke()"
+          },
+          {
+            "offset": "IL_0083",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0092",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_009A",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Exception\u003E(T)"
+          },
+          {
+            "offset": "IL_00A0",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_00AB",
+            "opcode": "call",
+            "target": "System.Void BepInEx.ConsoleManager::CreateConsole()"
+          },
+          {
+            "offset": "IL_00BE",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_00CD",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_00D5",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.Exception\u003E(T)"
+          },
+          {
+            "offset": "IL_00DB",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_00E8",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,System.Object)"
+          }
+        ]
+      },
+      {
+        "method": "System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E BepInEx.Bootstrap.BaseChainloader\u00601::LoadPlugins(System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E)",
+        "calls": [
+          {
+            "offset": "IL_0002",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::ModifyLoadOrder(System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E)"
+          },
+          {
+            "offset": "IL_0007",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::.ctor()"
+          },
+          {
+            "offset": "IL_000D",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,SemanticVersioning.Version\u003E::.ctor()"
+          },
+          {
+            "offset": "IL_0013",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.Reflection.Assembly\u003E::.ctor()"
+          },
+          {
+            "offset": "IL_0019",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CBepInEx.PluginInfo\u003E::.ctor()"
+          },
+          {
+            "offset": "IL_001F",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.IEnumerator\u00601\u003C!0\u003E System.Collections.Generic.IEnumerable\u00601\u003CBepInEx.PluginInfo\u003E::GetEnumerator()"
+          },
+          {
+            "offset": "IL_002D",
+            "opcode": "callvirt",
+            "target": "!0 System.Collections.Generic.IEnumerator\u00601\u003CBepInEx.PluginInfo\u003E::get_Current()"
+          },
+          {
+            "offset": "IL_0037",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CBepInEx.BepInDependency\u003E::.ctor()"
+          },
+          {
+            "offset": "IL_003E",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CBepInEx.BepInDependency,System.String\u003E\u003E::.ctor()"
+          },
+          {
+            "offset": "IL_0047",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.IEnumerable\u00601\u003CBepInEx.BepInDependency\u003E BepInEx.PluginInfo::get_Dependencies()"
+          },
+          {
+            "offset": "IL_004C",
+            "opcode": "callvirt",
+            "target": "System.Collections.Generic.IEnumerator\u00601\u003C!0\u003E System.Collections.Generic.IEnumerable\u00601\u003CBepInEx.BepInDependency\u003E::GetEnumerator()"
+          },
+          {
+            "offset": "IL_005A",
+            "opcode": "callvirt",
+            "target": "!0 System.Collections.Generic.IEnumerator\u00601\u003CBepInEx.BepInDependency\u003E::get_Current()"
+          },
+          {
+            "offset": "IL_0064",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.BepInDependency::get_DependencyGUID()"
+          },
+          {
+            "offset": "IL_006B",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.Dictionary\u00602\u003CSystem.String,SemanticVersioning.Version\u003E::TryGetValue(!0,!1\u0026)"
+          },
+          {
+            "offset": "IL_0077",
+            "opcode": "call",
+            "target": "System.Collections.Generic.Dictionary\u00602\u003CSystem.String,BepInEx.PluginInfo\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::get_Plugins()"
+          },
+          {
+            "offset": "IL_007E",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.BepInDependency::get_DependencyGUID()"
+          },
+          {
+            "offset": "IL_0085",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.Dictionary\u00602\u003CSystem.String,BepInEx.PluginInfo\u003E::TryGetValue(!0,!1\u0026)"
+          },
+          {
+            "offset": "IL_0095",
+            "opcode": "call",
+            "target": "BepInEx.BepInPlugin BepInEx.PluginInfo::get_Metadata()"
+          },
+          {
+            "offset": "IL_009A",
+            "opcode": "callvirt",
+            "target": "SemanticVersioning.Version BepInEx.BepInPlugin::get_Version()"
+          },
+          {
+            "offset": "IL_00A7",
+            "opcode": "call",
+            "target": "System.Boolean BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::\u003CLoadPlugins\u003Eg__IsHardDependency|29_0(BepInEx.BepInDependency)"
+          },
+          {
+            "offset": "IL_00B2",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CBepInEx.BepInDependency\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_00BB",
+            "opcode": "callvirt",
+            "target": "SemanticVersioning.Range BepInEx.BepInDependency::get_VersionRange()"
+          },
+          {
+            "offset": "IL_00C1",
+            "opcode": "call",
+            "target": "System.Boolean SemanticVersioning.Range::op_Inequality(SemanticVersioning.Range,SemanticVersioning.Range)"
+          },
+          {
+            "offset": "IL_00CA",
+            "opcode": "callvirt",
+            "target": "SemanticVersioning.Range BepInEx.BepInDependency::get_VersionRange()"
+          },
+          {
+            "offset": "IL_00D2",
+            "opcode": "callvirt",
+            "target": "System.Boolean SemanticVersioning.Range::IsSatisfied(SemanticVersioning.Version,System.Boolean)"
+          },
+          {
+            "offset": "IL_00DB",
+            "opcode": "call",
+            "target": "System.Boolean BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::\u003CLoadPlugins\u003Eg__IsHardDependency|29_0(BepInEx.BepInDependency)"
+          },
+          {
+            "offset": "IL_00EF",
+            "opcode": "callvirt",
+            "target": "System.String System.Object::ToString()"
+          },
+          {
+            "offset": "IL_00F4",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.KeyValuePair\u00602\u003CBepInEx.BepInDependency,System.String\u003E::.ctor(!0,!1)"
+          },
+          {
+            "offset": "IL_00F9",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CBepInEx.BepInDependency,System.String\u003E\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_0103",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.BepInDependency::get_DependencyGUID()"
+          },
+          {
+            "offset": "IL_0108",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::Contains(!0)"
+          },
+          {
+            "offset": "IL_0111",
+            "opcode": "call",
+            "target": "System.Boolean BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::\u003CLoadPlugins\u003Eg__IsHardDependency|29_0(BepInEx.BepInDependency)"
+          },
+          {
+            "offset": "IL_011F",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.IEnumerator::MoveNext()"
+          },
+          {
+            "offset": "IL_0131",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          },
+          {
+            "offset": "IL_013A",
+            "opcode": "callvirt",
+            "target": "BepInEx.BepInPlugin BepInEx.PluginInfo::get_Metadata()"
+          },
+          {
+            "offset": "IL_013F",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.BepInPlugin::get_GUID()"
+          },
+          {
+            "offset": "IL_0146",
+            "opcode": "callvirt",
+            "target": "BepInEx.BepInPlugin BepInEx.PluginInfo::get_Metadata()"
+          },
+          {
+            "offset": "IL_014B",
+            "opcode": "callvirt",
+            "target": "SemanticVersioning.Version BepInEx.BepInPlugin::get_Version()"
+          },
+          {
+            "offset": "IL_0150",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,SemanticVersioning.Version\u003E::Add(!0,!1)"
+          },
+          {
+            "offset": "IL_0160",
+            "opcode": "call",
+            "target": "System.String System.String::Format(System.String,System.Object)"
+          },
+          {
+            "offset": "IL_0168",
+            "opcode": "call",
+            "target": "System.Collections.Generic.List\u00601\u003CSystem.String\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::get_DependencyErrors()"
+          },
+          {
+            "offset": "IL_016F",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CSystem.String\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_0177",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,System.Object)"
+          },
+          {
+            "offset": "IL_0183",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CBepInEx.BepInDependency\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_018C",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CBepInEx.BepInDependency,System.String\u003E\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_0198",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CBepInEx.BepInDependency\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_01BB",
+            "opcode": "ldftn",
+            "target": "System.String BepInEx.Bootstrap.BaseChainloader\u00601/\u003C\u003Ec\u003CTPlugin\u003E::\u003CLoadPlugins\u003Eb__29_1(BepInEx.BepInDependency)"
+          },
+          {
+            "offset": "IL_01C1",
+            "opcode": "newobj",
+            "target": "System.Void System.Func\u00602\u003CBepInEx.BepInDependency,System.String\u003E::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_01CC",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IEnumerable\u00601\u003C!!1\u003E System.Linq.Enumerable::Select\u003CBepInEx.BepInDependency,System.String\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E,System.Func\u00602\u003C!!0,!!1\u003E)"
+          },
+          {
+            "offset": "IL_01D1",
+            "opcode": "call",
+            "target": "!!0[] System.Linq.Enumerable::ToArray\u003CSystem.String\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E)"
+          },
+          {
+            "offset": "IL_01D6",
+            "opcode": "call",
+            "target": "System.String System.String::Join(System.String,System.String[])"
+          },
+          {
+            "offset": "IL_01DB",
+            "opcode": "call",
+            "target": "System.String System.String::Format(System.String,System.Object,System.Object)"
+          },
+          {
+            "offset": "IL_01E3",
+            "opcode": "call",
+            "target": "System.Collections.Generic.List\u00601\u003CSystem.String\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::get_DependencyErrors()"
+          },
+          {
+            "offset": "IL_01EA",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CSystem.String\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_01F2",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,System.Object)"
+          },
+          {
+            "offset": "IL_01F9",
+            "opcode": "callvirt",
+            "target": "System.Int32 System.Collections.Generic.List\u00601\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CBepInEx.BepInDependency,System.String\u003E\u003E::get_Count()"
+          },
+          {
+            "offset": "IL_021C",
+            "opcode": "ldftn",
+            "target": "System.String BepInEx.Bootstrap.BaseChainloader\u00601/\u003C\u003Ec\u003CTPlugin\u003E::\u003CLoadPlugins\u003Eb__29_2(System.Collections.Generic.KeyValuePair\u00602\u003CBepInEx.BepInDependency,System.String\u003E)"
+          },
+          {
+            "offset": "IL_0222",
+            "opcode": "newobj",
+            "target": "System.Void System.Func\u00602\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CBepInEx.BepInDependency,System.String\u003E,System.String\u003E::.ctor(System.Object,System.IntPtr)"
+          },
+          {
+            "offset": "IL_022D",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IEnumerable\u00601\u003C!!1\u003E System.Linq.Enumerable::Select\u003CSystem.Collections.Generic.KeyValuePair\u00602\u003CBepInEx.BepInDependency,System.String\u003E,System.String\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E,System.Func\u00602\u003C!!0,!!1\u003E)"
+          },
+          {
+            "offset": "IL_0232",
+            "opcode": "call",
+            "target": "!!0[] System.Linq.Enumerable::ToArray\u003CSystem.String\u003E(System.Collections.Generic.IEnumerable\u00601\u003C!!0\u003E)"
+          },
+          {
+            "offset": "IL_0237",
+            "opcode": "call",
+            "target": "System.String System.String::Join(System.String,System.String[])"
+          },
+          {
+            "offset": "IL_023C",
+            "opcode": "call",
+            "target": "System.String System.String::Format(System.String,System.Object,System.Object)"
+          },
+          {
+            "offset": "IL_0244",
+            "opcode": "call",
+            "target": "System.Collections.Generic.List\u00601\u003CSystem.String\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::get_DependencyErrors()"
+          },
+          {
+            "offset": "IL_024B",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CSystem.String\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_0253",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,System.Object)"
+          },
+          {
+            "offset": "IL_025B",
+            "opcode": "callvirt",
+            "target": "BepInEx.BepInPlugin BepInEx.PluginInfo::get_Metadata()"
+          },
+          {
+            "offset": "IL_0260",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.BepInPlugin::get_GUID()"
+          },
+          {
+            "offset": "IL_0265",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_027E",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0290",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_0299",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CBepInEx.PluginInfo\u003E(T)"
+          },
+          {
+            "offset": "IL_02A5",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_02AC",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_02B4",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.PluginInfo::get_Location()"
+          },
+          {
+            "offset": "IL_02BB",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.Reflection.Assembly\u003E::TryGetValue(!0,!1\u0026)"
+          },
+          {
+            "offset": "IL_02C5",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.PluginInfo::get_Location()"
+          },
+          {
+            "offset": "IL_02CC",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.PluginInfo::get_Location()"
+          },
+          {
+            "offset": "IL_02D1",
+            "opcode": "call",
+            "target": "System.Reflection.Assembly System.Reflection.Assembly::LoadFrom(System.String)"
+          },
+          {
+            "offset": "IL_02D9",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,System.Reflection.Assembly\u003E::set_Item(!0,!1)"
+          },
+          {
+            "offset": "IL_02DF",
+            "opcode": "call",
+            "target": "System.Collections.Generic.Dictionary\u00602\u003CSystem.String,BepInEx.PluginInfo\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::get_Plugins()"
+          },
+          {
+            "offset": "IL_02E6",
+            "opcode": "callvirt",
+            "target": "BepInEx.BepInPlugin BepInEx.PluginInfo::get_Metadata()"
+          },
+          {
+            "offset": "IL_02EB",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.BepInPlugin::get_GUID()"
+          },
+          {
+            "offset": "IL_02F2",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.Dictionary\u00602\u003CSystem.String,BepInEx.PluginInfo\u003E::set_Item(!0,!1)"
+          },
+          {
+            "offset": "IL_02FB",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::TryRunModuleCtor(BepInEx.PluginInfo,System.Reflection.Assembly)"
+          },
+          {
+            "offset": "IL_0307",
+            "opcode": "callvirt",
+            "target": "TPlugin BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::LoadPlugin(BepInEx.PluginInfo,System.Reflection.Assembly)"
+          },
+          {
+            "offset": "IL_0311",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.PluginInfo::set_Instance(System.Object)"
+          },
+          {
+            "offset": "IL_0319",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CBepInEx.PluginInfo\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_032C",
+            "opcode": "callvirt",
+            "target": "System.Void System.Action\u00601\u003CBepInEx.PluginInfo\u003E::Invoke(!0)"
+          },
+          {
+            "offset": "IL_033B",
+            "opcode": "callvirt",
+            "target": "BepInEx.BepInPlugin BepInEx.PluginInfo::get_Metadata()"
+          },
+          {
+            "offset": "IL_0340",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.BepInPlugin::get_GUID()"
+          },
+          {
+            "offset": "IL_0345",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.HashSet\u00601\u003CSystem.String\u003E::Add(!0)"
+          },
+          {
+            "offset": "IL_034C",
+            "opcode": "call",
+            "target": "System.Collections.Generic.Dictionary\u00602\u003CSystem.String,BepInEx.PluginInfo\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::get_Plugins()"
+          },
+          {
+            "offset": "IL_0353",
+            "opcode": "callvirt",
+            "target": "BepInEx.BepInPlugin BepInEx.PluginInfo::get_Metadata()"
+          },
+          {
+            "offset": "IL_0358",
+            "opcode": "callvirt",
+            "target": "System.String BepInEx.BepInPlugin::get_GUID()"
+          },
+          {
+            "offset": "IL_035D",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.Generic.Dictionary\u00602\u003CSystem.String,BepInEx.PluginInfo\u003E::Remove(!0)"
+          },
+          {
+            "offset": "IL_036F",
+            "opcode": "newobj",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::.ctor(System.Int32,System.Int32,BepInEx.Logging.LogLevel,System.Boolean\u0026)"
+          },
+          {
+            "offset": "IL_0381",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_038A",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CBepInEx.PluginInfo\u003E(T)"
+          },
+          {
+            "offset": "IL_0396",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendLiteral(System.String)"
+          },
+          {
+            "offset": "IL_03AC",
+            "opcode": "callvirt",
+            "target": "System.String System.Object::ToString()"
+          },
+          {
+            "offset": "IL_03B5",
+            "opcode": "call",
+            "target": "System.String BepInEx.Bootstrap.TypeLoader::TypeLoadExceptionToString(System.Reflection.ReflectionTypeLoadException)"
+          },
+          {
+            "offset": "IL_03BA",
+            "opcode": "callvirt",
+            "target": "System.Void BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler::AppendFormatted\u003CSystem.String\u003E(T)"
+          },
+          {
+            "offset": "IL_03C1",
+            "opcode": "call",
+            "target": "System.Void BepInEx.Logging.Logger::Log(BepInEx.Logging.LogLevel,BepInEx.Core.Logging.Interpolation.BepInExLogInterpolatedStringHandler)"
+          },
+          {
+            "offset": "IL_03CA",
+            "opcode": "callvirt",
+            "target": "System.Boolean System.Collections.IEnumerator::MoveNext()"
+          },
+          {
+            "offset": "IL_03DC",
+            "opcode": "callvirt",
+            "target": "System.Void System.IDisposable::Dispose()"
+          }
+        ]
+      },
+      {
+        "method": "System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E BepInEx.Bootstrap.BaseChainloader\u00601::LoadPlugins(System.String[])",
+        "calls": [
+          {
+            "offset": "IL_0000",
+            "opcode": "newobj",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CBepInEx.PluginInfo\u003E::.ctor()"
+          },
+          {
+            "offset": "IL_0018",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::DiscoverPluginsFrom(System.String,System.String)"
+          },
+          {
+            "offset": "IL_001D",
+            "opcode": "callvirt",
+            "target": "System.Void System.Collections.Generic.List\u00601\u003CBepInEx.PluginInfo\u003E::AddRange(System.Collections.Generic.IEnumerable\u00601\u003C!0\u003E)"
+          },
+          {
+            "offset": "IL_002E",
+            "opcode": "call",
+            "target": "System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E BepInEx.Bootstrap.BaseChainloader\u00601\u003CTPlugin\u003E::LoadPlugins(System.Collections.Generic.IList\u00601\u003CBepInEx.PluginInfo\u003E)"
+          }
+        ]
+      }
+    ]
+  }
+]

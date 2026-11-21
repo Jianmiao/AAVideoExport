@@ -16,6 +16,7 @@ public sealed class SettingsChecks : MonoBehaviour
     private int _stage;
     private float _after;
     private float _shellHeight, _shellWidth;
+    private float _advancedEntryScroll;
     private UIInput? _bitrate;
     private RenderTexture? _surface;
     private static Harmony? _fixtureHooks;
@@ -80,13 +81,36 @@ public sealed class SettingsChecks : MonoBehaviour
             {
                 if (Field<GameObject>("_advancedSection").activeInHierarchy) throw new InvalidOperationException("Advanced must start collapsed");
                 SavePanel("unified-collapsed.png");
+                // The collapsed entry is just below the initial 426px
+                // viewport. Follow the same shared-list scroll a user needs
+                // before clicking it; clicking while its collider is disabled
+                // would test the fixture rather than the production UI.
+                var collapsed = Field<ExportPanelLayout>("_settingsGeometry");
+                Check(collapsed.MaximumScroll > 0, "Collapsed settings must expose a scrollable Advanced entry");
+                Click("▾", false);
+                var navigation = Field<ExportSettingsNavigation>("_settingsNavigation");
+                _advancedEntryScroll = navigation.ScrollOffset;
+                Check(Math.Abs(_advancedEntryScroll - collapsed.MaximumScroll) < .01f,
+                    $"Advanced entry reveal scroll must clamp to the collapsed end (actual={_advancedEntryScroll:F2}, expected={collapsed.MaximumScroll})");
+                SavePanel("unified-collapsed-entry.png");
+                Next(10); return;
+            }
+            if (_stage == 10)
+            {
+                var navigation = Field<ExportSettingsNavigation>("_settingsNavigation");
+                Check(Math.Abs(navigation.ScrollOffset - _advancedEntryScroll) < .01f,
+                    "Native scroll-button callback should retain the revealed entry position");
                 Click("高级设置", true);
                 Next(2); return;
             }
             if (_stage == 2)
             {
                 Check(Field<GameObject>("_advancedSection").activeInHierarchy, "Advanced expands in place");
-                Check(Field<ExportSettingsNavigation>("_settingsNavigation").ScrollOffset == 0, "Expand should not jump scroll");
+                Check(Math.Abs(Field<ExportSettingsNavigation>("_settingsNavigation").ScrollOffset - _advancedEntryScroll) < .01f,
+                    "Expand should preserve the scroll used to reveal the entry");
+                Call("ScrollSettings", -_advancedEntryScroll);
+                Check(Field<ExportSettingsNavigation>("_settingsNavigation").ScrollOffset == 0,
+                    "Explicit return to the top should clamp at zero");
                 SavePanel("unified-expanded-top.png");
                 Call("ScrollSettings", float.MaxValue);
                 Next(3); return;
@@ -122,7 +146,10 @@ public sealed class SettingsChecks : MonoBehaviour
                 Check(!Field<GameObject>("_advancedSection").activeInHierarchy && !_bitrate!.gameObject.activeInHierarchy,
                     "Collapse hides only advanced controls");
                 Check(_panel!.Options.BitrateKbps == 8000 && Field<string>("_bitrate") == "8.", "Collapse retains manual bitrate draft");
-                Check(Field<ExportSettingsNavigation>("_settingsNavigation").ScrollOffset == 0, "Collapse clamps obsolete scroll");
+                var collapsed = Field<ExportPanelLayout>("_settingsGeometry");
+                var navigation = Field<ExportSettingsNavigation>("_settingsNavigation");
+                Check(Math.Abs(navigation.ScrollOffset - collapsed.MaximumScroll) < .01f,
+                    $"Collapse clamps obsolete scroll to remaining content (actual={navigation.ScrollOffset:F2}, expected={collapsed.MaximumScroll})");
                 Click("开启超分辨率", true);
                 Check(_panel.Options.SuperResolutionEnabled, "720p toggle remains available");
                 Next(6); return;

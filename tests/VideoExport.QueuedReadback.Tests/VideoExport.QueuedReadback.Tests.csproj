@@ -1,8 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><AllowUnsafeBlocks>true</AllowUnsafeBlocks></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/VideoExport.Core/ExportBuildProfile.cs" Link="ExportBuildProfile.cs" />
+    <Compile Include="../../src/VideoExport.Core/RuntimeFactoryRecipeReceipt.cs" Link="RuntimeFactoryRecipeReceipt.cs" />
     <Compile Include="../../src/VideoExport.Core/QueuedVideoFrameWriter.cs" Link="QueuedVideoFrameWriter.cs" />
     <Compile Include="../../src/VideoExport.Core/ExportSession.cs" Link="ExportSession.cs" />
+    <Compile Include="../../src/VideoExport.Core/PreparedAudioTrack.cs" Link="PreparedAudioTrack.cs" />
+    <Compile Include="../../src/VideoExport.Core/StrictFramePlan.cs" Link="StrictFramePlan.cs" />
+    <Compile Include="../../src/VideoExport.Core/ExportTimeline.cs" Link="ExportTimeline.cs" />
+    <Compile Include="../../src/VideoExport.Core/AudioTimelineAccumulator.cs" Link="AudioTimelineAccumulator.cs" />
     <Compile Include="../../src/VideoExport.Core/ExportOptions.cs" Link="ExportOptions.cs" />
     <Compile Include="../../src/VideoExport.Core/CanvasLayout.cs" Link="CanvasLayout.cs" />
     <Compile Include="../../src/VideoExport.Core/OutputDirectoryPreference.cs" Link="OutputDirectoryPreference.cs" />

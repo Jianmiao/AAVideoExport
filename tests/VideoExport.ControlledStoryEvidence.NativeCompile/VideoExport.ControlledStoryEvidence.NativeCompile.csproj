@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>AAVideoExport.ControlledStoryEvidence.NativeCompile</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Plugin/CompilerAttributes.cs" Link="CompilerAttributes.cs" />
+    <Compile Include="../VideoExport.ControlledAuthoring.NativeCompile/FixtureLogContract.cs" Link="FixtureLogContract.cs" />
+    <Compile Include="../VideoExport.NativePath.Tests/ControlledStoryExportEvidence.cs" Link="ControlledStoryExportEvidence.cs" />
+    <Compile Include="../VideoExport.NativePath.Tests/ControlledStoryTrajectory.cs" Link="ControlledStoryTrajectory.cs" />
+    <Reference Include="$(AAInstallPath)/mods/AAVideoExport/0.2.8/AAVideoExport.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(AAInstallPath)/BepInEx/interop/*.dll" Private="false" />
+  </ItemGroup>
+</Project>

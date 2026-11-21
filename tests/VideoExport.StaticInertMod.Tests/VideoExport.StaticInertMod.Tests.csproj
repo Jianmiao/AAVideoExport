@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><AllowUnsafeBlocks>true</AllowUnsafeBlocks></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/VideoExport.Core/VideoExport.Core.csproj" />
+    <Compile Include="../../src/VideoExport.Plugin/StaticInertModEvidence.cs" Link="StaticInertModEvidence.cs" Condition="Exists('../../src/VideoExport.Plugin/StaticInertModEvidence.cs')" />
+    <Compile Include="../../src/VideoExport.Plugin/StaticInertScope.cs" Link="StaticInertScope.cs" Condition="Exists('../../src/VideoExport.Plugin/StaticInertScope.cs')" />
+    <Compile Include="../../src/VideoExport.Plugin/StrictCapabilityInventory.cs" Link="StrictCapabilityInventory.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/FrameworkGeneratedAssemblyScope.cs" Link="FrameworkGeneratedAssemblyScope.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/FrameworkGeneratedAssemblyScope.Additional.cs" Link="FrameworkGeneratedAssemblyScope.Additional.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/FrameworkGeneratedAssemblyScope.HarmonyMetadata.cs" Link="FrameworkGeneratedAssemblyScope.HarmonyMetadata.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/AssemblySimpleNameCache.cs" Link="AssemblySimpleNameCache.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RetainedRecipeScope.cs" Link="RetainedRecipeScope.cs" />
+    <Compile Include="../../src/VideoExport.Plugin/RuntimeAttributionClient.cs" Link="RuntimeAttributionClient.cs" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Mono.Cecil.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Core.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Unity.IL2CPP.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/BepInEx.Unity.Common.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/Il2CppInterop.Runtime.dll" />
+    <Reference Include="$(AAInstallPath)/BepInEx/core/0Harmony.dll" />
+    <PackageReference Include="MonoMod.RuntimeDetour" Version="22.3.23.4" />
+    <PackageReference Include="MonoMod.Utils" Version="22.3.23.4" />
+  </ItemGroup>
+</Project>

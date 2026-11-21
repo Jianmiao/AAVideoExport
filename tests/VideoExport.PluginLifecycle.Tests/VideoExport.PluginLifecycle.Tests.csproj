@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/VideoExport.Plugin/Plugin.cs" Link="Plugin.cs" />
+    <Compile Include="../../src/VideoExport.Core/OutputDirectoryPreference.cs" Link="OutputDirectoryPreference.cs" />
+  </ItemGroup>
+</Project>

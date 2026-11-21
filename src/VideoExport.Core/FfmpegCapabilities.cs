@@ -125,7 +125,10 @@ public sealed class FfmpegCapabilities
                 UpscaleShaders.Stage(shaderDirectory, options);
             }
             var result = await FfmpegProcess.RunAsync(ffmpegPath, args,
-                TimeSpan.FromSeconds(shaderDirectory == null ? 10 : 30), cancellationToken, shaderDirectory, encoder).ConfigureAwait(false);
+                // Cold hardware-driver setup can exceed the old 10-second
+                // bound even when the same 1080p encoder works on retry. Keep
+                // a finite, cancellable preflight budget shared with shaders.
+                TimeSpan.FromSeconds(30), cancellationToken, shaderDirectory, encoder).ConfigureAwait(false);
             result.EnsureSuccess("Encoder/upscaler preflight (" + encoder + ")");
             if(shaderDirectory != null) ValidateShaderPreflight(result);
         }

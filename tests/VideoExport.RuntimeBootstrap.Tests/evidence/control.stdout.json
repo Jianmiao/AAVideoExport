@@ -1,0 +1,98 @@
+{
+  "schema": "aave.runtime-bootstrap.tests.v1",
+  "runtime": "6.0.7",
+  "checks": [
+    {
+      "name": "early bootstrap assembly exists",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "versioned diagnostics cannot certify strict export",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks: unset",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks: ",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks: true",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks: 0",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks:  1",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "only exact opt in enables hooks: 1 ",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "opt in installs early hooks",
+      "passed": false,
+      "detail": {
+        "schema": "aave.runtime-attribution.v1",
+        "installed": false,
+        "coverageStartedUtc": "",
+        "runtime": {
+          "framework": ".NET 6.0.7",
+          "version": "6.0.7",
+          "architecture": "X64",
+          "harmony": "0Harmony, Version=2.10.2.0, Culture=neutral, PublicKeyToken=null"
+        },
+        "preexistingCoverage": false,
+        "allCodeCoverage": false,
+        "permitsStrictExport": false,
+        "evidenceKind": "STACK_OBSERVATION_ONLY",
+        "startAssemblies": [],
+        "targets": [],
+        "records": [],
+        "markers": [],
+        "lossCounters": {
+          "droppedRecordEvents": 0,
+          "droppedDelegateAssociations": 0,
+          "droppedMarkers": 0,
+          "reentrantCallbacksSkipped": 0,
+          "callbackFailures": 0,
+          "installFailures": 0,
+          "rollbackFailures": 0,
+          "truncatedStacks": 0,
+          "truncatedText": 0,
+          "droppedStartAssemblies": 0
+        },
+        "limits": {
+          "records": 4096,
+          "delegates": 8192,
+          "markers": 256,
+          "stackFrames": 32,
+          "textCharacters": 512,
+          "startAssemblies": 512
+        },
+        "installationError": "",
+        "invocationSemantics": "No observation installed."
+      }
+    },
+    {
+      "name": "negative control preserves original delegate output",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "failed": 1,
+  "scope": "Isolated fixtures only; no AA startup, Mod certification, or export-effects proof."
+}

@@ -13,7 +13,7 @@ using Object = UnityEngine.Object;
 
 namespace AAVideoExport.Plugin;
 
-public sealed class ExportHost : MonoBehaviour
+public sealed partial class ExportHost : MonoBehaviour
 {
     internal static ExportHost? Current;
     internal static string LoadedStoryTitle = "";
@@ -63,21 +63,41 @@ public sealed class ExportHost : MonoBehaviour
     private bool _originalInput;
     private Coroutine? _captureLoop;
     private Il2CppSystem.Action<ScriptableRenderContext, Il2CppReferenceArray<Camera>>? _endFrame;
+    private Il2CppSystem.Action<ScriptableRenderContext, Il2CppReferenceArray<Camera>>? _beginFrame;
+    private Il2CppSystem.Action<ScriptableRenderContext, Camera>? _beginCamera;
     private bool _automaticCaptureAvailable = true;
     private bool _failureHandling;
     private long _uiTicks, _renderTicks, _audioTicks;
     private double _lastPerfReport;
+    private double _lastEncodingElapsedSeconds;
+    private int _lastBufferedFrames;
     private IDisposable? _renderSessionOwnership;
+    private IDisposable? _strictStartupBoundary;
+    private StaticInertScope? _staticInertScope;
+    private bool _strictStartupBoundaryAcquired;
+    private bool _strictStartupBoundaryCancelling;
     private bool _renderRestorationFailed;
+    private Exception? _characterVoiceClockFailure;
+    private bool _timelineRestoring;
 
     internal bool Capturing => _native != null;
+    internal long CapturedFrame => _captured;
+    internal int CaptureFps => _options?.Fps ?? 0;
+    internal bool OwnsCapturePlayer(Test player) => Capturing && _player == player;
     internal NativeAutoSelection? AutoSelection => Capturing ? _autoSelection : null;
     internal void AutoSelectionFailed(Exception error) { if (Capturing) Fail(error); }
+    internal void CharacterVoiceClockFailed(Exception error)
+    {
+        // EndExport may report a fault after _native has been detached for
+        // restoration. Retain that failure so sealing/publication still stops.
+        _characterVoiceClockFailure ??= error;
+        if (Capturing) Fail(error);
+    }
     internal bool AllowTouch => !Capturing && !_panel.Visible;
     internal float FrameDelta => _options == null ? 0 : 1f / _options.Fps;
     internal float UiClock => _uiEpoch + _captured * FrameDelta;
-    private bool Busy => _prepare != null || _finalize != null || _cleanup != null || _armed || Capturing
-        || _nativeLoadPending || _returningToCatalog;
+    private bool Busy => _prepare != null || _finalize != null || _cleanup != null || _bgmCleanup != null || _armed || Capturing || _voiceWarmup || _bgmWarmup || _effectsSourceWaiting || _retainedPreparationRequest != null
+        || _nativeLoadPending || _returningToCatalog || _strictReplayPending;
 
     public ExportHost(IntPtr pointer) : base(pointer) { }
 
@@ -86,7 +106,7 @@ public sealed class ExportHost : MonoBehaviour
         RenderControlV1.BeginHostInitialization();
         Current = this;
         _gpuName = SystemInfo.graphicsDeviceName;
-        _panel.Options = new ExportOptions { Title = "", OutputDirectory = Plugin.OutputDirectory };
+        _panel.Options = new ExportOptions { Title = "", OutputDirectory = Plugin.OutputDirectory, StrictSynchronization = true };
         _panel.Visible = false;
         _panel.OutputDirectoryCommitted = Plugin.RememberOutputDirectory;
         _panel.ProbeRequested = Probe;
@@ -97,9 +117,19 @@ public sealed class ExportHost : MonoBehaviour
             _endFrame = DelegateSupport.ConvertDelegate<Il2CppSystem.Action<ScriptableRenderContext, Il2CppReferenceArray<Camera>>>(
                 (Action<ScriptableRenderContext, Il2CppReferenceArray<Camera>>)((_, _) => AfterRenderPipelineFrame()));
             RenderPipelineManager.add_endFrameRendering(_endFrame);
+            _beginFrame = DelegateSupport.ConvertDelegate<Il2CppSystem.Action<ScriptableRenderContext, Il2CppReferenceArray<Camera>>>(
+                (Action<ScriptableRenderContext, Il2CppReferenceArray<Camera>>)((_, _) => BeforeFrameRender()));
+            RenderPipelineManager.add_beginFrameRendering(_beginFrame);
+            _beginCamera = DelegateSupport.ConvertDelegate<Il2CppSystem.Action<ScriptableRenderContext, Camera>>(
+                (Action<ScriptableRenderContext, Camera>)((_, _) => BeforeFrameRender()));
+            RenderPipelineManager.add_beginCameraRendering(_beginCamera);
         }
         catch (Exception error)
         {
+            if (_endFrame != null) { try { RenderPipelineManager.remove_endFrameRendering(_endFrame); } catch { } }
+            if (_beginFrame != null) { try { RenderPipelineManager.remove_beginFrameRendering(_beginFrame); } catch { } }
+            if (_beginCamera != null) { try { RenderPipelineManager.remove_beginCameraRendering(_beginCamera); } catch { } }
+            _beginFrame = null; _beginCamera = null;
             // Some AA IL2CPP builds do not expose the URP event. Built-in
             // FireOnPostRender capture and the catalog toolbar remain usable.
             _endFrame = null;
@@ -123,8 +153,22 @@ public sealed class ExportHost : MonoBehaviour
     {
         if (_shutdown) return;
         MoreEffectsCompatibility.TryInstall();
+        FlandrePortraitClock.TryInstall();
         try
         {
+            PumpBgmCleanup();
+            ThrowRetainedFault();
+            CharacterVoiceDelayClock.TryInstall();
+            ControlledBackgroundVideoAdapter.TryInstall();
+            RuntimeModBoundaries.TryInstall();
+            MultilingualCaptureAdapter.TryInstall();
+            RetainedMenuPlaybackBoundary.TryInstall();
+            PumpRetainedPreparation();
+            if (!_strictStartupBoundaryCancelling) ValidateRetainedControllers();
+            ValidateFrameworkFrame();
+            ValidateRecipeFrame();
+            if (_strictStartupBoundaryAcquired && !_strictStartupBoundaryCancelling) AASkipIntroExportBoundary.ValidateActive();
+            if (ExportBuildProfile.DevelopmentAuditEnabled && _staticInertScope != null && !_strictStartupBoundaryCancelling) _staticInertScope.ValidateFrame();
             if (Input.GetKey(KeyCode.LeftControl) && Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.E))
             {
                 if (!_panel.Visible) _panel.SetSourceCanvas(Screen.width, Screen.height);
@@ -144,13 +188,16 @@ public sealed class ExportHost : MonoBehaviour
             }
             // A newly loaded catalog has no selected card yet. Waiting for a
             // populated block made cancellation depend on another user click.
-            if (_returningToCatalog && SceneManager.GetActiveScene().name == "CatalogScene" &&
+            if ((_returningToCatalog || _strictReplayPending) && SceneManager.GetActiveScene().name == "CatalogScene" &&
                 Object.FindObjectsOfType<CatalogFileInfo>().Any(info => info != null && info.gameObject.activeInHierarchy))
             {
                 _returningToCatalog = false;
                 _panel.Visible = true;
+                if (_strictReplayPending) LaunchStrictReplay();
                 SyncNativeUi();
             }
+            if (_strictReplayPending && _loadingTimer.Elapsed.TotalSeconds >= 120)
+                throw new ExportException("playback_start_timeout", "音频预渲染后返回鉴赏列表超时，已取消此次导出。");
             if (_nativeLoadPending && _nativeLoadCancelled && _loadingTimer.Elapsed.TotalSeconds >= 120)
             {
                 _status = "编码已取消，但 AA 的场景加载仍未结束。请重启 AA 后重试，避免重复加载剧情。";
@@ -201,6 +248,13 @@ public sealed class ExportHost : MonoBehaviour
             {
                 var work = _prepare; _prepare = null;
                 _session = work.GetAwaiter().GetResult();
+                // Effects-source completion remains on the main thread in
+                // CompleteBeginCapture, after real native resource loading.
+                // This worker has finished pure input hashing/encoder setup;
+                // no authored frame or command can run before that completion.
+                BindFrozenVoiceStory();
+                ValidateFrameworkFrame(required: true);
+                ValidateRecipeFrame(required: true);
                 if (!_launch.CompletePreparation(_launchTicket, key => {
                     _armed = true;
                     _eligiblePlayer = IntPtr.Zero;
@@ -227,9 +281,78 @@ public sealed class ExportHost : MonoBehaviour
                     var result = work.GetAwaiter().GetResult();
                     ReportCompleted(result);
                 }
-                finally { _session?.Dispose(); _session = null; _elapsed.Stop(); _panel.Visible = true; }
+                finally { DisposeStrictPreparation(); _session?.Dispose(); _session = null; _elapsed.Stop(); _panel.Visible = true; }
+            }
+            if (_voiceWarmup || _bgmWarmup || _effectsSourceWaiting)
+            {
+                if (_player == null) throw new ExportException("player_closed", "原生语音或效果索引准备期间剧情播放器已关闭。");
+                if (_voiceWarmup && !PumpVoiceWarmup()) return;
+                CompleteBeginCapture(_player);
+                if (_effectsSourceWaiting || _bgmWarmup) return;
             }
             if (!Capturing) return;
+            ControlledBackgroundVideoAdapter.ValidateActive();
+            RuntimeModBoundaries.ValidateActive();
+            MultilingualCaptureAdapter.ValidateActive();
+            if (ExportBuildProfile.DevelopmentAuditEnabled && _options?.StrictSynchronization == true && _strictCapabilitySnapshot != null
+                && _strictCapabilityGeneration != StrictCapabilityInventory.AssemblyGeneration)
+            {
+                var currentCapabilities = StrictCapabilityInventory.Capture(_staticInertScope, _voiceSession, _recipeScope, _frameworkScope);
+                currentCapabilities.EnsureStrictExportAllowed();
+                if (!string.Equals(currentCapabilities.Fingerprint, _strictCapabilitySnapshot.Fingerprint, StringComparison.Ordinal))
+                    throw new ExportException("strict_capability_unsupported",
+                        "Strict capability set changed during capture; output was refused.");
+                _strictCapabilityGeneration = StrictCapabilityInventory.AssemblyGeneration;
+            }
+            if (_strictStartReady)
+            {
+                // The original effects index can finish/reload on native
+                // Updates during mixer priming. Revalidate its retained proof
+                // before arming authored clocks or releasing the first row.
+                _effectsSourceInput?.ValidateCurrent(requireActive: true);
+                _strictStartReady = false;
+                _strictPriming = false;
+                _strictAwaitingStart = false;
+                _lastUnityFrame = -1;
+                if (ExportBuildProfile.SinglePassEnabled) NativeExportClock.ResumeTimelineFrame();
+                UnityEngine.Random.InitState(_strictSeed);
+                BeginStrictAudioTimeline();
+                ArmVoicePass();
+                _bgmSession?.BeginPass(_player!);
+                _player!.AdvanceScenario(false, null);
+                ThrowRetainedFault();
+                // A guarded native event may synchronously cancel capture.
+                // Preserve that first error and do not reuse disposed state.
+                if (!Capturing) return;
+            }
+            if (_strictFinishPending)
+            {
+                _strictFinishPending = false;
+                // A fixed frame count is only a target. Native Test.End is
+                // the authoritative story boundary; never request audio
+                // drain for a replay that has not reached that boundary.
+                if (!_endFence.IsComplete(_captured))
+                {
+                    FinishStrictPass();
+                    return;
+                }
+                _strictDraining = true;
+                _strictDrainUpdates = 0;
+                _strictDrainStarted = Time.realtimeSinceStartup;
+            }
+            if (_strictDraining)
+            {
+                // Completed native readbacks are valid only through their
+                // current Unity frame, even while final PCM needs more ticks.
+                _frames!.Drain(false);
+                if (DrainStrictAudioStep())
+                {
+                    _strictDraining = false;
+                    SealStrictAudio();
+                    FinishStrictPass();
+                }
+                return;
+            }
             _native!.ExcludeOverlayLayer(_panel.ExcludeFrom);
             _native.PrepareAutomaticFrame();
             if (_captured == 0 && _elapsed.Elapsed.TotalSeconds > 10)
@@ -267,18 +390,48 @@ public sealed class ExportHost : MonoBehaviour
             if (Capturing)
             {
                 double speed = _captured / Math.Max(.001, _elapsed.Elapsed.TotalSeconds);
-                details = $"正在渲染 · {speed:0} 帧/秒 · {speed / _options!.Fps:0.0}× 实时速度 · 缓冲 {_frames!.BufferedFrames} 帧";
+                long encoded = _session?.FramesWritten ?? 0;
+                double encodeSpeed = ExportProgressMetrics.FramesPerSecondForDisplay(encoded, _frames?.EncodingElapsedSeconds ?? _lastEncodingElapsedSeconds);
+                details = ExportBuildProfile.SinglePassEnabled
+                    ? (_strictPriming ? "准备离线音频时钟，随后同步生成画面与音频"
+                        : $"单遍导出：渲染 {speed:0.0} 帧/秒 · 编码 {encodeSpeed:0.0} 帧/秒 · 队列 {_frames!.BufferedFrames:N0} 帧")
+                    : _strictPriming ? "两遍生成第 1/2 遍：准备离线音频时钟，视频尚未编码"
+                    : _strictPreparing ? $"两遍生成第 1/2 遍：预渲染音频 · {speed:0.0} 帧/秒 · 视频尚未编码"
+                    : $"两遍生成第 2/2 遍：渲染 {speed:0.0} 帧/秒 · 编码 {encodeSpeed:0.0} 帧/秒 · 队列 {_frames!.BufferedFrames:N0} 帧";
             }
             IReadOnlyList<EncoderCapability>? encoders = _probe != null || !_probeAttempted
                 || _probeMode != _panel.Options.EncodingMode ? null
                 : _capabilitiesMode != _panel.Options.EncodingMode || _capabilities == null
                     ? Array.Empty<EncoderCapability>()
                     : _panel.Options.EncodingMode == "software" ? _capabilities.SoftwareEncoders : _capabilities.HardwareEncoders;
+            long encodedFrames = _session?.FramesWritten ?? 0;
+            if (_frames != null)
+            {
+                _lastEncodingElapsedSeconds = _frames.EncodingElapsedSeconds;
+                _lastBufferedFrames = _frames.BufferedFrames;
+            }
+            var progress = new ExportProgressMetrics(
+                _captured,
+                encodedFrames,
+                _elapsed.Elapsed.TotalSeconds,
+                _frames?.EncodingElapsedSeconds ?? _lastEncodingElapsedSeconds,
+                _frames?.BufferedFrames ?? _lastBufferedFrames,
+                !ExportBuildProfile.SinglePassEnabled && (_strictPreparing || _strictPriming));
             _panel.StatusIsError = _statusIsError;
-            _panel.Draw(title, _gpuName, details.Replace('\n', ' '), Busy, _captured, -1, null, encoders);
+            _panel.Draw(title, _gpuName, details.Replace('\n', ' '), Busy, _captured, _strictPlan?.FrameCount ?? -1, null, encoders);
             _panel.CaptureElapsedSeconds = _elapsed.Elapsed.TotalSeconds;
-            _panel.EncodedFrames = _session?.FramesWritten ?? _captured;
-            _panel.ExportStage = _cleanup != null || _nativeLoadCancelled ? "正在取消" : _returningToCatalog ? "返回导出设置" : _prepare != null ? "准备编码器" : _armed ? "加载剧情与素材" : Capturing ? "渲染画面与音频" : _finalize != null ? "合成并校验视频" : "准备就绪";
+            _panel.RenderFramesPerSecond = progress.RenderFramesPerSecond;
+            _panel.EncodeFramesPerSecond = progress.EncodeFramesPerSecond;
+            _panel.BufferedFrames = progress.BufferedFrames;
+            _panel.StrictAudioPreparation = progress.StrictAudioPreparation;
+            _panel.StrictVideoReplay = !ExportBuildProfile.SinglePassEnabled && Capturing && !_strictPreparing && !_strictPriming && _options?.StrictSynchronization == true;
+            _panel.EncodedFrames = encodedFrames;
+            _panel.ExportStage = _cleanup != null || _nativeLoadCancelled ? "正在取消" : _returningToCatalog ? (_strictReplayPending ? "准备重放视频" : "返回导出设置") : _prepare != null ? "准备编码器" : _armed ? "加载剧情与素材" : _voiceWarmup ? "等待原生语音预加载" : _effectsSourceWaiting ? "等待原生画面效果索引" : Capturing ? (_strictPriming ? "两遍生成 · 第 1/2 遍：建立音频时钟（视频暂不编码）" : _strictPreparing ? "两遍生成 · 第 1/2 遍：预渲染音频（视频暂不编码）" : "两遍生成 · 第 2/2 遍：渲染并同步编码") : _finalize != null ? "合成音视频" : "准备就绪";
+            if (ExportBuildProfile.SinglePassEnabled && Capturing)
+                _panel.ExportStage = _strictPriming ? "准备离线音频时钟" : _strictDraining ? "收齐末尾音频" : "单遍导出 · 生成画面与音频";
+            else if (_bgmCleanupFailure != null) _panel.ExportStage = "背景音乐资源恢复失败";
+            else if (_bgmCleanup != null) _panel.ExportStage = "等待背景音乐资源清理";
+            else if (_bgmWarmup) _panel.ExportStage = "等待背景音乐预加载";
             _panel.Tick();
             _lastUiError = "";
         }
@@ -326,13 +479,50 @@ public sealed class ExportHost : MonoBehaviour
     {
         RenderControlV1.EnsureMainThread();
         if (Busy) return;
+        if (_renderRestorationFailed) { _status = "恢复尚未完成；请先重启 AA 后再导出。"; _statusIsError = true; return; }
+        _retainedFault = null;
         _statusIsError = false;
         var acquisitionAttempted = false;
         var acquired = _renderSessionOwnership != null;
         try
         {
-            options = options with { RenderGpuVendorId = SystemInfo.graphicsDeviceVendorID, RenderGpuDeviceId = SystemInfo.graphicsDeviceID, Direct3DReadbackFrames = Plugin.Direct3DReadbackFrames };
+            options = options with { RenderGpuVendorId = SystemInfo.graphicsDeviceVendorID, RenderGpuDeviceId = SystemInfo.graphicsDeviceID, Direct3DReadbackFrames = Plugin.Direct3DReadbackFrames, StrictSynchronization = true };
             options.Validate();
+            // Resolve late-loaded optional adapters before any story read or
+            // RenderControlV1 handoff. Reject known missing adapters; this is
+            // not a certification of unobserved third-party timing paths.
+            MoreEffectsCompatibility.TryInstall();
+            CharacterVoiceDelayClock.TryInstall();
+            ControlledBackgroundVideoAdapter.TryInstall();
+            RuntimeModBoundaries.TryInstall();
+            MultilingualCaptureAdapter.TryInstall();
+            MoreEffectsCompatibility.EnsureOwnEffectsAllowed();
+            RuntimeModBoundaries.PrepareExportDependencies();
+            FlandrePortraitClock.EnsureStrictExportAllowed();
+            if (ExportBuildProfile.DevelopmentAuditEnabled)
+            {
+                _staticInertScope ??= StaticInertScope.Acquire();
+                _staticInertScope.ValidateFrame();
+            }
+            if (!_strictStartupBoundaryAcquired)
+            {
+                _strictStartupBoundary = AASkipIntroExportBoundary.TryAcquire();
+                _strictStartupBoundaryAcquired = true;
+                _strictStartupBoundaryCancelling = false;
+            }
+            if (!AcquireRetainedBoundaries(options)) return;
+            AcquireFrameworkBoundary();
+            AcquireRecipeBoundary();
+            // Capture the loaded Mod capability set before reading the story or
+            // acquiring RenderControlV1. Opaque/rejected modules must fail
+            // closed; ordinary playback remains unaffected because this gate
+            // is reached only by the strict export preparation path.
+            if (ExportBuildProfile.DevelopmentAuditEnabled)
+            {
+                _strictCapabilitySnapshot = StrictCapabilityInventory.Capture(_staticInertScope, _voiceSession, _recipeScope, _frameworkScope);
+                _strictCapabilitySnapshot.EnsureStrictExportAllowed();
+                _strictCapabilityGeneration = StrictCapabilityInventory.AssemblyGeneration;
+            }
             if (_capabilities == null || _probe != null || _capabilitiesMode != options.EncodingMode
                 || _panel.Options.EncodingMode != options.EncodingMode)
             { Probe(); _status = "请先等待当前编码方式的检测完成，再点击导出。"; return; }
@@ -360,6 +550,10 @@ public sealed class ExportHost : MonoBehaviour
             if (canvas.CaptureWidth > SystemInfo.maxTextureSize || canvas.CaptureHeight > SystemInfo.maxTextureSize)
                 throw new ExportException("gpu_resolution_limit", "所选画布超过当前显卡的纹理尺寸上限。");
             _options = options;
+            if (ExportBuildProfile.DevelopmentAuditEnabled) UnityEngine.Debug.Log("AA Video Export strict capability snapshot: fingerprint=" + _strictCapabilitySnapshot!.Fingerprint
+                + "; modules=" + string.Join(",", _strictCapabilitySnapshot.Modules.Select(module => module.ModuleId + "=" + module.Level))
+                + "; preflight_cache_reuse=" + _strictCapabilitySnapshot.CanReusePreflight);
+            InitializeStrictPreparation(storyKey);
             // Playback timing belongs to AA. Always start from the selected
             // story's beginning and let native Auto/voice/animation timing
             // drive the run until Test.End().
@@ -378,6 +572,8 @@ public sealed class ExportHost : MonoBehaviour
             var token = _cancellation.Token;
             _prepare = Task.Run(() =>
             {
+                token.ThrowIfCancellationRequested();
+                PrepareStrictIdentity(storyKey);
                 token.ThrowIfCancellationRequested();
                 var session = new ExportSession(options, Plugin.FfmpegPath, Plugin.FfprobePath, encoder, sampleRate, channels, true);
                 if (token.IsCancellationRequested) { session.Dispose(); token.ThrowIfCancellationRequested(); }
@@ -445,17 +641,20 @@ public sealed class ExportHost : MonoBehaviour
     }
 
     [HideFromIl2Cpp]
-    internal void BeforePlayerStart(Test player)
+    internal bool BeforePlayerStart(Test player)
     {
-        if (!_armed || _eligiblePlayer == IntPtr.Zero || player.Pointer != _eligiblePlayer || player.previewMode || player.scn == null) return;
+        if (!_strictStartupBoundaryCancelling && (_armed || Capturing || _voiceWarmup || _bgmWarmup || _effectsSourceWaiting) && _retainedFault != null) return false;
+        if ((_voiceWarmup || _bgmWarmup || _effectsSourceWaiting) && _player == player) return false;
+        if (!_armed || _eligiblePlayer == IntPtr.Zero || player.Pointer != _eligiblePlayer || player.previewMode || player.scn == null) return true;
         try
         {
-            if (!_launch.AcceptPlayback(_eligibleTicket, Path.GetFullPath(PersistentData.projectPath))) return;
+            if (!_launch.AcceptPlayback(_eligibleTicket, Path.GetFullPath(PersistentData.projectPath))) return true;
             _nativeLoadPending = false;
             Begin(player);
             _loadingCoroutine = null; _loadingStory = null; _frozenSave = null;
+            return !_voiceWarmup && !_bgmWarmup && !_effectsSourceWaiting;
         }
-        catch (Exception error) { Fail(error); }
+        catch (Exception error) { Fail(error); return false; }
     }
 
     [HideFromIl2Cpp]
@@ -463,26 +662,100 @@ public sealed class ExportHost : MonoBehaviour
     {
         RenderControlV1.EnsureMainThread();
         if (_session == null || _options == null) throw new ExportException("session_missing", "编码任务未准备。");
+        if (ExportBuildProfile.DevelopmentAuditEnabled && _options.StrictSynchronization) RequireStaticInertScope().ValidateFrame();
+        ValidateFrameworkFrame(required: _options.StrictSynchronization);
+        ValidateRecipeFrame(required: _options.StrictSynchronization);
+        if (_strictStartupBoundaryAcquired) AASkipIntroExportBoundary.ValidateActive();
+        if (ExportBuildProfile.DevelopmentAuditEnabled && _options.StrictSynchronization && _strictCapabilitySnapshot != null)
+        {
+            var currentCapabilities = StrictCapabilityInventory.Capture(_staticInertScope, _voiceSession, _recipeScope, _frameworkScope);
+            currentCapabilities.EnsureStrictExportAllowed();
+            if (!string.Equals(currentCapabilities.Fingerprint, _strictCapabilitySnapshot.Fingerprint, StringComparison.Ordinal))
+                throw new ExportException("strict_capability_unsupported",
+                    "Strict capability set changed after story loading; capture was refused before the first frame.");
+            _strictCapabilityGeneration = StrictCapabilityInventory.AssemblyGeneration;
+        }
         _renderSessionOwnership ??= RenderControlV1.Acquire();
         _armed = false;
         _eligiblePlayer = IntPtr.Zero;
         _player = player;
-        _uiEpoch = RealTime.time;
+        if (_options.StrictSynchronization && _retainedMenuLease == null)
+            throw new ExportException("strict_retained_boundary_invalid", "Strict capture has no retained menu/resource proof.");
+        if (_retainedMenuLease != null) RetainedMenuPlaybackBoundary.BeginPlayback();
+        BeginBgmPreparation();
+        // Keep native resource coroutines and ordinary clocks running while
+        // voice assets preload. No offline scope/clock exists until ready.
+        if (!PrepareVoiceWarmup()) return;
+        CompleteBeginCapture(player);
+    }
+
+    [HideFromIl2Cpp]
+    private void CompleteBeginCapture(Test player)
+    {
+        if (_session == null || _options == null) throw new ExportException("session_missing", "编码任务未准备。");
+        if (!PumpBgmPreparation()) return;
+        ValidateRetainedControllers();
+        ValidateFrameworkFrame(required: _options.StrictSynchronization);
+        ValidateRecipeFrame(required: _options.StrictSynchronization);
+        if (ExportBuildProfile.DevelopmentAuditEnabled && _strictCapabilitySnapshot != null)
+        {
+            var current = StrictCapabilityInventory.Capture(_staticInertScope, _voiceSession, _recipeScope, _frameworkScope);
+            current.EnsureStrictExportAllowed();
+            if (current.Fingerprint != _strictCapabilitySnapshot.Fingerprint)
+                throw new ExportException("strict_capability_unsupported", "Loaded capabilities changed during native voice preloading.");
+            _strictCapabilityGeneration = StrictCapabilityInventory.AssemblyGeneration;
+        }
+        _cancellation?.Token.ThrowIfCancellationRequested();
+        if (_effectsSourceWaiting && Time.realtimeSinceStartup - _effectsSourceWaitStarted >= 120)
+            throw new ExportException("strict_effects_source_timeout", "原生画面效果索引准备超时，尚未开始剧情计帧或离线音频；导出已停止。");
+        try { CompleteStrictSourcePreparation(); }
+        catch (ExportException error) when (error.Code == "strict_effects_source_pending")
+        {
+            // The original Mod consumes its background load from its native
+            // Update. Keep normal clocks live and retry only on a later Update;
+            // no frame ring, capture scope or authored advance exists yet.
+            if (!_effectsSourceWaiting) _effectsSourceWaitStarted = Time.realtimeSinceStartup;
+            _effectsSourceWaiting = true;
+            _status = "正在等待原生画面效果索引准备完成；尚未开始剧情计帧或离线音频，可随时取消。";
+            return;
+        }
+        _effectsSourceWaiting = false;
+        _effectsSourceWaitStarted = 0;
+        float previousUiTime = RealTime.time;
+        _uiEpoch = previousUiTime;
         _panel.ReleaseIdleBudget();
         // Keep the same native 1x pixels, but always use the bounded target ring.
         // The former 1080p single-target path allowed a new readback request to
         // pile onto the same RenderTexture while the previous request was still
         // in flight. That serializes the GPU/CPU boundary on long exports and
         // is exactly the opposite of the editor-style render pipeline we want.
-        _frames = new FramePipeline(_options, _session, Plugin.UseAsyncReadback, nativeBuffers: Plugin.UseNativeFrameBuffers);
+        _frames ??= new FramePipeline(_options, _session, Plugin.UseAsyncReadback, nativeBuffers: Plugin.UseNativeFrameBuffers);
         _native = new NativeCaptureScope(player, _options, _frames.Target, _showButtons, _automaticCaptureAvailable);
-        NativeExportClock.Begin(_uiEpoch, FrameDelta, () => UiClock);
+        BeginStrictPass();
+        _uiEpoch = 0;
+        _timelineRestoring = false;
+        if (ExportBuildProfile.SinglePassEnabled)
+            NativeExportClock.BeginTimeline(_options.Fps, () => _captured,
+                () => !_timelineRestoring && !_strictStartupBoundaryCancelling && !_strictPriming && !_strictAwaitingStart && !_strictDraining && !_strictFinishPending);
+        else
+            NativeExportClock.Begin(_uiEpoch, FrameDelta, () => UiClock);
+        foreach (var tween in Object.FindObjectsOfType<UITweener>())
+            if (tween != null && tween.ignoreTimeScale && tween.mStarted) tween.mStartTime -= previousUiTime;
         _autoSelection = new NativeAutoSelection(player, message => UnityEngine.Debug.Log("AA Video Export: " + message));
-        MoreEffectsCompatibility.BeginExport(() => _captured / (double)_options.Fps);
+        MoreEffectsCompatibility.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.ElapsedSeconds : _captured / (double)_options.Fps);
+        FlandrePortraitClock.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.ElapsedSeconds : _captured / (double)_options.Fps);
+        _characterVoiceClockFailure = null;
+        CharacterVoiceDelayClock.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured, _options.Fps);
+        ControlledBackgroundVideoAdapter.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured, _options.Fps,
+            Path.Combine(Plugin.TimelineReceiptDirectory, "background-frames"), Plugin.FfmpegPath, Plugin.FfprobePath);
+        RuntimeModBoundaries.BeginExport();
+        MultilingualCaptureAdapter.BeginExport();
         UpdateInputOwnership();
         _lastUnityFrame = -1;
         _elapsed.Restart();
         _uiTicks = _renderTicks = _audioTicks = 0;
+        _lastEncodingElapsedSeconds = 0;
+        _lastBufferedFrames = 0;
         _panel.ResetPerformanceCounters();
         _lastPerfReport = 0;
         _status = "逐帧导出中…";
@@ -514,6 +787,18 @@ public sealed class ExportHost : MonoBehaviour
     }
 
     internal void CaptureLoopFinished() => _captureLoop = null;
+    [HideFromIl2Cpp]
+    internal void BeforeFrameRender()
+    {
+        if (!Capturing || _strictPriming || _strictDraining || _strictFinishPending) return;
+        try
+        {
+            long frame = ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured;
+            ControlledBackgroundVideoAdapter.Pump(frame); MultilingualCaptureAdapter.Pump(frame);
+        }
+        catch (Exception error) { Fail(error); }
+    }
+    public void LateUpdate() => BeforeFrameRender();
     internal void CaptureLoopFrame()
     {
         if (!Capturing || _native!.AutomaticCameraCapture) return;
@@ -544,10 +829,29 @@ public sealed class ExportHost : MonoBehaviour
         _lastUnityFrame = Time.frameCount;
         try
         {
+            ThrowRetainedFault();
+            if (_strictStartupBoundaryAcquired) AASkipIntroExportBoundary.ValidateActive();
+            if (ExportBuildProfile.DevelopmentAuditEnabled && _options?.StrictSynchronization == true) RequireStaticInertScope().ValidateFrame();
+            ValidateRetainedControllers();
+            ValidateFrameworkFrame(required: _options?.StrictSynchronization == true);
+            ValidateRecipeFrame(required: _options?.StrictSynchronization == true);
+            ValidateVoiceFrame();
             long stage = Stopwatch.GetTimestamp();
+            if (_strictPriming)
+            {
+                var primer = _native!.RenderAudio();
+                ValidateFrameworkFrame(required: _options?.StrictSynchronization == true);
+                if (AcceptStrictPrimer(primer.Count)) _strictStartReady = true;
+                return; // No authored event has been advanced; primer PCM is not content.
+            }
+            if (_strictFinishPending || _strictDraining || _strictAwaitingStart) return;
+            _strictPlan?.ValidateNextVideoFrame(_captured);
             var target = _frames!.RenderTarget;
             if (!frameAlreadyRendered)
             {
+                long frame = ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured;
+                ControlledBackgroundVideoAdapter.Pump(frame);
+                MultilingualCaptureAdapter.Pump(frame);
                 _native!.ExcludeOverlayLayer(_panel.ExcludeFrom);
                 // Waiting for a free GPU slot has its own metric; do not count it
                 // again as camera rendering.
@@ -555,17 +859,22 @@ public sealed class ExportHost : MonoBehaviour
                 _native.RenderFrame(target);
                 _renderTicks += Stopwatch.GetTimestamp() - stage;
             }
-            _frames!.Capture();
+            ThrowRetainedFault();
+            ValidateFrameworkFrame(required: _options?.StrictSynchronization == true);
+            if (!_strictPreparing) _frames!.Capture();
             if (frameAlreadyRendered && Capturing)
                 _native!.SetTarget(_frames.RenderTarget);
             stage = Stopwatch.GetTimestamp();
             var audio = _native!.RenderAudio();
-            if (_options!.AudioQuality != "none") _session!.WriteAudio(audio.Samples, audio.Count);
+            ThrowRetainedFault();
+            ValidateFrameworkFrame(required: _options?.StrictSynchronization == true);
+            CaptureStrictAudioAndState(audio.Samples, audio.Count);
             _audioTicks += Stopwatch.GetTimestamp() - stage;
             _captured++;
             ReportPerformance(false);
             if (_captured == 1) UnityEngine.Debug.Log("AA Video Export: first frame and audio captured.");
-            if (_endAt >= 0) Finish();
+            if (_endFence.IsComplete(_captured)) _strictFinishPending = true;
+            else if (_strictPlan != null && _captured == _strictPlan.FrameCount) _strictFinishPending = true;
         }
         catch (Exception error) { Fail(error); }
     }
@@ -573,8 +882,16 @@ public sealed class ExportHost : MonoBehaviour
     [HideFromIl2Cpp]
     internal bool BeforePlayerEnd(Test player)
     {
+        if ((_voiceWarmup || _bgmWarmup || _effectsSourceWaiting) && _player == player) { Cancel(); return false; }
         if (!Capturing || _player != player) return true;
-        if (_endAt < 0) _endAt = _captured;
+        if (_strictAwaitingStart || _strictDraining) return false;
+        try
+        {
+            _endAt = _endFence.ObserveEnd(_captured, Time.frameCount, _lastUnityFrame);
+            _strictPlan?.ValidateVideoEnd(_endAt);
+            if (_endFence.IsComplete(_captured)) _strictFinishPending = true;
+        }
+        catch (Exception error) { Fail(error); }
         return false;
     }
 
@@ -586,15 +903,47 @@ public sealed class ExportHost : MonoBehaviour
         UnityEngine.Debug.Log($"AA Video Export: rendering finished; frames={_captured}, waits={NativeExportClock.WaitPollCount}, unscaled={NativeExportClock.UnscaledDeltaReadCount}.");
         var session = _session!;
         var token = _cancellation!.Token;
+        if (ExportBuildProfile.DevelopmentAuditEnabled && _strictStartupBoundaryAcquired)
+        {
+            // Keep the monitor live until finalization. The worker may only
+            // inspect its fault latch; Unity/patch-table checks stay above on
+            // the main thread, including the last captured frame.
+            var previousCommit = session.BeforeOutputCommit;
+            session.BeforeOutputCommit = () =>
+            {
+                AASkipIntroExportBoundary.ValidateForCommit();
+                previousCommit?.Invoke();
+            };
+            session.AcquireOutputCommitScope = AASkipIntroExportBoundary.AcquireCommitScope;
+        }
+        StaticInertScope? retainedInert = null;
+        if (ExportBuildProfile.DevelopmentAuditEnabled && _options?.StrictSynchronization == true)
+        {
+            retainedInert = RequireStaticInertScope();
+            var previousCommit = session.BeforeOutputCommit;
+            session.BeforeOutputCommit = () => { retainedInert.ValidateForCommit(); previousCommit?.Invoke(); };
+            var precedingScope = session.AcquireOutputCommitScope;
+            session.AcquireOutputCommitScope = () => retainedInert.AcquireCommitScope(precedingScope);
+        }
         RestoreNativeCapture();
+        ThrowRetainedFault();
+        retainedInert?.SealForCommit();
+        if (ExportBuildProfile.DevelopmentAuditEnabled) _voiceSession?.SealForCommit();
+        WireRetainedPublication(session);
+        WireEffectsSourcePublication(session);
         _frames.Dispose(); _frames = null;
-        _finalize = Task.Run(async () => { await writerDone.ConfigureAwait(false); return session.Complete(token); });
-        _status = "画面已渲染完，正在合成音频和验证视频…";
+        _status = "画面已渲染完，正在合成音视频…";
         _panel.Visible = true;
         // End exactly once after the export hook has become inert.
         var completedPlayer = _player; _player = null;
         _returningToCatalog = completedPlayer != null;
-        if (completedPlayer != null) BestEffort(() => completedPlayer.End(), "returning after playback");
+        if (completedPlayer != null) completedPlayer.End();
+        ThrowRetainedFault();
+        WireFrameworkPublication(session);
+        WireRecipePublication(session);
+        var recipe = _recipeScope;
+        var framework = _frameworkScope;
+        _finalize = Task.Run(() => CompleteWithRecipe(session, writerDone, token, recipe, framework));
     }
 
     [HideFromIl2Cpp]
@@ -609,6 +958,7 @@ public sealed class ExportHost : MonoBehaviour
             catch (Exception cleanupError) { UnityEngine.Debug.LogWarning("AA Video Export: failure cleanup failed (" + cleanupError.GetType().Name + ")."); }
             _status = "导出停止：" + ExportErrorText.Describe(error);
             _statusIsError = true;
+            _panel.StatusIsError = true;
             _panel.Visible = true;
         }
         finally { _failureHandling = false; }
@@ -617,10 +967,16 @@ public sealed class ExportHost : MonoBehaviour
     [HideFromIl2Cpp]
     private void Cancel()
     {
+        // A latched boundary fault must not run again before the cancelled
+        // worker and pending scene return can finish cleanup on later Updates.
+        _strictStartupBoundaryCancelling = true;
+        _retainedPreparationRequest = null; _retainedPreparationWait.Stop(); _voiceWarmup = _bgmWarmup = false;
+        _effectsSourceWaiting = false; _effectsSourceWaitStarted = 0;
         if (_cleanup != null) return;
         try { ReportPerformance(true); }
         catch (Exception error) { UnityEngine.Debug.LogWarning("AA Video Export: performance report skipped during cancellation (" + error.GetType().Name + ")."); }
         _armed = false;
+        _strictReplayPending = _strictFinishPending = _strictDraining = _strictPriming = _strictStartReady = _strictAwaitingStart = false;
         _launch.Cancel();
         _eligiblePlayer = IntPtr.Zero;
         // Detach asynchronous work first. Native cleanup must never prevent the
@@ -635,6 +991,7 @@ public sealed class ExportHost : MonoBehaviour
         BestEffort(() => _cancellation?.Cancel(), "cancelling export token");
         BestEffort(() => session?.Cancel(), "cancelling encoder");
         BestEffort(RestoreNativeCapture, "restoring native capture");
+        BestEffort(DisposeStrictPreparation, "cleaning prepared audio and transcript");
         _player = null;
         BestEffort(() => frames?.Dispose(), "disposing frame buffers");
         if (!_nativeLoadPending)
@@ -681,7 +1038,7 @@ public sealed class ExportHost : MonoBehaviour
     [HideFromIl2Cpp]
     private void ReportCompleted(ExportResult result)
     {
-        _status = $"完成：{result.OutputPath}\n{result.Frames:N0} 帧 / {result.DurationSeconds:0.0} 秒；总耗时 {_elapsed.Elapsed.TotalSeconds:0.0} 秒";
+        _status = $"完成：{result.OutputPath}\n{result.Frames:N0} 帧 / {result.DurationSeconds:0.0} 秒；总耗时 {(_options?.StrictSynchronization == true ? _strictTotalElapsed.Elapsed.TotalSeconds : _elapsed.Elapsed.TotalSeconds):0.0} 秒";
         _statusIsError = false;
     }
 
@@ -752,12 +1109,56 @@ public sealed class ExportHost : MonoBehaviour
     [HideFromIl2Cpp]
     private void RestoreNativeCapture()
     {
-        if (_native == null) return;
-        float exportClock = UiClock;
+        // Capture count includes the last completed frame; publishing it as a
+        // new authored time during cleanup would advance pending native waits.
+        _timelineRestoring = true;
+        Exception? bgmRestoreError = null;
+        RestoreCoordinated(() =>
+        {
+            try { _bgmSession?.EndPass(); }
+            catch (Exception error) { bgmRestoreError = error; throw; }
+        }, "restoring native BGM resource dispatch");
+        Exception? retainedRestoreError = null;
+        RestoreCoordinated(() =>
+        {
+            try { EndRetainedPlayback(); }
+            catch (Exception error) { retainedRestoreError = error; throw; }
+        }, "restoring retained menu/voice playback");
+        if (_native == null)
+        {
+            if (bgmRestoreError != null) throw bgmRestoreError;
+            if (retainedRestoreError != null) throw retainedRestoreError;
+            return;
+        }
+        float exportClock = ExportBuildProfile.SinglePassEnabled && Capturing ? NativeExportClock.Now : UiClock;
         var scope = _native;
         _native = null; // Clock hooks must be inert before reading the restored real clock.
         _autoSelection = null;
+        Exception? voiceRestoreError = null;
+        RestoreCoordinated(() =>
+        {
+            try { CharacterVoiceDelayClock.EndExport(); }
+            catch (Exception error) { voiceRestoreError = error; throw; }
+        }, "restoring CharacterVoice authored delay");
+        Exception? backgroundRestoreError = null;
+        RestoreCoordinated(() =>
+        {
+            try { ControlledBackgroundVideoAdapter.EndExport(); }
+            catch (Exception error) { backgroundRestoreError = error; throw; }
+        }, "restoring controlled background video");
+        Exception? translationRestoreError = null, dependencyRestoreError = null;
+        RestoreCoordinated(() =>
+        {
+            try { MultilingualCaptureAdapter.EndExport(); }
+            catch (Exception error) { translationRestoreError = error; throw; }
+        }, "restoring original translation scheduling");
+        RestoreCoordinated(() =>
+        {
+            try { RuntimeModBoundaries.EndExport(); }
+            catch (Exception error) { dependencyRestoreError = error; throw; }
+        }, "restoring idle dependency surfaces");
         RestoreCoordinated(MoreEffectsCompatibility.EndExport, "restoring adapted animation clock");
+        RestoreCoordinated(FlandrePortraitClock.EndExport, "restoring portrait clock");
         RestoreCoordinated(NativeExportClock.Restore, "restoring native clock");
         if (_captureLoop != null)
         {
@@ -785,6 +1186,16 @@ public sealed class ExportHost : MonoBehaviour
             // Scene teardown must still release the encoder and GPU resources.
             UnityEngine.Debug.LogWarning("AA Video Export: tween clock restoration unavailable (" + error.GetType().Name + ").");
         }
+        // Finish/FinishStrictPass must not continue after a restoration fault.
+        // Cancel already owns cleanup; its original diagnostic stays primary.
+        if (bgmRestoreError != null) throw bgmRestoreError;
+        if (voiceRestoreError != null) throw voiceRestoreError;
+        if (backgroundRestoreError != null) throw backgroundRestoreError;
+        if (translationRestoreError != null) throw translationRestoreError;
+        if (dependencyRestoreError != null) throw dependencyRestoreError;
+        if (retainedRestoreError != null) throw retainedRestoreError;
+        if (!_strictStartupBoundaryCancelling && _characterVoiceClockFailure != null)
+            throw _characterVoiceClockFailure;
     }
 
     [HideFromIl2Cpp]
@@ -809,7 +1220,12 @@ public sealed class ExportHost : MonoBehaviour
     [HideFromIl2Cpp]
     public void Shutdown()
     {
-        if (_shutdown) return;
+        if (_shutdown)
+        {
+            RestoreCoordinated(ReleaseRetainedBoundaries, "retrying retained controller cleanup");
+            RestoreCoordinated(ReleaseStaticInertScope, "retrying retained empty-Mod cleanup");
+            return;
+        }
         RenderControlV1.BeginShutdown();
         _shutdown = true;
         BestEffort(() => _probeCancellation?.Cancel(), "cancelling encoder probe");
@@ -821,6 +1237,16 @@ public sealed class ExportHost : MonoBehaviour
         {
             try { RenderPipelineManager.remove_endFrameRendering(_endFrame); }
             catch (Exception error) { UnityEngine.Debug.LogWarning("AA Video Export: URP callback cleanup unavailable (" + error.GetType().Name + ")."); }
+        }
+        if (_beginFrame != null)
+        {
+            try { RenderPipelineManager.remove_beginFrameRendering(_beginFrame); }
+            catch (Exception error) { UnityEngine.Debug.LogWarning("AA Video Export: URP pre-render cleanup unavailable (" + error.GetType().Name + ")."); }
+        }
+        if (_beginCamera != null)
+        {
+            try { RenderPipelineManager.remove_beginCameraRendering(_beginCamera); }
+            catch (Exception error) { UnityEngine.Debug.LogWarning("AA Video Export: URP pre-camera cleanup unavailable (" + error.GetType().Name + ")."); }
         }
         RestoreCoordinated(UpdateInputOwnership, "restoring native input");
         if (!_renderRestorationFailed) ReleaseSessionOwnership();
@@ -844,6 +1270,28 @@ public sealed class ExportHost : MonoBehaviour
     [HideFromIl2Cpp]
     private void ReleaseSessionOwnership()
     {
+        ReleaseRetainedBoundaries();
+        ReleaseStaticInertScope();
+        var startup = _strictStartupBoundary;
+        _strictStartupBoundary = null;
+        bool startupAcquired = _strictStartupBoundaryAcquired;
+        _strictStartupBoundaryAcquired = false;
+        _strictStartupBoundaryCancelling = false;
+        try
+        {
+            if (startup != null) startup.Dispose();
+            else if (startupAcquired) AASkipIntroExportBoundary.ReleaseAbsentSnapshot();
+        }
+        catch (Exception error)
+        {
+            // This boundary observes startup; it does not own or mutate
+            // render settings. Report its fault, but still restore the
+            // separately held render lease.
+            _status = "导出边界检查失败：" + ExportErrorText.Describe(error);
+            _statusIsError = true;
+            _panel.StatusIsError = true;
+            UnityEngine.Debug.LogError("AA Video Export: startup boundary release failed: " + error);
+        }
         var ownership = _renderSessionOwnership;
         _renderSessionOwnership = null;
         if (ownership == null) return;
@@ -855,5 +1303,17 @@ public sealed class ExportHost : MonoBehaviour
             _renderRestorationFailed = true;
             UnityEngine.Debug.LogWarning("AA Video Export: render release observer failed (" + error.GetType().Name + ").");
         }
+    }
+
+    [HideFromIl2Cpp]
+    private StaticInertScope RequireStaticInertScope() => _staticInertScope
+        ?? throw new ExportException("strict_static_inert_invalid", "Strict export has no retained empty-Mod acquisition scope.");
+
+    [HideFromIl2Cpp]
+    private void ReleaseStaticInertScope()
+    {
+        var scope = _staticInertScope;
+        scope?.Dispose();
+        _staticInertScope = null;
     }
 }

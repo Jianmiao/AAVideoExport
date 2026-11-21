@@ -1,4 +1,5 @@
 using HarmonyLib;
+using FlatData;
 using UnityEngine;
 
 namespace AAVideoExport.Plugin;
@@ -14,9 +15,16 @@ internal static class StartCaptureHook
 {
     // Start at the first actual scenario advance, after AA's loading phase.
     // Editor previews pass preview=true and never consume an armed export.
-    static void Prefix(Test __instance, bool __0)
+    static bool Prefix(Test __instance, bool __0, IScenarioScriptExcel __1)
     {
-        if (!__0) ExportHost.Current?.BeforePlayerStart(__instance);
+        if (__0) return true;
+        var host = ExportHost.Current;
+        if (host == null) return true;
+        if (!host.BeforePlayerStart(__instance)) return false;
+        bool allowed = host.AllowStrictScenarioAdvance(__instance, __1);
+        if (allowed && AAVideoExport.Core.ExportBuildProfile.DevelopmentAuditEnabled && Plugin.StrictSandboxStoryCommandTracingEnabled)
+            return host.RecordStrictStoryCommand(__instance, "AdvanceScenario");
+        return allowed;
     }
 }
 
@@ -26,11 +34,24 @@ internal static class BuiltinCaptureHook
     static void Postfix(UnityEngine.Camera __0) => ExportHost.Current?.AfterCamera(__0);
 }
 
+[HarmonyPatch(typeof(UnityEngine.Camera), "FireOnPreCull")]
+internal static class BuiltinControlledModPump
+{
+    static void Postfix() => ExportHost.Current?.BeforeFrameRender();
+}
+
 // Every hook is inert outside an explicitly started export.
 [HarmonyPatch(typeof(Test), nameof(Test.End))]
 internal static class EndCaptureHook
 {
-    static bool Prefix(Test __instance) => ExportHost.Current?.BeforePlayerEnd(__instance) ?? true;
+    static bool Prefix(Test __instance)
+    {
+        var host = ExportHost.Current;
+        if (host == null) return true;
+        if (AAVideoExport.Core.ExportBuildProfile.DevelopmentAuditEnabled && Plugin.StrictSandboxStoryCommandTracingEnabled
+            && !host.RecordStrictStoryCommand(__instance, "End", once: true)) return false;
+        return host.BeforePlayerEnd(__instance);
+    }
 }
 
 [HarmonyPatch(typeof(Test), nameof(Test.OnTouchAreaClicked))]

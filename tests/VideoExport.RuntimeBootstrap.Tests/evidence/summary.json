@@ -1,0 +1,49 @@
+{
+  "timestampUtc": "2026-10-29T14:53:22.6631980+00:00",
+  "aaReferenceRoot": "F:\\AzureArchive_101",
+  "runtimeVersion": "6.0.7",
+  "hostResolverVersion": "6.0.36",
+  "controlExit": 1,
+  "controlFailures": 1,
+  "instrumentedExit": 0,
+  "instrumentedChecks": 36,
+  "instrumentedFailures": 0,
+  "referenceFilesUnchanged": true,
+  "bootstrapSha256": "21C8FB6113BF8C785DC8D508DD22346694671A5893F6F026D492CAD16B5F8714",
+  "hashes": [
+    {
+      "Path": "F:\\AzureArchive_101\\dotnet\\coreclr.dll",
+      "Hash": "04377968C540F704AAE92ECB0EC9BBFD5FDDFE226DFCA30AA3EEB52006A44FD8"
+    },
+    {
+      "Path": "F:\\AzureArchive_101\\dotnet\\System.Private.CoreLib.dll",
+      "Hash": "2CAA46D2AE726E135592033B6C682232A08698C23DBD1A9207F86C4CCA081AD7"
+    },
+    {
+      "Path": "F:\\AzureArchive_101\\BepInEx\\core\\0Harmony.dll",
+      "Hash": "6C898933B52149E8BCF6722305C7E4D94ADD47C9E53B364096F91721624C0877"
+    },
+    {
+      "Path": "F:\\AzureArchive_101\\BepInEx\\core\\MonoMod.RuntimeDetour.dll",
+      "Hash": "1B3D55F53CB9F9F2550DAED4DFD300B247D71698A0ACE82BC7B9FF38D563594F"
+    },
+    {
+      "Path": "F:\\AzureArchive_101\\BepInEx\\core\\MonoMod.Utils.dll",
+      "Hash": "72A5B4249985873D7ECB160CBBED7A1E6540A38EE7618C72C64B9CB068C1438A"
+    },
+    {
+      "Path": "F:\\AzureArchive_101\\BepInEx\\core\\BepInEx.Preloader.Core.dll",
+      "Hash": "EC168752C9A885D9FE035370AC2DBD8B52B91B24CB60FBC425CFCBEE5436DAE9"
+    },
+    {
+      "Path": "F:\\AzureArchive_101\\BepInEx\\core\\BepInEx.Unity.IL2CPP.dll",
+      "Hash": "62C8246A3076BFE459EC80C482381228D0EB1DDE3434FE97AE5255FEF406FE72"
+    },
+    {
+      "Path": "F:\\AzureArchive_101\\BepInEx\\core\\BepInEx.Core.dll",
+      "Hash": "352AACC2D5356489A00891F76DB28B6463C81D25BCB02F90035171A669B7E35B"
+    }
+  ],
+  "passed": true,
+  "scope": "Isolated fixtures only; not an AA launch, Mod certification, or export-effects proof."
+}

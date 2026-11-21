@@ -1,53 +1,36 @@
-param([Parameter(Mandatory=$true)][string]$Archive, [Parameter(Mandatory=$true)][ValidateSet('lite','full')][string]$Variant)
-$ErrorActionPreference = 'Stop'
-$manifest = Get-Content -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'manifest.json') -Raw | ConvertFrom-Json
-$prefix = 'AAVideoExport/' + $manifest.version_number + '/'
-$zip = [IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $Archive).Path)
-try {
-    $entries = @{}
-    foreach ($entry in $zip.Entries) {
-        if (!$entry.FullName.StartsWith($prefix, [StringComparison]::Ordinal) -or
-            $entry.FullName.Contains('\') -or $entry.FullName.Contains('../') -or
-            $entry.FullName.StartsWith('/')) { throw "Unexpected archive root/path: $($entry.FullName)" }
-        if ($entries.ContainsKey($entry.FullName)) { throw 'Duplicate ZIP entry.' }
-        $entries[$entry.FullName] = $entry
+#requires -Version 7.2
+param([Parameter(Mandatory=$true)][string]$Archive,[Parameter(Mandatory=$true)][ValidateSet('lite','full')][string]$Variant,[switch]$DevelopmentAudit)
+$ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'Deployment.Common.ps1')
+$temp=Join-Path ([IO.Path]::GetTempPath()) ('aave-release-check-'+[guid]::NewGuid().ToString('N'))
+$zip=[IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $Archive).Path)
+try{
+    $seen=@{}
+    foreach($entry in $zip.Entries){
+        $path=$entry.FullName
+        if(!$path-or$path.StartsWith('/')-or$path.Contains('\')-or$path.Contains(':')-or($path -split '/') -contains '..'-or$seen.ContainsKey($path)){throw 'Unsafe or duplicate ZIP entry.'}
+        $seen[$path]=$true
+        if($path -match '(?i)(BepInEx/|interop/|NativePath\.Tests|local\.props|\.aap2?$|\.aas$|\.cfg$|\.pdb$|\.log$|\.sqlite|(^|/)(bin|obj)/)'){throw "Forbidden host/project/test release content: $path"}
     }
-    $required = @('manifest.json','icon.png','AAVideoExport.dll','AAVideoExport.Core.dll',
-        'Vortice.Direct3D11.dll','Vortice.DXGI.dll','Vortice.DirectX.dll','Vortice.D3DCompiler.dll',
-        'Vortice.Mathematics.dll','SharpGen.Runtime.dll','SharpGen.Runtime.COM.dll','SHA256SUMS.txt')
-    if ($Variant -eq 'full') { $required += @('tools/ffmpeg.exe','tools/ffprobe.exe','licenses/FFmpeg/LICENSE.txt') }
-    elseif ($entries.Keys | Where-Object { $_ -match '(?i)\.exe$|/licenses/FFmpeg/' }) { throw 'Lite package must not include FFmpeg programs or their bundled notices.' }
-    foreach ($name in $required) { if (!$entries.ContainsKey($prefix + $name)) { throw "Missing release entry: $name" } }
-    foreach ($entry in $zip.Entries) {
-        if ($entry.FullName -match '(?i)(BepInEx|interop|NativePath\.Tests|local\.props|\.aap2?$|\.aas$|\.cfg$|\.pdb$|\.log$|\.sqlite|\.db$|(^|/)(bin|obj)/)') {
-            throw "Forbidden release content: $($entry.FullName)"
-        }
+}finally{$zip.Dispose()}
+try{
+    [IO.Compression.ZipFile]::ExtractToDirectory((Resolve-Path -LiteralPath $Archive).Path,$temp)
+    $package=Read-AaveDelivery $temp
+    if($package.Descriptor.Variant -ne $Variant){throw 'Bundle variant differs from requested check.'}
+    if($package.AuditMode-ne[bool]$DevelopmentAudit){throw 'Bundle audit mode differs from the explicitly requested release check.'}
+    foreach($file in Get-ChildItem -LiteralPath $temp -Recurse -File){
+        $relative=[IO.Path]::GetRelativePath($temp,$file.FullName).Replace('\','/')
+        $allowed=$relative.StartsWith($package.Descriptor.PayloadRelativePath+'/',[StringComparison]::Ordinal)-or$relative -in @('bootstrap/AAVideoExport.RuntimeBootstrap.dll','Install-Mod.ps1','Rollback-Mod.ps1','Deployment.Common.ps1','Start-AA-AAVE.ps1','README.md','CHANGELOG.md','LICENSE','THIRD_PARTY_NOTICES.md','delivery-manifest.json','SHA256SUMS.txt','docs/development.md','docs/render-control-v1.md','docs/auto-selection-export.md','docs/moreeffects-clock-compatibility.md','docs/shader-provenance-2026-10-03.md')
+        if(!$allowed){throw "Unowned bundle entry: $relative"}
     }
-    $reader = [IO.StreamReader]::new($entries[$prefix + 'manifest.json'].Open())
-    try { $actual = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
-    if ($actual.name -ne 'AAVideoExport' -or $actual.version_number -ne $manifest.version_number) { throw 'ZIP manifest mismatch.' }
-    $reader = [IO.StreamReader]::new($entries[$prefix + 'SHA256SUMS.txt'].Open())
-    try { $lines = $reader.ReadToEnd() -split '\r?\n' } finally { $reader.Dispose() }
-    $covered = @{}
-    foreach ($line in $lines) {
-        if (!$line) { continue }
-        if ($line -notmatch '^([a-f0-9]{64})  (.+)$') { throw 'Invalid checksum entry.' }
-        $expected = $Matches[1]; $name = $Matches[2]; $key = $prefix + $name
-        if ($covered.ContainsKey($key) -or !$entries.ContainsKey($key)) { throw 'Duplicate or missing hashed entry.' }
-        $stream = $entries[$key].Open(); $sha = [Security.Cryptography.SHA256]::Create()
-        try { $hash = [Convert]::ToHexString($sha.ComputeHash($stream)).ToLowerInvariant() }
-        finally { $stream.Dispose(); $sha.Dispose() }
-        if ($hash -ne $expected) { throw "ZIP checksum mismatch: $name" }
-        $covered[$key] = $true
+    if($Variant -eq 'full'){
+        foreach($name in @('tools/ffmpeg.exe','tools/ffprobe.exe','licenses/FFmpeg/LICENSE.txt')){if(!(Test-Path -LiteralPath (Join-Path $package.Payload $name))){throw "Missing full bundle entry: $name"}}
+    }elseif(@(Get-ChildItem -LiteralPath $package.Payload -File -Recurse|Where-Object Extension -eq '.exe').Count){throw 'Lite bundle unexpectedly contains an executable.'}
+    Write-Output ('PASS '+$Variant+' versioned bundle '+$package.Descriptor.Version+'; DevelopmentAudit='+$package.AuditMode+': runtime/core build mode, conditional audit bootstrap, launcher/rollback and complete checksums verified; no host/test/project files.')
+}finally{
+    if(Test-Path -LiteralPath $temp){
+        $resolved=[IO.Path]::GetFullPath($temp);$parent=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')+'\'
+        if(!$resolved.StartsWith($parent,[StringComparison]::OrdinalIgnoreCase)-or[IO.Path]::GetFileName($resolved)-notlike'aave-release-check-*'){throw 'Unexpected release-check cleanup target.'}
+        Remove-Item -LiteralPath $resolved -Recurse -Force
     }
-    if ($covered.Count -ne $zip.Entries.Count - 1) { throw 'Checksum coverage incomplete.' }
-    $peFiles = @('AAVideoExport.dll')
-    if ($Variant -eq 'full') { $peFiles += @('tools/ffmpeg.exe','tools/ffprobe.exe') }
-    foreach ($name in $peFiles) {
-        $stream = $entries[$prefix + $name].Open()
-        try { if ($stream.ReadByte() -ne 0x4d -or $stream.ReadByte() -ne 0x5a) { throw "Not a real PE binary: $name" } }
-        finally { $stream.Dispose() }
-    }
-    Write-Output "PASS $Variant portable ZIP: $prefix; $($zip.Entries.Count) files; full checksum coverage; encoder content matches variant; no host/project/test files."
 }
-finally { $zip.Dispose() }

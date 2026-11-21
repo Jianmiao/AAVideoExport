@@ -346,7 +346,7 @@ public sealed partial class NativeExportPanel
         {
             new DropdownItem("mp4", "MP4", "通用播放 · 建议 AAC 音频"),
             new DropdownItem("mov", "MOV", "剪辑母版 · 支持 PCM，不支持 AV1"),
-            new DropdownItem("mkv", "MKV", "支持多种格式，播放设备需兼容")
+            new DropdownItem("mkv", "MKV（严格同步暂不支持）", "严格同步请选择 MP4 或 MOV", false)
         }, SetContainer, height: 32);
         Caption(page, "视频编码", 242, 38);
         Dropdown(page, 242, 62, 182, () => _options.Codec, CodecItems, value =>

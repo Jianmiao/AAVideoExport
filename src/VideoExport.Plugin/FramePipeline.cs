@@ -75,6 +75,10 @@ internal sealed class FramePipeline : IDisposable
     public long ReadbackWaitTicks { get; private set; }
     private long _encoderTicks;
     public long EncoderTicks => Interlocked.Read(ref _encoderTicks);
+    private readonly Stopwatch _encodingClock = new();
+    private int _encodingStarted;
+    /// <summary>Wall time spent by the writer after it received its first frame.</summary>
+    public double EncodingElapsedSeconds => _encodingClock.Elapsed.TotalSeconds;
 
     public FramePipeline(ExportOptions options, ExportSession encoder, bool useAsync = true, bool legacySingleTarget = false, bool nativeBuffers = true)
     {
@@ -133,6 +137,7 @@ internal sealed class FramePipeline : IDisposable
         {
             foreach (var buffer in _queue.GetConsumingEnumerable(_stop.Token))
             {
+                if (Interlocked.Exchange(ref _encodingStarted, 1) == 0) _encodingClock.Start();
                 long started = Stopwatch.GetTimestamp();
                 try
                 {
@@ -147,7 +152,11 @@ internal sealed class FramePipeline : IDisposable
             }
         }
         catch (Exception error) { _writeError = error; _stop.Cancel(); }
-        finally { while (_queue.TryTake(out var buffer)) ReturnBuffer(buffer); }
+        finally
+        {
+            if (_encodingStarted != 0 && _encodingClock.IsRunning) _encodingClock.Stop();
+            while (_queue.TryTake(out var buffer)) ReturnBuffer(buffer);
+        }
     }
 
     public void Capture()

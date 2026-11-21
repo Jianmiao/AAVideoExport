@@ -31,6 +31,17 @@ internal static partial class Program
                 "validation uses the displayed video bitrate unit");
             return Task.CompletedTask;
         });
+        await Test("unavailable effects source explains unverified project binding and preserves diagnostic details", () =>
+        {
+            var error = new ExportException("strict_effects_source_unavailable", "RAW_SOURCE_BINDING_DETAIL");
+            string text = ExportErrorText.Describe(error);
+            Check(text.Contains("原始工程") && text.Contains("可信绑定") && text.Contains("日志"), "Missing source binding guidance.");
+            Check(!text.Contains("两遍") && !text.Contains("发生变化") && !text.Contains("RAW_SOURCE_BINDING_DETAIL"),
+                "Initial source failure was confused with changed inputs or leaked diagnostics.");
+            Equal("strict_effects_source_unavailable", error.Code, "machine-readable source code is retained");
+            Equal("RAW_SOURCE_BINDING_DETAIL", error.Message, "original source diagnostic remains available for logs");
+            return Task.CompletedTask;
+        });
         await Test("asynchronous, native and permission errors retain useful Chinese recovery instructions", () =>
         {
             var error = new ExportException("story_not_selected", "请先在鉴赏列表选择要导出的剧情。");

@@ -89,6 +89,7 @@ namespace UnityEngine
     {
         public static int outputSampleRate;
         public static AudioSpeakerMode speakerMode;
+        public static double dspTime;
     }
     internal static class AudioRenderer
     {
@@ -107,12 +108,15 @@ namespace UnityEngine
             RenderCalls++;
             LastLength = length;
             if (length > 0) { buffer[0] = 0.25f; buffer[length - 1] = 0.5f; }
+            if (AudioSettings.outputSampleRate > 0 && AudioSettings.speakerMode == AudioSpeakerMode.Stereo)
+                AudioSettings.dspTime += (length / 2d) / AudioSettings.outputSampleRate;
             return RenderResult;
         }
         public static void Reset()
         {
             StartResult = RenderResult = true;
             SampleCount = LastLength = RenderCalls = StartCalls = StopCalls = 0;
+            AudioSettings.dspTime = 0;
         }
     }
     internal static class Debug
@@ -139,6 +143,7 @@ namespace UnityEngine.Rendering.Universal
 }
 namespace UnityEngine.Rendering
 {
+    internal static class OnDemandRendering { public static int renderFrameInterval = 1; }
     internal static class GraphicsSettings { public static object? currentRenderPipeline = new object(); }
 }
 namespace UI
@@ -176,7 +181,7 @@ internal sealed class UIWidget { public UIPanel? panel; }
 internal sealed class TouchEffect : UnityEngine.Component { }
 internal sealed class UICursor : UnityEngine.Component
 {
-    public static UICursor? instance;
+    public static UICursor? instance = null;
 }
 internal sealed class UIPanel
 {
