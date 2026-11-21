@@ -10,6 +10,8 @@ public enum StrictCapabilityLevel
 
 public sealed record StrictCapability
 {
+    public const string GenericStaticInertEvidence = "GenericStaticModPolicy.static-inert.v1";
+
     public StrictCapability(string moduleId, string fingerprint, StrictCapabilityLevel level, IReadOnlyList<string>? evidence)
     {
         if (string.IsNullOrWhiteSpace(moduleId)) throw new ArgumentException("A module id is required.", nameof(moduleId));
@@ -73,6 +75,9 @@ public sealed record StrictCapabilitySnapshot(
     {
         if (module.Level == StrictCapabilityLevel.Certified) return true;
         if (module.Level != StrictCapabilityLevel.Observed) return false;
+        // Generic passive classification is admitted for any module id only
+        // when the runtime scanner itself produced the complete marker set.
+        if (HasGenericStaticInertProof(module)) return true;
         if (string.Equals(module.ModuleId, "Azurite", StringComparison.OrdinalIgnoreCase)) return true;
         if (module.ModuleId is "ExampleCore" or "ExampleDependent" or "ExampleStandalone")
             return module.Evidence.Contains("StaticInertModEvidence.empty-load.v1", StringComparer.Ordinal)
@@ -95,6 +100,18 @@ public sealed record StrictCapabilitySnapshot(
             _ => null
         };
         return required != null && module.Evidence.Contains(required, StringComparer.Ordinal);
+    }
+
+    private static bool HasGenericStaticInertProof(StrictCapability module)
+    {
+        string[] required =
+        {
+            StrictCapability.GenericStaticInertEvidence, "managed-clock-call-sites=0", "harmony-patch-attributes=0",
+            "behaviour-callbacks=0", "render-audio-video-references=0", "pinvoke-methods=0", "game-or-harmony-references=0"
+        };
+        if (!required.All(value => module.Evidence.Contains(value, StringComparer.Ordinal))) return false;
+        string? sha = module.Evidence.FirstOrDefault(value => value.StartsWith("sha256=", StringComparison.Ordinal));
+        return sha is { Length: 7 + 64 } && sha[7..].All(Uri.IsHexDigit);
     }
 
     // These names only select the expected evidence contract. Inventory must

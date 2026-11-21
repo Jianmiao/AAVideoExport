@@ -193,6 +193,10 @@ internal static class StrictCapabilityInventory
             }
             catch (Exception error) { return (StrictCapabilityLevel.Rejected, new[] { "held-voice-controller-unavailable", error.Message }); }
         }
+        // Generic fallback for modules with no observable time, patch,
+        // behaviour, render/audio/video, game, or native surface.
+        if (GenericStaticModPolicy.TryClassify(assembly, out var passiveEvidence))
+            return (StrictCapabilityLevel.Observed, passiveEvidence);
         return (StrictCapabilityLevel.Opaque, new[] { "assembly-not-yet-certified" });
     }
 

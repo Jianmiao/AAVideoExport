@@ -220,6 +220,25 @@ Run("strict admission rejects an arbitrary observed module", () =>
     Check(!snapshot.CanAdmitStrictExport, "only the explicit Azurite observed boundary may be admitted");
     Throws("strict_capability_unsupported", snapshot.EnsureStrictExportAllowed);
 });
+Run("generic static inert proof admits an unknown module without cache reuse", () =>
+{
+    var evidence = new[]
+    {
+        StrictCapability.GenericStaticInertEvidence, "managed-clock-call-sites=0", "harmony-patch-attributes=0",
+        "behaviour-callbacks=0", "render-audio-video-references=0", "pinvoke-methods=0",
+        "game-or-harmony-references=0", "sha256=" + Hash("passive-fixture")
+    };
+    var module = new StrictCapability("Unknown.Passive", Hash("Unknown.Passive"), StrictCapabilityLevel.Observed, evidence);
+    var snapshot = StrictCapabilitySnapshot.Create(new[] { module });
+    snapshot.EnsureStrictExportAllowed();
+    Check(!snapshot.CanReusePreflight, "generic passive proof enabled cache reuse");
+    Throws("strict_capability_unsupported",
+        StrictCapabilitySnapshot.Create(new[]
+        {
+            new StrictCapability("Unknown.Passive", Hash("Unknown.Passive"), StrictCapabilityLevel.Observed,
+                new[] { StrictCapability.GenericStaticInertEvidence })
+        }).EnsureStrictExportAllowed);
+});
 Run("capability fingerprint is order independent", () =>
 {
     var first = StrictCapabilitySnapshot.Create(new[] { Capability("a", StrictCapabilityLevel.Certified), Capability("b", StrictCapabilityLevel.Certified) });
