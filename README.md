@@ -8,6 +8,8 @@
 
 **正常生产构建不运行开发程序审计、运行时证明清单、逐次重复对照，也不输出审计 sidecar 或重复基线文件。** 普通交付包不含审计 bootstrap，正常启动不需要打开审计环境变量。功能所需的资源准备、错误拒绝、取消清理和 `RenderControlV1` 协作仍保留。
 
+旧 `GenericCompatibilityStubs.cs` 已不存在；`RuntimeCompatibilitySeams.cs` 只保留 source-compatible 类型名。会改变导出功能的接缝均已转发到四平面：startup / menu / voice commit scope 进入 `RuntimeScenePlane` 或 `RuntimeAudioPlane`，动态背景进入 `RuntimeScenePlane.PumpVideoFrame`，effects source 通过类型契约完成 acquire / revalidate / release。Release 构建的 `DevelopmentAuditEnabled=false`，`StaticInertModEvidence` 与旧 voice 控制面不参与产品准入；语音 / BGM 由最终 mixer 捕获，因此它们不可能成为功能门槛。
+
 ## 已验证范围
 
 - **取消与重复导出 8/8：** 冻结 R2 在独立原生实验目录完成一次取消和两份 640×360 / 30 fps / libx264 / PCM16 电影，每份 453 帧、15.1 秒、724800 个 48 kHz 音频采样帧。解码画面、音频、PTS 和实际事件一致，三次 Azurite 绑定/暂停/恢复通过。
