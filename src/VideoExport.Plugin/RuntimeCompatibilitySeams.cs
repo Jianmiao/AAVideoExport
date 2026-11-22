@@ -6,10 +6,10 @@ using UnityEngine;
 
 namespace AAVideoExport.Plugin;
 
-// 0.3.0 removed the shipped per-Mod adapters. These names remain as host seams,
-// but their behavior is now supplied by the four generic runtime planes. No
-// seam is allowed to reject an installed Mod merely because its identity is not
-// one of the old certified adapters.
+// 1.0.0 keeps these legacy type names as source-compatible seams only.
+// Actual behavior is supplied by the four generic runtime planes. No seam may
+// reject an installed Mod because its identity is not one of the old adapters.
+
 internal static class AASkipIntroExportBoundary
 {
     private static IDisposable? _lease;
@@ -22,10 +22,9 @@ internal static class AASkipIntroExportBoundary
     internal static string CaptureActiveProof() => "RVL.scene.startup.v1";
     internal static void ValidateActive() => RuntimeScenePlane.MarkStartupReached("active");
     internal static void ValidateForCommit() => RuntimeScenePlane.MarkStartupReached("commit");
-    internal static IDisposable AcquireCommitScope() => new EmptyScope();
+    internal static IDisposable AcquireCommitScope() => RuntimeScenePlane.AcquireStartupCommitScope();
     internal static void ReleaseAbsentSnapshot() { _lease = null; }
     internal static void Shutdown() { _lease = null; RuntimeScenePlane.Reset(); }
-    private sealed class EmptyScope : IDisposable { public void Dispose() { } }
 }
 
 internal static class StaticInertModEvidence
@@ -115,10 +114,9 @@ internal sealed class CharacterVoiceSessionAdapter : IDisposable
     internal void SealForCommit() { }
     internal void EndPass() { }
     internal void ValidateForCommit() { }
-    internal IDisposable AcquireCommitScope() => new EmptyScope();
+    internal IDisposable AcquireCommitScope() => RuntimeAudioPlane.AcquireCommitScope();
     internal void Reset() { }
     public void Dispose() { }
-    private sealed class EmptyScope : IDisposable { public void Dispose() { } }
 }
 
 internal static class CharacterVoiceCompatibility
@@ -153,6 +151,7 @@ internal static class ControlledBackgroundVideoAdapter
     }
     internal static void Pump(long frame)
     {
+        int stepped = RuntimeScenePlane.PumpVideoFrame(frame);
         if (frame == _lastFrame || frame % 30 != 0) return;
         _lastFrame = frame;
         int playing = 0;
@@ -297,7 +296,7 @@ internal static class RetainedMenuPlaybackBoundary
     }
     internal static void BeginPlayback() => RuntimeScenePlane.MenuPlayback("begin-playback");
     internal static void EndPlayback() => RuntimeScenePlane.MenuPlayback("end-playback");
-    internal static IDisposable AcquireCommitScope() => new EmptyScope();
+    internal static IDisposable AcquireCommitScope() => RuntimeScenePlane.AcquireMenuCommitScope();
     internal static string PlaybackSettingsIdentity() => "menu-generic=retained";
     internal static bool Shutdown() { _lease = null; return true; }
     internal static void Reset() { _lease = null; }
@@ -307,5 +306,4 @@ internal static class RetainedMenuPlaybackBoundary
         evidence = new[] { "RVL.scene-plane.v1", "generic-menu-boundary" };
         return true;
     }
-    private sealed class EmptyScope : IDisposable { public void Dispose() { } }
 }

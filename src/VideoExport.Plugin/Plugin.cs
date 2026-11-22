@@ -88,6 +88,40 @@ public sealed class Plugin : BasePlugin
             RetainedMenuPlaybackBoundary.Initialize(_harmony, message => Log.LogInfo(message),
                 error => ExportHost.Current?.RetainedBoundaryFailed(error), Path.GetDirectoryName(Config.ConfigFilePath)!);
             _host = AddComponent<ExportHost>();
+            string? commandLineStory = null, commandLineOutput = null;
+            bool commandLineExit = false;
+            int commandLineCount = 1;
+            float commandLineCancelAfter = -1f;
+            int commandLineCancelFrame = -1;
+            var commandLineArgs = Environment.GetCommandLineArgs();
+            for (int i = 0; i < commandLineArgs.Length; i++)
+            {
+                if (commandLineArgs[i] == "--aa-export-story" && i + 1 < commandLineArgs.Length &&
+                    !commandLineArgs[i + 1].StartsWith("-") &&
+                    string.Equals(Path.GetExtension(commandLineArgs[i + 1]), ".aas", StringComparison.OrdinalIgnoreCase))
+                    commandLineStory = commandLineArgs[++i];
+                else if (commandLineArgs[i] == "--aa-export-output" && i + 1 < commandLineArgs.Length &&
+                    !commandLineArgs[i + 1].StartsWith("-"))
+                    commandLineOutput = commandLineArgs[++i];
+                else if (commandLineArgs[i] == "--aa-export-exit")
+                    commandLineExit = true;
+                else if (commandLineArgs[i] == "--aa-export-count" && i + 1 < commandLineArgs.Length &&
+                    int.TryParse(commandLineArgs[++i], out var parsedCount))
+                    commandLineCount = Math.Max(1, parsedCount);
+                else if (commandLineArgs[i] == "--aa-export-cancel-after" && i + 1 < commandLineArgs.Length &&
+                    float.TryParse(commandLineArgs[++i], out var parsedCancel))
+                    commandLineCancelAfter = Math.Max(0f, parsedCancel);
+                else if (commandLineArgs[i] == "--aa-export-cancel-frame" && i + 1 < commandLineArgs.Length &&
+                    int.TryParse(commandLineArgs[++i], out var parsedCancelFrame))
+                    commandLineCancelFrame = Math.Max(0, parsedCancelFrame);
+            }
+            if (commandLineStory != null)
+            {
+                _host.ConfigureCommandLineExport(commandLineStory,
+                    Path.GetFullPath(commandLineOutput ?? OutputDirectory), commandLineExit, commandLineCount,
+                    commandLineCancelAfter, commandLineCancelFrame);
+                Log.LogInfo("AAVE command-line export armed: " + commandLineStory);
+            }
             if (ExportBuildProfile.DevelopmentAuditEnabled)
                 RuntimeAttributionClient.TryMark("AAVE.Plugin.Load.ready", message => Log.LogWarning(message));
             Log.LogInfo($"AA Video Export loaded [{Version}; single-pass={ExportBuildProfile.SinglePassEnabled}; development-audit={ExportBuildProfile.DevelopmentAuditEnabled}]. Ctrl+Shift+E opens settings. RenderControlV1 requires explicit participant ownership.");

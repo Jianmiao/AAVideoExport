@@ -12,6 +12,7 @@ namespace AAVideoExport.Plugin;
 internal static class RuntimeAudioPlane
 {
     private static readonly List<AudioSource> Sources = new();
+    private static readonly HashSet<AudioSource> Anchored = new();
     private static bool _active;
     private static bool _restoreListenerVolume;
     private static float _listenerVolume = 1f;
@@ -40,12 +41,26 @@ internal static class RuntimeAudioPlane
     internal static int BeginExport()
     {
         Sources.Clear();
+        Anchored.Clear();
         foreach (var source in UnityEngine.Object.FindObjectsOfType<AudioSource>(true))
         {
             if (source == null || !source.isActiveAndEnabled) continue;
             Sources.Add(source);
         }
         _beginSourceCount = Sources.Count;
+        // A looping source is the one part of the mixer whose phase survives
+        // between independent exports. Rewind it to its authored clip origin
+        // so repeated passes observe the same timeline even when the scene has
+        // been running before the second pass. This is generic mixer state, not
+        // a Mod identity rule.
+        int rewound = 0;
+        foreach (var source in Sources)
+        {
+            if (source == null || !source.isActiveAndEnabled || !source.isPlaying || !source.loop || source.clip == null)
+                continue;
+            try { source.timeSamples = 0; rewound++; Anchored.Add(source); }
+            catch (Exception error) { Plugin.LogPerformance("audio loop rewind failed: " + error.GetType().Name); }
+        }
         _lastPlayingCount = CountPlaying();
         _listenerVolume = AudioListener.volume;
         // A muted listener is a global playback boundary. Export audio is an
@@ -62,10 +77,72 @@ internal static class RuntimeAudioPlane
         {
             ["sources"] = _beginSourceCount,
             ["playing"] = _lastPlayingCount,
+            ["rewound_loops"] = rewound,
             ["listener_volume"] = _listenerVolume,
             ["listener_repaired"] = _restoreListenerVolume
         });
         return _beginSourceCount;
+    }
+
+    internal static void BeforeCapture(long frame)
+    {
+        if (!_active) return;
+        int anchored = 0;
+        foreach (var source in UnityEngine.Object.FindObjectsOfType<AudioSource>(true))
+        {
+            if (source == null || !source.isActiveAndEnabled) continue;
+            if (!Sources.Contains(source)) Sources.Add(source);
+            if (!source.isPlaying || source.clip == null || Anchored.Contains(source)) continue;
+            // A one-shot that became audible between two frame reads starts
+            // at an arbitrary offset inside the mixer buffer. Anchoring its
+            // first observed frame to the clip origin makes every pass observe
+            // the same authored onset; this is generic source state, not a
+            // per-Mod rule.
+            try
+            {
+                source.timeSamples = 0;
+                Anchored.Add(source);
+                anchored++;
+            }
+            catch (Exception error)
+            {
+                Plugin.LogPerformance("audio onset anchor failed: " + error.GetType().Name);
+            }
+        }
+        if (anchored > 0)
+            RuntimeVirtualizationHost.Trace("audio_anchor", new Dictionary<string, object?>
+            {
+                ["frame"] = frame,
+                ["anchored"] = anchored,
+                ["sources"] = Sources.Count
+            });
+    }
+
+    internal static IDisposable AcquireCommitScope()
+    {
+        RuntimeVirtualizationHost.Trace("audio_commit", new Dictionary<string, object?>
+        {
+            ["action"] = "begin",
+            ["sources"] = Sources.Count,
+            ["playing"] = CountPlaying()
+        });
+        return new AudioCommitScope();
+    }
+
+    private sealed class AudioCommitScope : IDisposable
+    {
+        private bool _disposed;
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            RuntimeVirtualizationHost.Trace("audio_commit", new Dictionary<string, object?>
+            {
+                ["action"] = "end",
+                ["sources"] = Sources.Count,
+                ["playing"] = CountPlaying()
+            });
+        }
     }
 
     internal static void CaptureFrame(long frame, int sampleRate, int channels, long sampleFrames)
@@ -111,6 +188,7 @@ internal static class RuntimeAudioPlane
             ["captured_sample_frames"] = capturedAudioSampleFrames
         });
         Sources.Clear();
+        Anchored.Clear();
     }
 
     private static int CountPlaying()

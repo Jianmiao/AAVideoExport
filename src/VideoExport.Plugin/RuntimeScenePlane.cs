@@ -18,6 +18,7 @@ internal static class RuntimeScenePlane
     private static int _activeCanvasCount;
     private static int _activeVideoPlayerCount;
     private static readonly List<MonoBehaviour> ObservedMenuObjects = new();
+    private static readonly Dictionary<VideoPlayer, VideoState> VideoStates = new();
     private static long _observedFrame = -1;
 
     internal static string SceneName { get; private set; } = "";
@@ -46,11 +47,18 @@ internal static class RuntimeScenePlane
         }
     }
 
-    internal static void BeginExport()
+    internal static void BeginExport(int fps)
     {
         _timeScale = Time.timeScale;
         _restoreTimeScale = _timeScale <= 0.0001f;
         if (_restoreTimeScale) Time.timeScale = 1f;
+        if (fps > 0)
+        {
+            try { Time.captureDeltaTime = 1f / fps; }
+            catch (Exception error) { Plugin.LogPerformance("scene capture-delta failed: " + error.GetType().Name); }
+        }
+        VideoStates.Clear();
+        int warmed = PrimeFontAtlases();
         _activeCanvasCount = CountCanvases();
         _activeVideoPlayerCount = CountVideoPlayers();
         SceneName = ActiveSceneName();
@@ -61,9 +69,50 @@ internal static class RuntimeScenePlane
             ["scene"] = SceneName,
             ["canvases"] = _activeCanvasCount,
             ["video_players"] = _activeVideoPlayerCount,
+            ["font_labels_warmed"] = warmed,
+            ["animators"] = UnityEngine.Object.FindObjectsOfType<Animator>(true).Length,
+            ["animator_paths"] = string.Join("|", UnityEngine.Object.FindObjectsOfType<Animator>(true)
+                .Where(value => value != null && value.isActiveAndEnabled)
+                .Select(value => HierarchyPath(value.transform) + ":" + (value.runtimeAnimatorController == null ? "" : value.runtimeAnimatorController.name))
+                .Take(20)),
+            ["canvas_groups"] = UnityEngine.Object.FindObjectsOfType<CanvasGroup>(true)
+                .Count(value => value != null && value.isActiveAndEnabled),
+            ["capture_delta"] = Time.captureDeltaTime,
             ["time_scale"] = _timeScale,
             ["time_scale_repaired"] = _restoreTimeScale
         });
+    }
+
+    internal static int PumpVideoFrame(long frame)
+    {
+        if (!_active) return 0;
+        int stepped = 0;
+        foreach (var player in UnityEngine.Object.FindObjectsOfType<VideoPlayer>(true))
+        {
+            if (player == null || !player.isActiveAndEnabled) continue;
+            if (!VideoStates.TryGetValue(player, out var state))
+            {
+                state = new VideoState(frame, player.isPlaying, player.isPaused, player.playbackSpeed, player.time, player.frame, player.isLooping);
+                VideoStates[player] = state;
+                try { player.playbackSpeed = 0f; player.Pause(); }
+                catch (Exception error) { Plugin.LogPerformance("scene video pause failed: " + error.GetType().Name); }
+            }
+            long target = Math.Max(0, frame - state.BaseFrame);
+            if (state.Looping && player.frameCount > 0) target %= checked((long)player.frameCount);
+            try
+            {
+                if (player.canSetTime && player.frame != target)
+                {
+                    player.frame = target;
+                    stepped++;
+                }
+            }
+            catch (Exception error)
+            {
+                Plugin.LogPerformance("scene video seek failed: " + error.GetType().Name);
+            }
+        }
+        return stepped;
     }
 
     internal static void CaptureFrame(long frame)
@@ -87,6 +136,23 @@ internal static class RuntimeScenePlane
     {
         if (!_active) return;
         _active = false;
+        foreach (var pair in VideoStates)
+        {
+            var player = pair.Key;
+            var state = pair.Value;
+            if (player == null) continue;
+            try
+            {
+                player.playbackSpeed = state.Speed;
+                if (state.WasPlaying) player.Play();
+                else if (state.WasPaused) player.Pause();
+            }
+            catch (Exception error)
+            {
+                Plugin.LogPerformance("scene video restore failed: " + error.GetType().Name);
+            }
+        }
+        VideoStates.Clear();
         if (_restoreTimeScale)
         {
             try { Time.timeScale = _timeScale; }
@@ -163,6 +229,102 @@ internal static class RuntimeScenePlane
         _observedFrame = -1;
     }
 
+    private const string PrintableAscii =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 /:-_,.()[]!?%+";
+
+    private static int PrimeFontAtlases()
+    {
+        var labels = new List<MonoBehaviour>();
+        foreach (var behaviour in UnityEngine.Object.FindObjectsOfType<MonoBehaviour>(true))
+        {
+            if (behaviour == null || behaviour.GetType().Name != "UILabel") continue;
+            labels.Add(behaviour);
+        }
+        labels.Sort((left, right) => string.CompareOrdinal(HierarchyPath(left.transform), HierarchyPath(right.transform)));
+        var fonts = new Dictionary<int, Font>();
+        int warmed = 0;
+        foreach (var label in labels)
+        {
+            try
+            {
+                var text = ReadMember(label, "text") as string;
+                var size = ReadMember(label, "fontSize") as int? ?? 0;
+                if (size <= 0) size = ReadMember(label, "finalFontSize") as int? ?? 0;
+                var style = ReadMember(label, "fontStyle") as FontStyle? ?? FontStyle.Normal;
+                var face = ReadMember(label, "font");
+                var font = face == null ? null : ReadMember(face, "dynamicFont") as Font;
+                if (font == null) font = ReadMember(label, "trueTypeFont") as Font;
+                if (font == null || size <= 0) continue;
+                var identity = font.GetInstanceID();
+                fonts[identity] = font;
+                var request = font.GetType().GetMethod("RequestCharactersInTexture",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public, null,
+                    new[] { typeof(string), typeof(int), typeof(FontStyle) }, null);
+                if (request == null) continue;
+                request.Invoke(font, new object[] { (text ?? "") + PrintableAscii, size, style });
+                warmed++;
+            }
+            catch (Exception error)
+            {
+                Plugin.LogPerformance("scene font request failed: " + error.GetType().Name);
+            }
+        }
+        RuntimeVirtualizationHost.Trace("font_atlas_prime", new Dictionary<string, object?>
+        {
+            ["labels"] = labels.Count,
+            ["fonts"] = fonts.Count,
+            ["requested"] = warmed
+        });
+        return warmed;
+    }
+
+    private static object? ReadMember(object instance, string name)
+    {
+        var property = instance.GetType().GetProperty(name,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+        if (property != null && property.GetIndexParameters().Length == 0) return property.GetValue(instance);
+        var field = instance.GetType().GetField(name,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+        return field?.GetValue(instance);
+    }
+
+    private static string HierarchyPath(Transform transform)
+    {
+        var parts = new List<string>();
+        while (transform != null)
+        {
+            parts.Add(transform.GetSiblingIndex().ToString("D6") + ":" + transform.name);
+            transform = transform.parent;
+        }
+        parts.Reverse();
+        return string.Join("/", parts);
+    }
+
+    internal static IDisposable AcquireStartupCommitScope() =>
+        new RuntimeSceneCommitScope("startup", MarkStartupReached);
+
+    internal static IDisposable AcquireMenuCommitScope() =>
+        new RuntimeSceneCommitScope("menu", phase => MenuPlayback(phase));
+
+    internal sealed class RuntimeSceneCommitScope : IDisposable
+    {
+        private readonly string _boundary;
+        private readonly Action<string> _observe;
+        private bool _disposed;
+        internal RuntimeSceneCommitScope(string boundary, Action<string> observe)
+        {
+            _boundary = boundary;
+            _observe = observe;
+            _observe(_boundary + "-commit-begin");
+        }
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _observe(_boundary + "-commit-end");
+        }
+    }
+
     private static int CountCanvases()
     {
         int count = 0;
@@ -194,6 +356,8 @@ internal static class RuntimeScenePlane
         var cameras = UnityEngine.Object.FindObjectsOfType<Camera>(true);
         return cameras.Length == 0 ? "" : cameras[0].gameObject.scene.name;
     }
+
+    private sealed record VideoState(long BaseFrame, bool WasPlaying, bool WasPaused, float Speed, double Time, long Frame, bool Looping);
 
     private sealed class Lease : IDisposable
     {

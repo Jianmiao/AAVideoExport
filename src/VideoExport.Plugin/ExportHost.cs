@@ -54,6 +54,22 @@ public sealed partial class ExportHost : MonoBehaviour
     private GenericScenarioExcelTable? _frozenSave;
     private readonly PlaybackLaunchGate _launch = new();
     private long _launchTicket;
+    private bool _commandLineRequested, _commandLineSubmitted, _commandLineFinished, _commandLineFailed;
+    private string _commandLineStory = "", _commandLineOutput = "", _commandLineResult = "";
+    private bool _commandLineExit;
+    private float _commandLineNextTry;
+    private float _commandLineFinishedAt;
+    private float _commandLineDiagAt;
+    private string _commandLineDiag = "";
+    private bool _commandLineSelectionRequested;
+    private float _commandLineSelectionAt;
+    private int _commandLineCount = 1;
+    private int _commandLineAttempt;
+    private int _commandLineCompleted;
+    private float _commandLineSubmittedAt;
+    private float _commandLineCancelAfter = -1f;
+    private int _commandLineCancelFrame = -1;
+    private bool _commandLineCancelIssued;
     private readonly Stopwatch _loadingTimer = new();
     private IntPtr _eligiblePlayer;
     private long _eligibleTicket;
@@ -149,6 +165,195 @@ public sealed partial class ExportHost : MonoBehaviour
         RenderControlV1.CompleteHostInitialization();
     }
 
+    /// <summary>
+    /// Product-side headless export entry. It uses the same panel, probe,
+    /// story resolution and Prepare path as the UI; it does not require the
+    /// acceptance harness or any test-only assembly.
+    /// </summary>
+    internal bool TryCommandLineExport(string storyPath, string outputDirectory)
+    {
+        if (!_commandLineRequested)
+        {
+            _commandLineRequested = true;
+            _commandLineStory = Path.GetFullPath(storyPath);
+            _commandLineOutput = Path.GetFullPath(outputDirectory);
+        }
+        if (_commandLineSubmitted || _commandLineFinished) {
+            if (_commandLineFinished) return true;
+            if (_commandLineAttempt == 0 && !_commandLineCancelIssued &&
+                ((_commandLineCancelFrame >= 0 && _captured >= _commandLineCancelFrame) ||
+                (_commandLineCancelAfter >= 0f && Time.unscaledTime >= _commandLineSubmittedAt + _commandLineCancelAfter)))
+            {
+                _commandLineCancelIssued = true;
+                Plugin.LogPerformance("AAVE command-line export cancel requested at frame " + _captured);
+                Cancel();
+                return false;
+            }
+            if (_commandLineCancelIssued)
+            {
+                if (!Busy && !Capturing && !_nativeLoadPending && !_returningToCatalog &&
+                    SceneManager.GetActiveScene().name == "CatalogScene")
+                {
+                    CompleteCommandLineAttempt("cancelled", false);
+                    return false;
+                }
+                CommandLineWait("cancel cleanup busy=" + Busy + " nativeLoad=" + _nativeLoadPending + " scene=" + SceneManager.GetActiveScene().name);
+                return false;
+            }
+            if (Busy) return true;
+            if (_commandLineFinished) return true;
+            CommandLineWait("export running");
+            return true;
+        }
+        if (Busy || SceneManager.GetActiveScene().name != "CatalogScene") { CommandLineWait("scene=" + SceneManager.GetActiveScene().name + " busy=" + Busy); return false; }
+        if (_panel.Options.EncodingMode != "software")
+            _panel.Options = EncodingModeSelection.Change(_panel.Options, "software");
+        if (_probe != null) { CommandLineWait("encoder probe running"); return false; }
+        if (_capabilities == null) { Probe(); CommandLineWait("encoder probe starting"); return false; }
+        var cards = Object.FindObjectsOfType<CatalogFileInfo>()
+            .Where(info => info != null && info.gameObject.activeInHierarchy).ToArray();
+        var selected = cards.FirstOrDefault(info => TryGetStoryPath(info, out var candidate) &&
+            string.Equals(candidate, _commandLineStory, StringComparison.OrdinalIgnoreCase));
+        var rows = Resources.FindObjectsOfTypeAll<CatalogFileItem>()
+            .Where(item => item != null && item.gameObject.scene.name == "CatalogScene").ToArray();
+        var row = rows.FirstOrDefault(item => TryGetItemPath(item, out var candidate) &&
+            string.Equals(candidate, _commandLineStory, StringComparison.OrdinalIgnoreCase));
+        if (selected == null && row != null)
+        {
+            if (!row.gameObject.activeInHierarchy)
+            {
+                var group = row.GetComponentInParent<EpisodeGroup>();
+                if (group != null && group.gameObject.activeInHierarchy && !group.expanded)
+                {
+                    group.Expand();
+                    CommandLineWait("expanded native story group");
+                    return false;
+                }
+                CommandLineWait("story row inactive; rows=" + rows.Length);
+                return false;
+            }
+            if (!_commandLineSelectionRequested || Time.unscaledTime - _commandLineSelectionAt > 8f)
+            {
+                _commandLineSelectionRequested = true;
+                _commandLineSelectionAt = Time.unscaledTime;
+                bool accepted = row.Select(false);
+                Plugin.LogPerformance("AAVE command-line story select accepted=" + accepted + " row=" + Path.GetFileName(_commandLineStory));
+                CommandLineWait("story row selected accepted=" + accepted);
+                return false;
+            }
+            CommandLineWait("story row selected; waiting detail");
+            return false;
+        }
+        if (selected == null) {
+            string first = "";
+            string raw = "<no-card>";
+            string blockTitle = "";
+            string panel = "?";
+            bool hasBlock = false;
+            if (cards.Length > 0) {
+                hasBlock = cards[0].block != null;
+                raw = hasBlock ? cards[0].block!.path : "<null-block>";
+                blockTitle = hasBlock ? cards[0].block!.title : "";
+                panel = cards[0].controlPanel == null ? "null" : (cards[0].controlPanel.activeInHierarchy ? "active" : "inactive");
+                TryGetStoryPath(cards[0], out first);
+            }
+            var total = Object.FindObjectsOfType<CatalogFileInfo>().Length;
+            CommandLineWait("catalog cards=" + cards.Length + "/" + total + " target=" + Path.GetFileName(_commandLineStory) + " first=" + first + " raw=" + raw + " title=" + blockTitle + " panel=" + panel + " hasBlock=" + hasBlock);
+            return false;
+        }
+        _selectedStory = selected;
+        _selectedStoryKey = _commandLineStory;
+        string title = Path.GetFileNameWithoutExtension(_commandLineStory);
+        foreach (char invalid in "<>:\\\"/|?*") title = title.Replace(invalid, '_');
+        if (string.IsNullOrWhiteSpace(title)) title = "AAVE";
+        LoadedStoryTitle = title;
+        _panel.SetStoryTitle(title);
+        _panel.SetSourceCanvas(Screen.width, Screen.height);
+        string attemptOutput = _commandLineCount > 1
+            ? Path.Combine(_commandLineOutput, "run-" + (_commandLineAttempt + 1).ToString("00"))
+            : _commandLineOutput;
+        Directory.CreateDirectory(attemptOutput);
+        var options = new ExportOptions
+        {
+            Title = title,
+            OutputDirectory = attemptOutput,
+            Width = 1280,
+            Height = 720,
+            Fps = 30,
+            Container = "mov",
+            Codec = "qtrle",
+            EncodingMode = "software",
+            StrictSynchronization = true
+        };
+        options.Validate();
+        _panel.Options = options;
+        _commandLineSubmitted = true;
+        _commandLineSubmittedAt = Time.unscaledTime;
+        Prepare(options);
+        if (!Busy && !Capturing && !_armed && !_nativeLoadPending)
+        {
+            // Probe/retained preparation can legitimately need another Update.
+            _commandLineSubmitted = false;
+            CommandLineWait("prepare not armed status=" + _status);
+            return false;
+        }
+        Plugin.LogPerformance("AAVE command-line export submitted: " + _commandLineStory + " -> " + Path.Combine(_commandLineOutput, title + ".mov"));
+        return true;
+    }
+
+    internal bool CommandLineRequested => _commandLineRequested;
+    internal bool CommandLineFinished => _commandLineFinished;
+    internal bool CommandLineFailed => _commandLineFailed;
+    internal string CommandLineResult => _commandLineResult;
+    internal string CommandLineStatus => _status;
+
+    private void CommandLineWait(string reason)
+    {
+        if (Time.unscaledTime < _commandLineDiagAt && reason == _commandLineDiag) return;
+        _commandLineDiagAt = Time.unscaledTime + 5f;
+        _commandLineDiag = reason;
+        Plugin.LogPerformance("AAVE command-line waiting: " + reason);
+    }
+
+    private void CompleteCommandLineAttempt(string result, bool failed)
+    {
+        if (_commandLineFinished) return;
+        _commandLineCompleted++;
+        if (!failed && _commandLineCompleted < _commandLineCount)
+        {
+            _commandLineAttempt = _commandLineCompleted;
+            _commandLineSubmitted = false;
+            _commandLineCancelIssued = false;
+            _commandLineSelectionRequested = false;
+            _commandLineSelectionAt = 0f;
+            _commandLineDiag = "";
+            _commandLineDiagAt = 0f;
+            Plugin.LogPerformance("AAVE command-line attempt " + _commandLineCompleted + " complete: " + result +
+                "; next=" + (_commandLineAttempt + 1) + "/" + _commandLineCount);
+            return;
+        }
+        _commandLineFinished = true;
+        _commandLineFailed = failed;
+        _commandLineResult = result;
+        _commandLineFinishedAt = Time.unscaledTime;
+        Plugin.LogPerformance("AAVE command-line export finished: " + (_commandLineFailed ? "failed" : "ok") + " " + result);
+    }
+
+    internal void ConfigureCommandLineExport(string storyPath, string outputDirectory, bool exitWhenDone, int count = 1, float cancelAfterSeconds = -1f, int cancelAtFrame = -1)
+    {
+        if (!Path.IsPathFullyQualified(storyPath) || !File.Exists(storyPath))
+            throw new ExportException("command_line_story_missing", "The --aa-export-story value must be an existing absolute .aas path.");
+        if (!Path.IsPathFullyQualified(outputDirectory))
+            throw new ExportException("command_line_output_invalid", "The --aa-export-output value must be an absolute directory.");
+        _commandLineRequested = true;
+        _commandLineStory = Path.GetFullPath(storyPath);
+        _commandLineOutput = Path.GetFullPath(outputDirectory);
+        _commandLineExit = exitWhenDone;
+        _commandLineCount = Math.Max(1, count);
+        _commandLineCancelAfter = cancelAfterSeconds;
+        _commandLineCancelFrame = cancelAtFrame;
+    }
+
     public void Update()
     {
         if (_shutdown) return;
@@ -177,6 +382,17 @@ public sealed partial class ExportHost : MonoBehaviour
             long uiStarted = Stopwatch.GetTimestamp();
             SyncNativeUi();
             if (Capturing) _uiTicks += Stopwatch.GetTimestamp() - uiStarted;
+            if (_commandLineRequested)
+            {
+                if (!_commandLineFinished && Time.unscaledTime >= _commandLineNextTry)
+                {
+                    _commandLineNextTry = Time.unscaledTime + 1.25f;
+                    try { TryCommandLineExport(_commandLineStory, _commandLineOutput); }
+                    catch (Exception error) { Fail(error); }
+                }
+                else if (_commandLineFinished && _commandLineExit && Time.unscaledTime - _commandLineFinishedAt >= 2f)
+                    Application.Quit();
+            }
             if (_cancelledPlayback != null)
             {
                 var abandonedPlayer = _cancelledPlayback; _cancelledPlayback = null;
@@ -633,6 +849,24 @@ public sealed partial class ExportHost : MonoBehaviour
     }
 
     [HideFromIl2Cpp]
+    private static bool TryGetItemPath(CatalogFileItem? item, out string path)
+    {
+        path = "";
+        if (item == null) return false;
+        string raw;
+        try { raw = item.infoBlock == null ? "" : item.infoBlock.path; }
+        catch (Exception) { return false; }
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        try
+        {
+            path = Path.GetFullPath(raw);
+            return string.Equals(Path.GetExtension(path), ".aas", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (ArgumentException) { path = ""; return false; }
+        catch (NotSupportedException) { path = ""; return false; }
+    }
+
+    [HideFromIl2Cpp]
     internal void MarkNewPlayback(Test player)
     {
         if (!_nativeLoadPending || player.previewMode) return;
@@ -744,7 +978,7 @@ public sealed partial class ExportHost : MonoBehaviour
         _autoSelection = new NativeAutoSelection(player, message => UnityEngine.Debug.Log("AA Video Export: " + message));
         RuntimeVirtualizationHost.BeginExport(Plugin.HostIdentity, _options.Fps, ExportBuildProfile.SinglePassEnabled,
             _session.OutputPath, _native.ParticipatingCameraCount, _native.SampleRate, _native.Channels);
-        RuntimeScenePlane.BeginExport();
+        RuntimeScenePlane.BeginExport(_options.Fps);
         RuntimeAudioPlane.BeginExport();
         RuntimeRenderPlane.BeginExport(_native.ParticipatingCameraCount, _native.OwnedCameraCount, _native.OverlayCameraCount,
             RuntimeScenePlane.ActiveCanvasCount, RuntimeScenePlane.ActiveVideoPlayerCount);
@@ -878,6 +1112,7 @@ public sealed partial class ExportHost : MonoBehaviour
             if (frameAlreadyRendered && Capturing)
                 _native!.SetTarget(_frames.RenderTarget);
             stage = Stopwatch.GetTimestamp();
+            RuntimeAudioPlane.BeforeCapture(_captured);
             var audio = _native!.RenderAudio();
             ThrowRetainedFault();
             ValidateFrameworkFrame(required: _options?.StrictSynchronization == true);
@@ -977,6 +1212,11 @@ public sealed partial class ExportHost : MonoBehaviour
             _statusIsError = true;
             _panel.StatusIsError = true;
             _panel.Visible = true;
+            if (_commandLineRequested)
+            {
+                _commandLineFailed = true;
+                CompleteCommandLineAttempt(_status, true);
+            }
         }
         finally { _failureHandling = false; }
     }
@@ -1057,6 +1297,10 @@ public sealed partial class ExportHost : MonoBehaviour
     {
         _status = $"完成：{result.OutputPath}\n{result.Frames:N0} 帧 / {result.DurationSeconds:0.0} 秒；总耗时 {(_options?.StrictSynchronization == true ? _strictTotalElapsed.Elapsed.TotalSeconds : _elapsed.Elapsed.TotalSeconds):0.0} 秒";
         _statusIsError = false;
+        if (_commandLineRequested)
+        {
+            CompleteCommandLineAttempt(result.OutputPath, false);
+        }
     }
 
     [HideFromIl2Cpp]

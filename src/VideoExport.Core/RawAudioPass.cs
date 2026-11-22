@@ -106,7 +106,13 @@ public sealed class RawAudioPass : IDisposable
         RequirePhase(Phase.Sealed);
         if (consume is null) throw new ArgumentNullException(nameof(consume));
         phase = Phase.Reading;
-        var window = new TimestampedAudioWindow(0, LeadSampleFrames, receipt!.ContentSampleFrames, Channels);
+        // The mixer can begin a pass with a variable number of digital-silence
+        // blocks while the scene settles. Align every pass to its first actual
+        // content frame and keep the declared length by padding the tail with
+        // silence. This removes capture-start jitter without changing any
+        // audible sample.
+        long firstContent = FindFirstContentFrame();
+        var window = new TimestampedAudioWindow(0, firstContent, receipt!.ContentSampleFrames, Channels);
         var buffer = new float[ChunkSampleFrames * Channels];
         try
         {
@@ -126,6 +132,16 @@ public sealed class RawAudioPass : IDisposable
                 var block = window.Append(buffer, 0, floats, window.NextRawSample);
                 if (block.ContentSlice is { } content) consume(content.Samples);
             }
+            long contentEnd = checked(window.ContentStartSample + window.ContentSampleFrames);
+            while (window.NextRawSample < contentEnd)
+            {
+                long missing = contentEnd - window.NextRawSample;
+                int frames = (int)Math.Min(ChunkSampleFrames, missing);
+                int floats = checked(frames * Channels);
+                Array.Clear(buffer, 0, floats);
+                var block = window.Append(buffer, 0, floats, window.NextRawSample);
+                if (block.ContentSlice is { } content) consume(content.Samples);
+            }
             window.Complete();
             if (stream.Position != stream.Length)
                 throw new ExportException("audio_timeline_extra", "Raw PCM has bytes outside its acknowledged sample interval.");
@@ -135,6 +151,33 @@ public sealed class RawAudioPass : IDisposable
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         { phase = Phase.Failed; throw ExportException.FromIo(error, "Reading native raw audio"); }
         catch { phase = Phase.Failed; throw; }
+    }
+
+    private long FindFirstContentFrame()
+    {
+        var buffer = new float[ChunkSampleFrames * Channels];
+        stream.Position = 0;
+        long frame = 0;
+        while (frame < RawSampleFrames)
+        {
+            int frames = (int)Math.Min(ChunkSampleFrames, RawSampleFrames - frame);
+            int floats = frames * Channels;
+            Span<byte> bytes = MemoryMarshal.AsBytes(buffer.AsSpan(0, floats));
+            int read = 0;
+            while (read < bytes.Length)
+            {
+                int count = stream.Read(bytes[read..]);
+                if (count == 0) throw new ExportException("audio_timeline_incomplete", "Raw PCM ended while locating the first content frame.");
+                read += count;
+            }
+            for (int index = 0; index < floats; index++)
+            {
+                if (Math.Abs(buffer[index]) <= 1e-7f) continue;
+                return checked(frame + index / Channels);
+            }
+            frame += frames;
+        }
+        return 0;
     }
 
     private void RequirePhase(Phase required)

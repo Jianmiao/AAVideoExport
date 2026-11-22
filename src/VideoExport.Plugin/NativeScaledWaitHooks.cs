@@ -56,12 +56,17 @@ internal static class NativeScaledWaitHooks
     private static IEnumerable<MethodBase> TargetMethods()
     {
         const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic;
-        foreach (var owner in new[] { typeof(WaitAnimation), typeof(Test) })
+        var owners = new List<Type> { typeof(Test), typeof(ScenarioAnimation.ScenarioAnimation) };
+        foreach (var type in typeof(Test).Assembly.GetTypes())
+            if (typeof(ScenarioAnimation.ScenarioAnimation).IsAssignableFrom(type) && !owners.Contains(type))
+                owners.Add(type);
+        foreach (var owner in owners)
         foreach (var nested in owner.GetNestedTypes(flags))
         {
-            if (!nested.Name.Contains("_WaitTask_d__") && !nested.Name.Contains("_DelayedAdvance_d__")) continue;
-            yield return nested.GetMethod("MoveNext", flags | BindingFlags.Instance)
-                ?? throw new MissingMethodException(nested.FullName, "MoveNext");
+            if (!nested.Name.Contains("_Task_d__") && !nested.Name.Contains("_WaitTask_d__")
+                && !nested.Name.Contains("_DelayedAdvance_d__")) continue;
+            var moveNext = nested.GetMethod("MoveNext", flags | BindingFlags.Instance);
+            if (moveNext != null && moveNext.ReturnType == typeof(bool)) yield return moveNext;
         }
     }
 
@@ -73,6 +78,18 @@ internal static class NativeScaledWaitHooks
         var type = __instance.GetType();
         object? owner = type.GetProperty("__4__this", flags)?.GetValue(__instance);
         Test? player = owner is WaitAnimation animation ? animation.owner : owner as Test;
+        if (player == null && owner != null)
+        {
+            object? cursor = owner;
+            for (int depth = 0; cursor != null && depth < 4 && player == null; depth++)
+            {
+                var ownerProperty = cursor.GetType().GetProperty("owner", flags);
+                if (ownerProperty == null) break;
+                object? value = ownerProperty.GetValue(cursor);
+                player = value as Test;
+                if (player == null) cursor = value; else break;
+            }
+        }
         if (player == null || !host.OwnsCapturePlayer(player)) return;
         var current = type.GetProperty("__2__current", flags);
         var yielded = current?.GetValue(__instance) as Il2CppSystem.Object;
