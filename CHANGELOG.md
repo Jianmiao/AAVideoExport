@@ -1,5 +1,15 @@
 # 版本变更记录
 
+## 1.0.0 — 运行期虚拟化（RVL），2026-11-22
+
+- 四个通用运行期平面落地：`RuntimeVirtualizationHost` 协调 Clock / Audio / Render / Scene；`RuntimeCompatibilitySeams.cs` 仅保留旧类型名作为转发接缝，startup / menu / voice commit scope 均转发到实际平面，不再返回空作用域。
+- 语音与 BGM 由 `RuntimeAudioPlane` 直接观察最终 mixer；循环源在导出起点回绕，一次性语音在首次可听帧把 clip 原点对齐到帧边界，解决两次导出语音相位漂移与 PCM 偶发错位。G2 两次 decoded video 与 PCM16 完全一致。
+- 动态背景由 `RuntimeScenePlane` 对每个 active `VideoPlayer` 逐帧 seek，MoreEffects / 立绘 / 翻译类 canvas 保持原渲染路径；不再按 Mod 身份选择适配器。
+- 标题收尾的 1–5 LSB 像素差已消除：对所有（含未激活模板）`UILabel` 的字体/字号预请求完整可打印 ASCII 字形，使克隆标题标签在首帧前已拥有确定图集；G2 明确不接受 font-atlas 例外。
+- 未知时钟、未知被动、未知 render-owner 均通过通用类型契约与 Clock/Render 平面接入，不读取 Mod 身份。G3 4/0、G4 4/0、G6 8/8。
+- 产品 CLI 的无值 `--aa-export-story` 仅在下一参数为 `.aas` 路径时消费；`--aa-export-output` 拒绝 `-` 开头的下一参数，修复测试插件不加载与误把 `-logFile` 当剧情路径的缺陷。
+- 最终构建 `A47B563B6E22E6D97156F1CBB942406398B7F312517E751F7E76E2A09B39AA3D`；G1 111 files / 19 Mod / 0 violations；G5 91 files / 12,531,834 B / 0 diff；G6 纯产品 8/8。
+
 ## 0.3.0 — 零 per-Mod 适配重构，2026-11-22
 
 生产代码不再针对具体其他 Mod 做身份特判，准入与拒绝按通用 API 族（时钟、媒体、渲染）观测结果与通用能力探测产生；0.2.12 时代按 Mod 身份编写的适配器退出生产源码，留存于 `legacy/0.2.12-per-mod/` 供对照。通用 Stopwatch 桥已接入生产 capture；保留单遍音画执行路径、有界 GPU 读回与编码队列、取消清理与原生场景恢复、公开 `RenderControlV1` v1。普通生产构建不运行开发审计、不携带审计 bootstrap。

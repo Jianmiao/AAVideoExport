@@ -1,11 +1,11 @@
-param()
+param([string]$OutputRoot = '')
 $ErrorActionPreference = 'Stop'
 $repo = 'E:\aamod\AAVE-zero-per-mod-20261121'
 $lab = 'F:\AzureArchive_AAVE03Lab'
 $exe = "$repo\tools\HiddenDesktopLauncher\bin\Release\net8.0\HiddenDesktopLauncher.exe"
 $game = "$lab\AzureArchive.exe"
 $story = 'E:\AAdata\data\saves\AAVE-OfficialAuthoring-20261030.aas'
-$g6 = "$repo\artifacts\rvl-1.0.0\g6-final"
+$g6 = if ([string]::IsNullOrWhiteSpace($OutputRoot)) { "$repo\artifacts\rvl-1.0.0\g6-final" } else { [IO.Path]::GetFullPath($OutputRoot) }
 $plugins = "$lab\BepInEx\plugins"
 
 function Set-Fixture([string]$name, [bool]$on) {
@@ -38,6 +38,7 @@ Set-Fixture 'UnknownClockMod' $false
 Set-Fixture 'UnknownRenderOwnerMod' $false
 Set-Fixture 'AAVideoExport.NativePath.Tests' $false
 
+Run-Export 'product-normal' @()
 Run-Export 'product-final-double' @('--aa-export-count', '2')
 Run-Export 'product-final-cancel' @('--aa-export-cancel-frame', '300')
 Run-Export 'product-final-reexport' @('--aa-export-count', '2', '--aa-export-cancel-frame', '300')
