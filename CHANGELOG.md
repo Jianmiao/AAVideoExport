@@ -1,5 +1,21 @@
 # 版本变更记录
 
+## 0.3.0 — 零 per-Mod 适配重构，2026-11-22
+
+生产代码不再针对具体其他 Mod 做身份特判，准入与拒绝按通用 API 族（时钟、媒体、渲染）观测结果与通用能力探测产生；0.2.12 时代按 Mod 身份编写的适配器退出生产源码，留存于 `legacy/0.2.12-per-mod/` 供对照。通用 Stopwatch 桥已接入生产 capture；保留单遍音画执行路径、有界 GPU 读回与编码队列、取消清理与原生场景恢复、公开 `RenderControlV1` v1。普通生产构建不运行开发审计、不携带审计 bootstrap。
+
+- **已验收（对应门禁证据，详见 `docs/zero-per-mod/EVIDENCE-MATRIX.md`）**：
+  - G1 生产源码静态扫描：106 文件 / 19 Mod / 81 身份索引，违规 0，退出码 0。
+  - G2 重复导出等价性：最终批次 2 次完整导出，450 帧 / 720,000 采样帧，6 项检查通过、0 失败；音频、事件、PTS 与 authored-render 契约范围内等价；存在显式 font-atlas 例外——2 个像素、3 个通道、最大通道差 1 LSB（UI 字形），**不是逐像素完全一致，也不代表成片字节级相同**。
+  - G3 未知时钟 Mod 真机导出：未知 live clock Mod 触发 `Test.Update` 事件 465 次，`Stopwatch` 读取被通用桥接为虚拟时间，导出期 32 次读取，wall 与 unity 时钟同步递增；4 项检查通过、0 失败；动态准入与桥接不依赖 Mod 名字。
+- **未验收 / 部分闭合（不得对外表述为整体通过）**：
+  - G4 未知 render-owner 真机拒绝未验证（NOT-RUN）：仅有合成策略拒绝与准入单测证据，无首帧前真机拒绝时点与“无错位成片”记录。
+  - G5 第三方 Mod DLL / 配置前后哈希 PARTIAL：基线快照、工具自比与重扫零差异已演示，缺真实导出前 / 后的成对快照零差异比对。
+  - G6 纯产品闭环尚未完成：现有真机批次由测试 harness 驱动，运行记录未同时登记 Plugin + Core 哈希；无产品-only（无 harness、无审计 bootstrap、无测试程序集）运行记录。物料层验包通过不等于纯产品运行闭环。
+  - 可选 Mod（MoreEffects、Multilingual、CharacterVoice 等）在本版无真机验收记录；通用时钟桥目前只覆盖 `Stopwatch.GetTimestamp`，`DateTime` / `TickCount` / Unity `Time` 时钟族未桥接。
+- **生产载荷**：固定 9 个运行时程序集（`AAVideoExport.dll`、`AAVideoExport.Core.dll` 及 Vortice / SharpGen 图形依赖），不含测试 harness、验收夹具、`RuntimeBootstrap` 审计 bootstrap、`*.pdb` 或 `*.user`。最终生产构建 Plugin `B2FF1F61…AF279`（498,688 B）、Core `E5658076…6ABCF6`（385,024 B）。
+- 0.2.12 为 legacy 版本，其验收结论、成片数据与 DLL 哈希不作为本版已验证证据。
+
 ## 0.2.12 — 统一逻辑时间轴与单遍音画导出，2026-10-31
 
 以下记录冻结的 0.2.12 R2 运行时与独立实验验收；本机安装/验收状态以安装回执和独立报告为准。

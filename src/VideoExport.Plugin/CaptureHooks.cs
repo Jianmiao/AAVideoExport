@@ -108,6 +108,28 @@ internal static class FixedUnscaledTimeHook
     }
 }
 
+[HarmonyPatch(typeof(Time), "get_time")]
+internal static class FixedScaledTimeHook
+{
+    static bool Prefix(ref float __result)
+    {
+        if (!NativeExportClock.IsActive) return true;
+        __result = NativeExportClock.Now;
+        return false;
+    }
+}
+
+[HarmonyPatch(typeof(Time), "get_deltaTime")]
+internal static class FixedScaledDeltaHook
+{
+    static bool Prefix(ref float __result)
+    {
+        if (!NativeExportClock.IsActive) return true;
+        __result = NativeExportClock.Delta;
+        return false;
+    }
+}
+
 [HarmonyPatch(typeof(Time), "get_unscaledDeltaTime")]
 internal static class FixedUnscaledDeltaHook
 {

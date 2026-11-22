@@ -9,5 +9,7 @@ internal static class FlandrePortraitClock { internal static bool IsReady=>false
 internal static class AASkipIntroExportBoundary { internal static string CaptureActiveProof()=>throw new InvalidOperationException("not exercised"); }
 internal static class RetainedMenuPlaybackBoundary { internal static bool TryClassify(Assembly a,out StrictCapabilityLevel level,out IReadOnlyList<string> evidence){level=StrictCapabilityLevel.Rejected;evidence=Array.Empty<string>();return false;} }
 internal static class GenericStaticModPolicy { internal static bool TryClassify(Assembly a,out IReadOnlyList<string> evidence){evidence=Array.Empty<string>();return false;} }
+internal static class GenericClockPolicy { internal static bool TryClassify(Assembly a,out StrictCapabilityLevel level,out IReadOnlyList<string> evidence){level=StrictCapabilityLevel.Rejected;evidence=Array.Empty<string>();return false;} }
+internal static class GenericRenderControlPolicy { internal static bool TryClassify(Assembly a,out StrictCapabilityLevel level,out IReadOnlyList<string> evidence){level=StrictCapabilityLevel.Rejected;evidence=Array.Empty<string>();return false;} }
 internal sealed class CharacterVoiceSessionAdapter { internal const string ControllerEvidenceMarker="CharacterVoiceSessionAdapter.held-controller.v1";internal void ValidateController()=>throw new InvalidOperationException("not exercised"); }
 internal static class CharacterVoiceDelayClock { internal static void ValidateBinding()=>throw new InvalidOperationException("not exercised"); }

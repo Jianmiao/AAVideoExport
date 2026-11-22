@@ -376,7 +376,8 @@ internal static partial class ControlledStoryExportEvidence
 
     internal static void DeclareCancellation(int attempt, long hostCapturedFrames)
     {
-        Require(installed && !finished, "Cancellation needs an installed live mixed-story observer.");
+        if (!installed) return; // Plain-story cancel mode has no mixed observer.
+        Require(!finished, "Cancellation needs an installed live mixed-story observer.");
         var pass = Current() ?? throw new InvalidOperationException("Declared cancellation has no current production Host pass.");
         Require(pass.Attempt == attempt && pass.Preparation != singlePass && !pass.Sealed && pass.VoiceReceipt == null
             && pass.CapturedFrames >= 12 && hostCapturedFrames >= 12
@@ -392,6 +393,7 @@ internal static partial class ControlledStoryExportEvidence
 
     internal static void ConfirmCancellationCleanup(int attempt)
     {
+        if (!installed) return; // Plain-story cancel mode has no mixed observer.
         if (!Cancellations.TryGetValue(attempt, out var cancellation))
             throw new InvalidOperationException("Cleanup has no declared cancellation.");
         Require(Current() == null, "Cancelled native capture scope is still active.");

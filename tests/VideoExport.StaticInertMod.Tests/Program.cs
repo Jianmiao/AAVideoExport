@@ -46,19 +46,19 @@ foreach(var assembly in new[]{core,dependent,standalone}) Test("actual installed
     Check((bool)receipt.GetType().GetProperty("CanReusePreflight",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(receipt)! == false,"Static proof authorized cache");
 });
 Test("unknown assembly has no proof",()=>Check(Receipt(typeof(Program).Assembly,out _)==null,"Unknown assembly accepted"));
-Test("observed empty payload admission requires both exact and retained scope evidence",()=>
+Test("legacy retained empty payload evidence is rejected under the generic policy",()=>
 {
     foreach(string name in new[]{"ExampleCore","ExampleDependent","ExampleStandalone"})
     {
         var good=new StrictCapability(name,new string('a',64),StrictCapabilityLevel.Observed,new[]{"StaticInertModEvidence.empty-load.v1","StaticInertScope.retained.v1"});
-        var snapshot=StrictCapabilitySnapshot.Create(new[]{good});Check(snapshot.CanAdmitStrictExport && !snapshot.CanReusePreflight,"Retained observed scope was not admitted without cache reuse");
+        Check(!StrictCapabilitySnapshot.Create(new[]{good}).CanAdmitStrictExport,"Legacy per-Mod empty scope was admitted");
         var missing=new StrictCapability(name,new string('a',64),StrictCapabilityLevel.Observed,new[]{"StaticInertModEvidence.empty-load.v1"});
         Check(!StrictCapabilitySnapshot.Create(new[]{missing}).CanAdmitStrictExport,"Static evidence alone authorized export");
     }
     foreach(string name in new[]{"Unknown.Mod","Anonymously Hosted DynamicMethods Assembly"})
         Check(!StrictCapabilitySnapshot.Create(new[]{new StrictCapability(name,new string('a',64),StrictCapabilityLevel.Observed,new[]{"StaticInertModEvidence.empty-load.v1","StaticInertScope.retained.v1"})}).CanAdmitStrictExport,"Scope admitted an unrelated module");
 });
-Test("real inventory grants only its retained empty modules while uncovered dynamic modules still reject",()=>
+Test("real inventory classifies installed passive payloads only through the generic proof",()=>
 {
     var scopeType=typeof(Program).Assembly.GetType("AAVideoExport.Plugin.StaticInertScope");Check(scopeType!=null,"Production retained scope is missing");
     object scope=scopeType!.GetMethod("Acquire",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,null)!;
@@ -66,14 +66,14 @@ Test("real inventory grants only its retained empty modules while uncovered dyna
     StrictCapabilitySnapshot Read(object? value)=>(StrictCapabilitySnapshot)capture.Invoke(null,new object?[]{value,null,null,null})!;
     try
     {
-        bool Supported(StrictCapability item)=>StaticInertModEvidence.IsSupportedName(item.ModuleId);
-        Check(Read(null).Modules.Where(Supported).All(item=>item.Level==StrictCapabilityLevel.Rejected),"Inventory silently created a missing lease");
-        var valid=Read(scope);var approved=valid.Modules.Where(Supported).ToArray();
-        Check(approved.Length==3 && approved.All(item=>item.Level==StrictCapabilityLevel.Observed) && !valid.CanReusePreflight,"Actual exact loaded empty modules were not admitted by their retained lease");
-        var uncovered=valid.Modules.Where(item=>!Supported(item)).ToArray();
-        Check(uncovered.All(item=>item.Level==StrictCapabilityLevel.Opaque),"Uncovered dynamic infrastructure was silently promoted");
-        if(uncovered.Length>0)Console.WriteLine("INVENTORY uncovered dynamic modules remain blocked: "+string.Join(",",uncovered.Select(item=>item.ModuleId)));
-        ((IDisposable)scope).Dispose();Check(Read(scope).Modules.Where(Supported).All(item=>item.Level==StrictCapabilityLevel.Rejected),"Disposed scope still classified as observed proof");
+        var valid=Read(scope);
+        var named=valid.Modules.Where(item=>new[]{"ExampleCore","ExampleDependent","ExampleStandalone"}.Contains(item.ModuleId)).ToArray();
+        Check(named.Length==0,"Dependency payloads without BepInPlugin were incorrectly classified as Mods");
+        Check(!valid.CanReusePreflight,"Passive payload classification enabled cache reuse");
+        var uncovered=valid.Modules.ToArray();
+        Check(uncovered.All(item=>item.Level!=StrictCapabilityLevel.Certified),"Uncovered dynamic infrastructure was silently certified");
+        if(uncovered.Length>0)Console.WriteLine("INVENTORY uncovered modules remain fail-closed: "+string.Join(",",uncovered.Select(item=>item.ModuleId)));
+        ((IDisposable)scope).Dispose();
     }
     finally { ((IDisposable)scope).Dispose(); }
 });

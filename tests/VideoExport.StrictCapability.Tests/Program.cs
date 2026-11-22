@@ -63,26 +63,26 @@ Run("framework bridge admission is exact observed evidence and never enables reu
     const string marker = "FrameworkGeneratedAssemblyScope.cached-bridges.v1";
     foreach (string name in new[] { "MonoMod.Utils.Cil.ILGeneratorProxy", "MonoMod.RuntimeDetour.Runtime.NETCore3+Helpers" })
     {
-        var capability = new StrictCapability(name, Hash("held-framework"), StrictCapabilityLevel.Observed, new[] { marker });
+        var capability = FrameworkCapability(name, Hash("held-framework"));
         var snapshot = StrictCapabilitySnapshot.Create(new[] { capability });
         snapshot.EnsureStrictExportAllowed();
         Check(!snapshot.CanReusePreflight, "bounded framework proof enabled cache reuse");
         Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { Capability(name, StrictCapabilityLevel.Observed) }).EnsureStrictExportAllowed);
+        Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { new StrictCapability(name, Hash(name), StrictCapabilityLevel.Observed, new[] { marker }) }).EnsureStrictExportAllowed);
     }
     foreach (string name in new[] { "MonoMod.Utils.Cil.FakeGenerated", "Unknown.Mod", "Anonymously Hosted DynamicMethods Assembly" })
         Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { new StrictCapability(name, Hash(name), StrictCapabilityLevel.Observed, new[] { marker }) }).EnsureStrictExportAllowed);
 });
-Run("legacy low-level Emit recipe evidence no longer authorizes the shared holder", () =>
+Run("legacy low-level Emit recipe evidence never authorizes a module under the generic policy", () =>
 {
     var stale = new StrictCapability("Anonymously Hosted DynamicMethods Assembly", Hash("policy"), StrictCapabilityLevel.Observed,
         new[] { "RetainedRecipeScope.interop-initializer.v2" });
     Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { stale }).EnsureStrictExportAllowed);
     var current = new StrictCapability(stale.ModuleId, Hash("new-policy"), StrictCapabilityLevel.Observed,
         new[] { "RetainedRecipeScope.interop-initializer-final-il.v2" });
-    var snapshot = StrictCapabilitySnapshot.Create(new[] { current }); snapshot.EnsureStrictExportAllowed();
-    Check(!snapshot.CanReusePreflight, "finite factory proof authorized cache reuse");
+    Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { current }).EnsureStrictExportAllowed);
 });
-Run("menu and voice admission require their own retained proof markers", () =>
+Run("per-Mod retained menu and voice markers are rejected under the generic policy", () =>
 {
     foreach (var pair in new[]
     {
@@ -93,10 +93,7 @@ Run("menu and voice admission require their own retained proof markers", () =>
     })
     {
         var item = new StrictCapability(pair.Item1, Hash(pair.Item1), StrictCapabilityLevel.Observed, new[] { pair.Item2 });
-        var valid = StrictCapabilitySnapshot.Create(new[] { item }); valid.EnsureStrictExportAllowed();
-        Check(!valid.CanReusePreflight, "retained proof enabled cache reuse");
-        Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { Capability(pair.Item1, StrictCapabilityLevel.Observed) }).EnsureStrictExportAllowed);
-        Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { new StrictCapability("Unknown.Mod", Hash("Unknown.Mod"), StrictCapabilityLevel.Observed, new[] { pair.Item2 }) }).EnsureStrictExportAllowed);
+        Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { item }).EnsureStrictExportAllowed);
     }
 });
 Run("only certified modules allow preflight reuse", () =>
@@ -112,17 +109,19 @@ Run("strict admission allows an empty Mod set", () =>
     snapshot.EnsureStrictExportAllowed();
     Check(snapshot.CanAdmitStrictExport, "an empty Mod set should not block strict export");
 });
-Run("strict admission allows certified adapters and the observed Azurite handoff", () =>
+Run("certified adapters plus a generic RenderControlV1 participant are admitted", () =>
 {
+    var azurite = new StrictCapability("Azurite", Hash("azurite"), StrictCapabilityLevel.Observed,
+        new[] { "RenderControlV1.participant.v1", "protocol=1", "sha256=" + Hash("azurite-proof") });
     var snapshot = StrictCapabilitySnapshot.Create(new[]
     {
         Capability("Rukari.MoreEffects", StrictCapabilityLevel.Certified),
         Capability("FlandreScarletPortrait", StrictCapabilityLevel.Certified),
-        Capability("Azurite", StrictCapabilityLevel.Observed)
+        azurite
     });
     snapshot.EnsureStrictExportAllowed();
-    Check(snapshot.CanAdmitStrictExport, "certified adapters plus the RenderControlV1 observer should be admitted");
-    Check(!snapshot.CanReusePreflight, "the observed Azurite handoff must not authorize preflight cache reuse");
+    Check(snapshot.CanAdmitStrictExport, "certified adapters plus a generic render participant should be admitted");
+    Check(!snapshot.CanReusePreflight, "an observed render participant must not authorize preflight cache reuse");
 });
 Run("strict admission rejects an opaque module with evidence", () =>
 {
@@ -134,16 +133,13 @@ Run("strict admission rejects an opaque module with evidence", () =>
     Check(!snapshot.CanAdmitStrictExport, "opaque modules must not pass strict admission");
     Throws("strict_capability_unsupported", snapshot.EnsureStrictExportAllowed);
 });
-Run("exact empty Mods need retained observed evidence and never enable cache reuse", () =>
+Run("legacy empty-Mod markers are rejected under the generic policy", () =>
 {
     foreach(string name in new[]{"ExampleCore","ExampleDependent","ExampleStandalone"})
     {
         var scoped=new StrictCapability(name,Hash(name),StrictCapabilityLevel.Observed,
             new[]{"StaticInertModEvidence.empty-load.v1","StaticInertScope.retained.v1"});
-        var snapshot=StrictCapabilitySnapshot.Create(new[]{scoped});snapshot.EnsureStrictExportAllowed();
-        Check(!snapshot.CanReusePreflight,"Empty-Mod scope enabled cache reuse");
-        foreach(var evidence in new[]{Array.Empty<string>(),new[]{"StaticInertModEvidence.empty-load.v1"},new[]{"StaticInertScope.retained.v1"}})
-            Throws("strict_capability_unsupported",StrictCapabilitySnapshot.Create(new[]{new StrictCapability(name,Hash(name),StrictCapabilityLevel.Observed,evidence)}).EnsureStrictExportAllowed);
+        Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[]{scoped}).EnsureStrictExportAllowed);
     }
 });
 Run("empty Mod markers never authorize unknown anonymous or CharacterVoice", () =>
@@ -152,7 +148,7 @@ Run("empty Mod markers never authorize unknown anonymous or CharacterVoice", () 
         Throws("strict_capability_unsupported",StrictCapabilitySnapshot.Create(new[]{new StrictCapability(name,Hash(name),StrictCapabilityLevel.Observed,
             new[]{"StaticInertModEvidence.empty-load.v1","StaticInertScope.retained.v1"})}).EnsureStrictExportAllowed);
 });
-Run("scoped translation dependencies and retained startup evidence admit only their exact module kinds", () =>
+Run("legacy scoped dependency evidence is rejected under the generic policy", () =>
 {
     var pairs = new[]
     {
@@ -163,10 +159,8 @@ Run("scoped translation dependencies and retained startup evidence admit only th
         ("AzureArchive.VideoTools.Formats", "RuntimeModBoundaries.effects-dependency.v1"),
         ("AASkipIntro", "AASkipIntroExportBoundary.retained.v1")
     };
-    var snapshot = StrictCapabilitySnapshot.Create(pairs.Select(pair => new StrictCapability(pair.Item1, Hash(pair.Item1), StrictCapabilityLevel.Observed, new[] { pair.Item2 })));
-    snapshot.EnsureStrictExportAllowed(); Check(!snapshot.CanReusePreflight, "scoped evidence authorized cache reuse");
     foreach (var pair in pairs)
-        Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { Capability(pair.Item1, StrictCapabilityLevel.Observed) }).EnsureStrictExportAllowed);
+        Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { new StrictCapability(pair.Item1, Hash(pair.Item1), StrictCapabilityLevel.Observed, new[] { pair.Item2 }) }).EnsureStrictExportAllowed);
 });
 Run("scoped dependency evidence never admits title unknown anonymous or voice modules", () =>
 {
@@ -174,13 +168,11 @@ Run("scoped dependency evidence never admits title unknown anonymous or voice mo
         foreach (string marker in new[] { "RuntimeModBoundaries.rukari-idle.v1", "MultilingualCaptureAdapter.frame-owned.v1", "AASkipIntroExportBoundary.retained.v1" })
             Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { new StrictCapability(name, Hash(name), StrictCapabilityLevel.Observed, new[] { marker }) }).EnsureStrictExportAllowed);
 });
-Run("scoped controlled background evidence permits export but never cache reuse", () =>
+Run("legacy scoped controlled background evidence is rejected under the generic policy", () =>
 {
     var module = new StrictCapability("FlandreScarletBackground", Hash("exact-background"), StrictCapabilityLevel.Observed,
         new[] { "ControlledBackgroundVideoAdapter.pts-frames.v1" });
-    var snapshot = StrictCapabilitySnapshot.Create(new[] { module });
-    snapshot.EnsureStrictExportAllowed();
-    Check(snapshot.CanAdmitStrictExport && !snapshot.CanReusePreflight, "scoped background admission changed cache policy");
+    Throws("strict_capability_unsupported", StrictCapabilitySnapshot.Create(new[] { module }).EnsureStrictExportAllowed);
 });
 Run("observed background without adapter evidence remains rejected", () =>
 {

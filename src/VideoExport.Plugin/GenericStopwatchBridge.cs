@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -22,6 +23,7 @@ internal static class GenericStopwatchBridge
     private static Harmony? _harmony;
     private static Assembly? _exporterAssembly;
     private static Action<string>? _log;
+    private static Func<Assembly, bool>? _moduleSelector;
     private static long _captureReads;
     private static string _status = "stopped";
 
@@ -29,6 +31,8 @@ internal static class GenericStopwatchBridge
     internal static long CaptureReadCount => _captureReads;
     internal static string Status => _status;
     internal static IReadOnlyCollection<MethodBase> PatchedMethods => Targets.Values.Select(value => value.Method).ToArray();
+    internal static int PatchedCallCount(Assembly assembly) =>
+        Targets.Values.Where(value => value.Method.DeclaringType?.Assembly == assembly).Sum(value => value.Calls);
 
     internal static void Initialize(Harmony harmony, Action<string> log, Assembly? exporterAssembly = null)
     {
@@ -41,6 +45,45 @@ internal static class GenericStopwatchBridge
         _status = "ready";
     }
 
+    internal static void AttachLoadedModules(Func<Assembly, bool> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        _moduleSelector = selector;
+        AppDomain.CurrentDomain.AssemblyLoad += (_, args) => TryPatchLoaded(args.LoadedAssembly);
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies().ToArray()) TryPatchLoaded(assembly);
+    }
+
+    private static void TryPatchLoaded(Assembly assembly)
+    {
+        try
+        {
+            if (_harmony == null || _moduleSelector?.Invoke(assembly) != true) return;
+            // Dynamic and pathless framework assemblies cannot expose managed
+            // call sites to Cecil. They remain visible to the capability
+            // inventory as opaque, but there is nothing to patch here.
+            if (assembly.IsDynamic) return;
+            string? location;
+            try { location = assembly.Location; }
+            catch (NotSupportedException) { return; }
+            if (string.IsNullOrWhiteSpace(location) || !File.Exists(location))
+            {
+                // BepInEx/IL2CPP commonly loads plugin assemblies from memory
+                // (byte[]), so there is no readable file for Cecil. Inspect the
+                // live managed method bodies instead; a pathless Mod still has
+                // observable call sites.
+                PatchAssembly(assembly);
+                return;
+            }
+            PatchAssembly(assembly);
+        }
+        catch (Exception error)
+        {
+            // A Mod without a readable payload remains a strict-capability
+            // problem; it must not crash the host while discovering call sites.
+            _log?.Invoke("generic stopwatch bridge skipped " + assembly.GetName().Name + ": " + error.Message);
+        }
+    }
+
     // Discovers call sites in one managed assembly and patches every caller
     // that actually contains at least one Stopwatch.GetTimestamp call. This is
     // intentionally assembly-agnostic: the caller decides which plugin
@@ -50,10 +93,22 @@ internal static class GenericStopwatchBridge
         ArgumentNullException.ThrowIfNull(assembly);
         if (_exporterAssembly != null && assembly == _exporterAssembly)
             throw new ArgumentException("The exporter's own assembly must keep raw wall time.", nameof(assembly));
+        int installed = 0;
         string? location = assembly.Location;
         if (string.IsNullOrWhiteSpace(location) || !File.Exists(location))
-            throw new NotSupportedException("Managed Mod assembly has no readable location.");
-        int installed = 0;
+        {
+            var live = new List<(MethodInfo Method, int Calls)>();
+            foreach (var type in assembly.GetTypes())
+            {
+                foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                {
+                    int calls = CountTimestampCalls(assembly.ManifestModule, method);
+                    if (calls > 0) live.Add((method, calls));
+                }
+            }
+            foreach (var target in live) if (TryPatch(target.Method, target.Calls)) installed++;
+            return installed;
+        }
         foreach (var target in DiscoverTimestampCallers(assembly))
         {
             if (TryPatch(target.Method, target.Calls)) installed++;
@@ -185,6 +240,27 @@ internal static class GenericStopwatchBridge
         _harmony = null;
         _status = "stopped";
         return true;
+    }
+
+    private static int CountTimestampCalls(Module module, MethodInfo method)
+    {
+        MethodBody? body;
+        try { body = method.GetMethodBody(); }
+        catch { return 0; }
+        byte[]? il = body?.GetILAsByteArray();
+        if (il == null) return 0;
+        int count = 0;
+        for (int index = 0; index + 4 < il.Length; index++)
+        {
+            if (il[index] != 0x28) continue;
+            int token = BitConverter.ToInt32(il, index + 1);
+            MethodBase? resolved;
+            try { resolved = module.ResolveMethod(token); }
+            catch { continue; }
+            if (resolved is MethodInfo info && info.Name == "GetTimestamp"
+                && info.DeclaringType == typeof(Stopwatch)) count++;
+        }
+        return count;
     }
 
     private static string Key(MethodBase method) => method.Module.ModuleVersionId + ":" + method.MetadataToken;
