@@ -193,11 +193,11 @@ internal sealed class NativeCaptureScope : IDisposable
             });
         }
         EnforceCaptureVisibility();
-        var display = live.Where(camera => camera.targetTexture == null).OrderBy(camera => camera.depth).LastOrDefault();
+        var display = live.Where(camera => !IsOwner(camera)).OrderBy(camera => camera.depth).LastOrDefault();
         if (display != null) LastCamera = display;
         foreach (var camera in live)
         {
-            var owned = camera.targetTexture != null;
+            var owned = IsOwner(camera);
             var data = camera.GetComponent<UniversalAdditionalCameraData>();
             if (data != null && data.renderType == CameraRenderType.Overlay) continue;
             if (camera != LastCamera && !owned) continue;
@@ -217,7 +217,7 @@ internal sealed class NativeCaptureScope : IDisposable
             });
         foreach (var owner in ResolveLiveCameras())
         {
-            if (owner.targetTexture == null) continue;
+            if (!IsOwner(owner)) continue;
             if (owner == alreadyRendered) continue;
             var id = owner.GetInstanceID();
             var data = owner.GetComponent<UniversalAdditionalCameraData>();
@@ -285,7 +285,7 @@ internal sealed class NativeCaptureScope : IDisposable
         // camera order or the rendered pixels.
         foreach (var camera in ResolveLiveCameras())
         {
-            if (camera == null || camera.targetTexture != null) continue;
+            if (camera == null || IsOwner(camera)) continue;
             camera.targetTexture = target;
             camera.aspect = _sourceAspect;
             camera.rect = new Rect(0, 0, 1, 1);
@@ -573,6 +573,13 @@ internal sealed class NativeCaptureScope : IDisposable
                 if (camera.name == identity.Name && camera.depth == identity.Depth) list.Add(camera);
         }
         return list.OrderBy(camera => camera.depth).ToList();
+    }
+
+    private bool IsOwner(Camera camera)
+    {
+        foreach (var identity in _ownerIdentities)
+            if (camera.name == identity.Name && camera.depth == identity.Depth) return true;
+        return false;
     }
 
     private static Camera? ResolveCamera(CameraIdentity identity)
