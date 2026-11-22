@@ -742,6 +742,12 @@ public sealed partial class ExportHost : MonoBehaviour
         foreach (var tween in Object.FindObjectsOfType<UITweener>())
             if (tween != null && tween.ignoreTimeScale && tween.mStarted) tween.mStartTime -= previousUiTime;
         _autoSelection = new NativeAutoSelection(player, message => UnityEngine.Debug.Log("AA Video Export: " + message));
+        RuntimeVirtualizationHost.BeginExport(Plugin.HostIdentity, _options.Fps, ExportBuildProfile.SinglePassEnabled,
+            _session.OutputPath, _native.ParticipatingCameraCount, _native.SampleRate, _native.Channels);
+        RuntimeScenePlane.BeginExport();
+        RuntimeAudioPlane.BeginExport();
+        RuntimeRenderPlane.BeginExport(_native.ParticipatingCameraCount, _native.OwnedCameraCount, _native.OverlayCameraCount,
+            RuntimeScenePlane.ActiveCanvasCount, RuntimeScenePlane.ActiveVideoPlayerCount);
         GenericStopwatchBridge.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.ElapsedSeconds : _captured / (double)_options.Fps);
         MoreEffectsCompatibility.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.ElapsedSeconds : _captured / (double)_options.Fps);
         FlandrePortraitClock.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.ElapsedSeconds : _captured / (double)_options.Fps);
@@ -848,6 +854,12 @@ public sealed partial class ExportHost : MonoBehaviour
             if (_strictFinishPending || _strictDraining || _strictAwaitingStart) return;
             _strictPlan?.ValidateNextVideoFrame(_captured);
             var target = _frames!.RenderTarget;
+            // Automatic capture returns after Unity/Azurite has already drawn
+            // the stack owner. Any camera that owns a separate target texture
+            // was outside that pass, so composite it here before readback.
+            // Explicit RenderFrame already performed the same composite.
+            if (frameAlreadyRendered && _native!.OwnedCameraCount > 0)
+                _native.CompositeOwnedCameras(target, _native.LastCamera);
             if (!frameAlreadyRendered)
             {
                 long frame = ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured;
@@ -872,6 +884,10 @@ public sealed partial class ExportHost : MonoBehaviour
             CaptureStrictAudioAndState(audio.Samples, audio.Count);
             _audioTicks += Stopwatch.GetTimestamp() - stage;
             _captured++;
+            long observedFrame = _captured - 1;
+            RuntimeAudioPlane.CaptureFrame(observedFrame, _native.SampleRate, _native.Channels, audio.Count);
+            RuntimeRenderPlane.CaptureFrame(observedFrame);
+            RuntimeScenePlane.CaptureFrame(observedFrame);
             ReportPerformance(false);
             if (_captured == 1) UnityEngine.Debug.Log("AA Video Export: first frame and audio captured.");
             if (_endFence.IsComplete(_captured)) _strictFinishPending = true;
@@ -1161,6 +1177,11 @@ public sealed partial class ExportHost : MonoBehaviour
         RestoreCoordinated(MoreEffectsCompatibility.EndExport, "restoring adapted animation clock");
         RestoreCoordinated(FlandrePortraitClock.EndExport, "restoring portrait clock");
         RestoreCoordinated(GenericStopwatchBridge.EndExport, "restoring generic managed clock");
+        RestoreCoordinated(() => RuntimeAudioPlane.EndExport(scope.AudioRawSampleFrames), "restoring audio plane");
+        RestoreCoordinated(() => RuntimeRenderPlane.EndExport(_captured), "restoring render plane");
+        RestoreCoordinated(RuntimeScenePlane.EndExport, "restoring scene plane");
+        RuntimeVirtualizationHost.EndExport(_captured, scope.AudioRawSampleFrames,
+            _cancellation?.IsCancellationRequested == true);
         RestoreCoordinated(NativeExportClock.Restore, "restoring native clock");
         if (_captureLoop != null)
         {

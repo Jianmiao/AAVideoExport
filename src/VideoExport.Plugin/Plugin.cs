@@ -14,7 +14,7 @@ namespace AAVideoExport.Plugin;
 public sealed class Plugin : BasePlugin
 {
     public const string Guid = "halocue.aa.videoexport";
-    public const string Version = "0.3.0";
+    public const string Version = "1.0.0";
     internal static string FfmpegPath = "ffmpeg.exe";
     internal static string FfprobePath = "ffprobe.exe";
     internal static bool ReduceProgressUiWork = true;
@@ -71,6 +71,9 @@ public sealed class Plugin : BasePlugin
             GenericStopwatchBridge.Initialize(_harmony, message => Log.LogInfo(message), typeof(Plugin).Assembly);
             GenericStopwatchBridge.AttachLoadedModules(assembly =>
                 StrictCapabilityInventory.IsModAssembly(assembly, assembly.GetName().Name ?? ""));
+            RuntimeVirtualizationHost.Initialize(message => Log.LogInfo(message));
+            RuntimeVirtualizationHost.Probe("clock", RuntimePlaneState.Probed,
+                "patched=" + GenericStopwatchBridge.PatchedMethods.Count + "; status=" + GenericStopwatchBridge.Status);
             AASkipIntroExportBoundary.Initialize(_harmony);
             AutoSelectionHooks.Initialize(_harmony, () => ExportHost.Current?.AutoSelection,
                 error => ExportHost.Current?.AutoSelectionFailed(error), message => Log.LogInfo(message));
@@ -120,6 +123,7 @@ public sealed class Plugin : BasePlugin
             MoreEffectsCompatibility.Shutdown();
             FlandrePortraitClock.Shutdown();
             GenericStopwatchBridge.Shutdown();
+            RuntimeVirtualizationHost.Shutdown();
             _harmony.UnpatchSelf();
             throw;
         }
@@ -174,6 +178,7 @@ public sealed class Plugin : BasePlugin
         if (!FlandrePortraitClock.Shutdown()) return false;
         AutoSelectionHooks.Shutdown();
         GenericStopwatchBridge.Shutdown();
+        RuntimeVirtualizationHost.Shutdown();
         _harmony?.UnpatchSelf();
         if (_host != null) UnityEngine.Object.Destroy(_host);
         return true;

@@ -3,9 +3,10 @@ using UnityEngine;
 
 namespace AAVideoExport.Plugin;
 
-// Generic Unity clock-family coverage. The patches are active only while a
-// capture clock is running, so every authoring Mod that reads the same engine
-// clock sees the same virtual timeline without a Mod-specific branch.
+// Generic Unity clock-family coverage. Time.time/delta/unscaled hooks already
+// live in CaptureHooks; this adds the missing realtime read. Managed
+// DateTime/Environment call sites are rewritten per caller by
+// GenericStopwatchBridge. All hooks are active only during capture.
 [HarmonyPatch(typeof(Time), "get_realtimeSinceStartup")]
 internal static class FixedRealtimeSinceStartupHook
 {

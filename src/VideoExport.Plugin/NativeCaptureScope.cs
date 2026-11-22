@@ -9,9 +9,18 @@ namespace AAVideoExport.Plugin;
 
 internal sealed class NativeCaptureScope : IDisposable
 {
-    private readonly List<(Camera Camera, RenderTexture Target, float Aspect, Rect Rect)> _cameras = new();
+    private readonly List<CameraEntry> _cameras = new();
     private readonly List<Camera> _targetCameras = new();
-    private readonly List<(Camera Camera, bool Enabled)> _displayCameras = new();
+    private readonly List<Camera> _displayTargetCameras = new();
+    private readonly List<CameraIdentity> _displayIdentities = new();
+    private readonly List<CameraIdentity> _ownerIdentities = new();
+    private readonly HashSet<int> _ownedCameraIds = new();
+    private readonly List<Camera> _displayCameras = new();
+    private readonly List<bool> _displayEnabled = new();
+    private int _overlayCameraCount;
+    private readonly HashSet<int> _renderObservation = new();
+    private readonly HashSet<int> _compositeObservation = new();
+    private bool _renderFrameObserved;
     private readonly int _fps;
     private readonly int _vsync;
     private readonly int _renderInterval;
@@ -41,7 +50,10 @@ internal sealed class NativeCaptureScope : IDisposable
     private long _emptyAudioFrames;
     private bool _reportedFirstAudio;
     public Camera LastCamera { get; private set; } = null!;
-    public bool AutomaticCameraCapture { get; }
+    public int ParticipatingCameraCount => _cameras.Count;
+    public int OwnedCameraCount => _ownedCameraIds.Count;
+    public int OverlayCameraCount => _overlayCameraCount;
+    public bool AutomaticCameraCapture { get; private set; }
     public int SampleRate { get; }
     public int Channels { get; }
     /// <summary>
@@ -86,32 +98,53 @@ internal sealed class NativeCaptureScope : IDisposable
             var scene = player.gameObject.scene;
             AutomaticCameraCapture = automaticCapture;
             var cameras = Camera.allCameras.Where(c => c != null && c.enabled && c.gameObject.activeInHierarchy
-                && c.gameObject.scene == scene && c.targetTexture == null).OrderBy(c => c.depth).ToArray();
+                && (c.gameObject.scene == scene || c.targetTexture != null)).OrderBy(c => c.depth).ToArray();
             if (cameras.Length == 0) throw new ExportException("playback_camera_missing", "没有找到鉴赏场景的渲染相机。请在鉴赏模式打开导出。");
             foreach (var camera in cameras)
             {
-                _cameras.Add((camera, camera.targetTexture, camera.aspect, camera.rect));
-                var data = camera.GetComponent<UniversalAdditionalCameraData>();
-                if (data == null || data.renderType != CameraRenderType.Overlay)
-                    _targetCameras.Add(camera);
-            }
-            LastCamera = cameras[^1];
-            if (AutomaticCameraCapture || options.CanvasMode == "viewport")
-                SetTarget(target);
-            if (!AutomaticCameraCapture)
-            {
-                // URP callback unavailable: stop AA's automatic screen pass
-                // before using the explicit fallback render. AA Update,
-                // animation and audio continue running; only duplicate camera
-                // submission is removed.
-                foreach (var camera in cameras)
+                var id = camera.GetInstanceID();
+                _cameras.Add(new CameraEntry
                 {
-                    var data = camera.GetComponent<UniversalAdditionalCameraData>();
-                    if (data != null && data.renderType == CameraRenderType.Overlay) continue;
-                    _displayCameras.Add((camera, camera.enabled));
-                    camera.enabled = false;
+                    Camera = camera,
+                    Target = camera.targetTexture,
+                    Aspect = camera.aspect,
+                    Rect = camera.rect,
+                    Owned = camera.targetTexture != null
+                });
+                var data = camera.GetComponent<UniversalAdditionalCameraData>();
+                if (data != null && data.renderType == CameraRenderType.Overlay)
+                {
+                    _overlayCameraCount++;
+                    continue;
+                }
+                _targetCameras.Add(camera);
+                if (camera.targetTexture != null)
+                {
+                    _ownedCameraIds.Add(id);
+                    _ownerIdentities.Add(new CameraIdentity { Name = camera.name, Depth = camera.depth });
+                }
+                else
+                {
+                    _displayTargetCameras.Add(camera);
+                    _displayIdentities.Add(new CameraIdentity { Name = camera.name, Depth = camera.depth });
                 }
             }
+            var display = _displayTargetCameras;
+            LastCamera = display.Count > 0 ? display[^1] : _targetCameras.Count > 0 ? _targetCameras[^1] : cameras[^1];
+            if (_ownedCameraIds.Count > 0) AutomaticCameraCapture = false;
+            // Keep the normal display pass alive even when an offscreen
+            // producer owns a target texture. The producer is composited
+            // after the display pass, so its own clear/render still applies.
+            RuntimeVirtualizationHost.Trace("capture_scope", new Dictionary<string, object?>
+            {
+                ["automatic"] = AutomaticCameraCapture,
+                ["participating"] = _cameras.Count,
+                ["target_cameras"] = _targetCameras.Count,
+                ["last_camera"] = LastCamera.name,
+                ["cameras"] = _cameras.Select(entry => entry.Camera.name + ":" + entry.Camera.depth + ":" + entry.Owned).ToArray()
+            });
+            if (AutomaticCameraCapture || options.CanvasMode == "viewport")
+                SetTarget(target);
             if (options.CanvasMode == "viewport")
                 _viewport = new NativeExportViewport(player, cameras, options.Width, options.Height);
             // Let AA's own Auto/voice/animation timing advance the story. The
@@ -144,32 +177,103 @@ internal sealed class NativeCaptureScope : IDisposable
 
     public void RenderFrame(RenderTexture target)
     {
-        var camera = LastCamera;
-        if (camera == null) throw new ExportException("playback_camera_missing", "鉴赏相机已被销毁。");
+        if (LastCamera == null) throw new ExportException("playback_camera_missing", "鉴赏相机已被销毁。");
+        var live = ResolveLiveCameras();
+        if (live.Count == 0) throw new ExportException("playback_camera_missing", "鉴赏相机已被销毁。");
+        if (!_renderFrameObserved)
+        {
+            _renderFrameObserved = true;
+            RuntimeVirtualizationHost.Trace("render_frame_path", new Dictionary<string, object?>
+            {
+                ["mode"] = "explicit",
+                ["last_camera"] = LastCamera.name,
+                ["owned"] = OwnedCameraCount,
+                ["target"] = target.name,
+                ["live"] = live.Select(camera => camera.name + ":" + camera.depth + ":" + (camera.targetTexture != null)).ToArray()
+            });
+        }
+        EnforceCaptureVisibility();
+        var display = live.Where(camera => camera.targetTexture == null).OrderBy(camera => camera.depth).LastOrDefault();
+        if (display != null) LastCamera = display;
+        foreach (var camera in live)
+        {
+            var owned = camera.targetTexture != null;
+            var data = camera.GetComponent<UniversalAdditionalCameraData>();
+            if (data != null && data.renderType == CameraRenderType.Overlay) continue;
+            if (camera != LastCamera && !owned) continue;
+            RenderCamera(camera, target);
+        }
+    }
+
+    internal void CompositeOwnedCameras(RenderTexture target, Camera? alreadyRendered = null)
+    {
+        if (LastCamera != null && _compositeObservation.Add(LastCamera.GetInstanceID()))
+            RuntimeVirtualizationHost.Trace("render_composite", new Dictionary<string, object?>
+            {
+                ["owners"] = OwnedCameraCount,
+                ["last_camera"] = LastCamera.name,
+                ["last_depth"] = LastCamera.depth,
+                ["already_rendered"] = alreadyRendered?.name ?? ""
+            });
+        foreach (var owner in ResolveLiveCameras())
+        {
+            if (owner.targetTexture == null) continue;
+            if (owner == alreadyRendered) continue;
+            var id = owner.GetInstanceID();
+            var data = owner.GetComponent<UniversalAdditionalCameraData>();
+            if (data != null && data.renderType == CameraRenderType.Overlay) continue;
+            if (_compositeObservation.Add(id))
+                RuntimeVirtualizationHost.Trace("render_owner", new Dictionary<string, object?>
+                {
+                    ["camera"] = owner.name,
+                    ["depth"] = owner.depth,
+                    ["last_depth"] = LastCamera.depth,
+                    ["clear_flags"] = owner.clearFlags.ToString(),
+                    ["scene"] = owner.gameObject.scene.name
+                });
+            // The automatic display loop already rendered the stack owner.
+            // Only cameras that would come after it in depth order can be
+            // composited without changing what Unity would have displayed.
+            if (owner.depth < LastCamera.depth) continue;
+            RenderCamera(owner, target);
+        }
+    }
+
+    private void RenderCamera(Camera camera, RenderTexture target)
+    {
         var oldTarget = camera.targetTexture;
         var oldAspect = camera.aspect;
         var oldRect = camera.rect;
+        var oldEnabled = camera.enabled;
         try
         {
-            EnforceCaptureVisibility();
+            // Manual Render is valid for a disabled display camera, but some
+            // IL2CPP camera backends still skip an owner that was disabled by
+            // the automatic-loop guard. Enable it only for this one render.
+            camera.enabled = true;
             camera.targetTexture = target;
-            // Viewport mode uses the chosen output aspect and native layout.
-            // Fit/fill remain available only for legacy core callers.
             camera.aspect = _sourceAspect;
             camera.rect = new Rect(0, 0, 1, 1);
+            if (_renderObservation.Add(camera.GetInstanceID()))
+                RuntimeVirtualizationHost.Trace("render_camera", new Dictionary<string, object?>
+                {
+                    ["camera"] = camera.name,
+                    ["depth"] = camera.depth,
+                    ["clear_flags"] = camera.clearFlags.ToString(),
+                    ["scene"] = camera.gameObject.scene.name,
+                    ["owns_texture"] = oldTarget != null,
+                    ["target"] = target.name
+                });
             long started = Stopwatch.GetTimestamp();
             try { camera.Render(); }
             finally { CameraRenderTicks += Stopwatch.GetTimestamp() - started; }
         }
         finally
         {
-            // The controls stay in their capture state for the whole session.
-            // Restoring them every frame rebuilds NGUI batches twice per draw.
-            // The camera still needs immediate restoration on render failure;
-            // the host disposes this scope to restore UI and playback state.
             camera.targetTexture = oldTarget;
             camera.aspect = oldAspect;
             camera.rect = oldRect;
+            camera.enabled = oldEnabled;
         }
     }
 
@@ -179,10 +283,10 @@ internal sealed class NativeCaptureScope : IDisposable
         // capture start. Reusing the cached list avoids a GetComponent and LINQ
         // enumeration on every automatic-capture frame without changing the
         // camera order or the rendered pixels.
-        foreach (var entry in _cameras)
+        foreach (var camera in ResolveLiveCameras())
         {
-            var camera = entry.Camera;
-            if (_targetCameras.Contains(camera)) camera.targetTexture = target;
+            if (camera == null || camera.targetTexture != null) continue;
+            camera.targetTexture = target;
             camera.aspect = _sourceAspect;
             camera.rect = new Rect(0, 0, 1, 1);
         }
@@ -409,8 +513,6 @@ internal sealed class NativeCaptureScope : IDisposable
             }
             foreach (var state in _cameras)
                 Restore(() => { if (state.Camera != null) { state.Camera.targetTexture = state.Target; state.Camera.aspect = state.Aspect; state.Camera.rect = state.Rect; } });
-            foreach (var state in _displayCameras)
-                Restore(() => { if (state.Camera != null) state.Camera.enabled = state.Enabled; });
             if (_viewport != null) { Restore(_viewport.Dispose); _viewport = null; }
             if (_snapshotsCaptured)
             {
@@ -435,6 +537,63 @@ internal sealed class NativeCaptureScope : IDisposable
             var ownership = _renderOwnership; _renderOwnership = null;
             ownership?.Dispose();
         }
+    }
+
+    // A value tuple in a managed generic list does not reliably preserve
+    // Il2Cpp object references across the interop boundary. Keep each camera
+    // in a plain managed class so the references stay alive for the whole
+    // capture and can still be dereferenced after the scene settles.
+    private sealed class CameraIdentity
+    {
+        public string Name;
+        public float Depth;
+    }
+
+    private List<Camera> ResolveLiveCameras()
+    {
+        var cameras = Camera.allCameras;
+        var list = new List<Camera>();
+        foreach (var camera in cameras)
+        {
+            if (camera == null || !camera.enabled || !camera.gameObject.activeInHierarchy) continue;
+            var matches = false;
+            foreach (var identity in _displayIdentities)
+                if (camera.name == identity.Name && camera.depth == identity.Depth) matches = true;
+            foreach (var identity in _ownerIdentities)
+                if (camera.name == identity.Name && camera.depth == identity.Depth) matches = true;
+            if (matches) list.Add(camera);
+        }
+        if (list.Count > 0) return list.OrderBy(camera => camera.depth).ToList();
+        foreach (var camera in Resources.FindObjectsOfTypeAll<Camera>())
+        {
+            if (camera == null || !camera.enabled || !camera.gameObject.activeInHierarchy) continue;
+            foreach (var identity in _displayIdentities)
+                if (camera.name == identity.Name && camera.depth == identity.Depth) list.Add(camera);
+            foreach (var identity in _ownerIdentities)
+                if (camera.name == identity.Name && camera.depth == identity.Depth) list.Add(camera);
+        }
+        return list.OrderBy(camera => camera.depth).ToList();
+    }
+
+    private static Camera? ResolveCamera(CameraIdentity identity)
+    {
+        foreach (var camera in Resources.FindObjectsOfTypeAll<Camera>())
+        {
+            if (camera == null) continue;
+            if (camera.name != identity.Name || camera.depth != identity.Depth) continue;
+            if (!camera.gameObject.scene.IsValid()) continue;
+            return camera;
+        }
+        return null;
+    }
+
+    private sealed class CameraEntry
+    {
+        public Camera Camera;
+        public RenderTexture Target;
+        public float Aspect;
+        public Rect Rect;
+        public bool Owned;
     }
 
     private void Restore(Action restore)
