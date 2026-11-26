@@ -5,12 +5,12 @@ enabled and the selected encoder is `libx264`. Production `EncoderArguments.Vide
 emits `-threads:v 1` and `-x264-params lookahead-threads=1`. CBR combines the latter
 with its existing `nal-hrd=cbr:force-cfr=1` parameters in one option.
 
-The existing `veryfast` preset, pixel conversion, target bitrate, maximum rate,
-and VBV buffer remain unchanged. At 4000 Kbps, VBR remains target 4000k,
+The `superfast` speed preset, pixel conversion, target bitrate, maximum rate,
+and VBV buffer remain fixed. At 4000 Kbps, VBR remains target 4000k,
 maximum 6000k, buffer 8000k; CBR remains minimum/target/maximum 4000k and
 buffer 8000k. Non-strict libx264 and every other software/hardware encoder retain
-their existing thread policy. Strict software export may encode more slowly;
-its bounded-rate output and exact repeated pixels take priority.
+their existing thread policy. The preset changes speed/quality, not the
+single-thread deterministic contract.
 
 ## Evidence and boundary
 

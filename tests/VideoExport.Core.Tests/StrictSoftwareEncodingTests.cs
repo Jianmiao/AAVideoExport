@@ -26,7 +26,7 @@ internal static partial class Program
                 Equal("4000k", StrictSoftwareArgument(args, "-b:v"), "target bitrate retained");
                 Equal(mode == "cbr" ? "4000k" : "6000k", StrictSoftwareArgument(args, "-maxrate"), "VBV maximum retained");
                 Equal("8000k", StrictSoftwareArgument(args, "-bufsize"), "VBV buffer retained");
-                Equal("veryfast", StrictSoftwareArgument(args, "-preset"), "quality preset retained");
+                Equal("superfast", StrictSoftwareArgument(args, "-preset"), "speed preset retained");
                 if (mode == "cbr")
                 {
                     Equal("4000k", StrictSoftwareArgument(args, "-minrate"), "CBR minimum retained");
@@ -44,6 +44,17 @@ internal static partial class Program
                     StrictSoftwareArgument(args, "-x264-params"), "non-strict x264 parameters retained");
                 return Task.CompletedTask;
             });
+
+        await Test("strict libx264 explicit ultrafast keeps the single-thread determinism contract", () =>
+        {
+            var options = new ExportOptions { StrictSynchronization = true, SoftwarePreset = "ultrafast" };
+            var args = EncoderArguments.Video(options, "libx264", false).ToArray();
+            Equal("ultrafast", StrictSoftwareArgument(args, "-preset"), "explicit software speed preset");
+            Equal("1", StrictSoftwareArgument(args, "-threads:v"), "strict ultrafast frame threads");
+            Check((StrictSoftwareArgument(args, "-x264-params") ?? "").Split(':').Contains("lookahead-threads=1"),
+                "strict ultrafast lookahead must be fixed at one thread");
+            return Task.CompletedTask;
+        });
 
         await Test("strict libx264 threading policy does not change other software or hardware encoders", () =>
         {

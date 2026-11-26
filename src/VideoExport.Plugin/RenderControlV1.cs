@@ -22,6 +22,11 @@ public static class RenderControlV1
     public static int ProtocolVersion => 1;
     public static bool IsReady => Volatile.Read(ref _ready) != 0;
     public static bool IsRenderingOwned => Volatile.Read(ref _owned) != 0;
+    // Internal observability only; the public v1 surface stays unchanged.
+    // A Mod that merely references this type is not evidence that it actually
+    // participates, so the exporter records the live subscriber count.
+    internal static int ParticipantCount => BeforeAcquire?.GetInvocationList().Length ?? 0;
+    internal static int ReleaseObserverCount => AfterRelease?.GetInvocationList().Length ?? 0;
     public static event Action? BeforeAcquire;
     public static event Action? AfterRelease;
 

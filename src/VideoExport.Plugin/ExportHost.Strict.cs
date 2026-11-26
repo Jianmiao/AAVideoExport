@@ -9,7 +9,6 @@ namespace AAVideoExport.Plugin;
 
 public sealed partial class ExportHost
 {
-    private ControlledBackgroundCommand[]? _preparedBackgroundCommands;
     private bool _strictPreparing, _strictReplayPending, _strictPriming, _strictStartReady,
         _strictAwaitingStart, _strictFinishPending, _strictDraining, _strictRandomOwned;
     private int _strictSeed;
@@ -59,7 +58,6 @@ public sealed partial class ExportHost
         if (!ExportBuildProfile.DevelopmentAuditEnabled)
             return native + "|" + (includeEffectsSource ? RuntimeModBoundaries.PlaybackSettingsIdentity() : RuntimeModBoundaries.PlaybackSettingsWithoutEffectsSource());
         return native
-            + "|" + ControlledBackgroundVideoAdapter.PlaybackSettingsIdentity()
             + "|" + (includeEffectsSource ? RuntimeModBoundaries.PlaybackSettingsIdentity() : RuntimeModBoundaries.PlaybackSettingsWithoutEffectsSource())
             + "|" + MultilingualCaptureAdapter.PlaybackSettingsIdentity()
             + "|" + RetainedMenuPlaybackBoundary.PlaybackSettingsIdentity();
@@ -386,6 +384,7 @@ public sealed partial class ExportHost
                     if (slice.Array != null && slice.Count != 0)
                         _session!.WriteAudio(slice.Array, slice.Offset, slice.Count);
                 });
+            Debug.Log($"AA Video Export strict audio content: raw={_rawAudio.RawSampleFrames} first_content={_rawAudio.FirstContentFrame} content={_rawAudio.Receipt?.ContentSampleFrames} tail={_rawAudio.Receipt?.TailSampleFrames}.");
         }
         else if (_strictPreparing)
         {
@@ -430,14 +429,15 @@ public sealed partial class ExportHost
         {
             if (ExportBuildProfile.DevelopmentAuditEnabled)
             {
-            _preparedBackgroundCommands = ControlledBackgroundVideoAdapter.CommandTrace.ToArray();
+            // Background texture injection was removed from the runtime. The
+            // empty trace is a fixed identity, not a per-Mod observation.
             // Input identity was frozen before playback. Output events must
             // never choose a new baseline when timing changes under that input.
             // Hash actual empty/null observations too; do not invent a zero
             // digest for a missing voice provider or an unused background.
             string eventHash = (_strictSandboxTrace ?? throw new ExportException("invalid_state", "Strict preparation has no observed command trace.")).TraceSha256;
             string voiceHash = HashText(System.Text.Json.JsonSerializer.Serialize(_voicePreparedReceipt));
-            string backgroundHash = HashText(System.Text.Json.JsonSerializer.Serialize(_preparedBackgroundCommands));
+            string backgroundHash = HashText("[]");
             Debug.Log($"AA Video Export strict phase=seal frames={_captured} expected_samples={ExportTimeline.AudioSampleFramesForVideoFrames(_captured, _options.Fps, _native!.SampleRate)}; raw content was sealed without source padding or trimming.");
             _strictLedger!.BeginReplay();
             _strictSandboxTrace?.BeginReplay();
@@ -497,9 +497,6 @@ public sealed partial class ExportHost
         }
         else
         {
-            if (ExportBuildProfile.DevelopmentAuditEnabled && (_preparedBackgroundCommands == null ||
-                !_preparedBackgroundCommands.SequenceEqual(ControlledBackgroundVideoAdapter.CommandTrace)))
-                throw new ExportException("background_replay_mismatch", "Background commands or decoded source identities changed between preparation and replay.");
             _strictPlan!.ValidateVideoEnd(_endFence.FrameCount);
             _strictPlan.ValidateVideoComplete(_captured);
             _preparedAudio!.CompleteReplay();
@@ -580,7 +577,6 @@ public sealed partial class ExportHost
         _preparedFrameSchedule = null;
         _strictPlan = null; _repeatBaseline = null;
         _effectsSourcePending = false; _strictSettingsWithoutEffectsSource = "";
-        _preparedBackgroundCommands = null;
         _strictReplaySourceCheck = null;
         _strictPreflightReceipt = null; _strictPreflightFiles = null;
         _strictCapabilitySnapshot = null; _strictCapabilityGeneration = 0;

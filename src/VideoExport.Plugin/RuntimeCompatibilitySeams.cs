@@ -9,6 +9,18 @@ namespace AAVideoExport.Plugin;
 // 1.0.0 keeps these legacy type names as source-compatible seams only.
 // Actual behavior is supplied by the four generic runtime planes. No seam may
 // reject an installed Mod because its identity is not one of the old adapters.
+// Every remaining lifecycle method emits a plane-scoped observation instead of
+// being an empty body; none of them can gate an export.
+
+internal static class RuntimeSeamTrace
+{
+    internal static void Emit(string name, string action, params (string Key, object? Value)[] values)
+    {
+        var payload = new Dictionary<string, object?> { ["action"] = action };
+        foreach (var pair in values) payload[pair.Key] = pair.Value;
+        RuntimeVirtualizationHost.Trace(name, payload);
+    }
+}
 
 internal static class AASkipIntroExportBoundary
 {
@@ -40,7 +52,7 @@ internal static class StaticInertModEvidence
     internal static bool TryCreateReceipt(Assembly assembly, out Receipt? receipt, out string reason)
     { receipt = null; reason = "no generic static-inert receipt"; return false; }
     internal static long ImageReadCount => 0;
-    internal static void Reset() { }
+    internal static void Reset() => RuntimeSeamTrace.Emit("static_inert", "reset");
 }
 
 internal static class FlandrePortraitClock
@@ -50,8 +62,8 @@ internal static class FlandrePortraitClock
     internal static string Status => "RVL.clock-plane.v1";
     internal static string FailureReason => "";
     internal static void Initialize(Harmony harmony, Action<string> log) => RuntimeVirtualizationHost.Probe("clock", RuntimePlaneState.Probed, "generic portrait clock");
-    internal static void TryInstall() { }
-    internal static void EnsureStrictExportAllowed() { }
+    internal static void TryInstall() => RuntimeSeamTrace.Emit("clock_portrait", "install");
+    internal static void EnsureStrictExportAllowed() => RuntimeSeamTrace.Emit("clock_portrait", "allowed");
     internal static void BeginExport(Func<double> time)
     {
         _active = true;
@@ -72,9 +84,10 @@ internal static class FlandrePortraitClock
 
 internal static class CharacterVoiceDelayClock
 {
-    internal static void Initialize(Harmony harmony, Action<string> log, Action<Exception> fault) { }
-    internal static void TryInstall() { }
-    internal static void ValidateBinding() { }
+    internal static void Initialize(Harmony harmony, Action<string> log, Action<Exception> fault) =>
+        RuntimeVirtualizationHost.Probe("audio", RuntimePlaneState.Probed, "generic character voice delay clock");
+    internal static void TryInstall() => RuntimeSeamTrace.Emit("clock_voice", "install");
+    internal static void ValidateBinding() => RuntimeSeamTrace.Emit("clock_voice", "validate_binding");
     internal static void BeginExport(Func<long> frame, int fps)
     {
         RuntimeVirtualizationHost.Trace("clock_voice", new Dictionary<string, object?>
@@ -87,11 +100,14 @@ internal static class CharacterVoiceDelayClock
     internal static void EndExport() =>
         RuntimeVirtualizationHost.Trace("clock_voice", new Dictionary<string, object?> { ["action"] = "end" });
     internal static bool Shutdown() => true;
-    internal static void Reset() { }
+    internal static void Reset() => RuntimeSeamTrace.Emit("clock_voice", "reset");
 }
 
 public readonly record struct CharacterVoicePosition(long Frame, long Sample, int StoryFrame);
-public sealed record CharacterVoiceReceipt { }
+public sealed record CharacterVoiceReceipt
+{
+    internal string Marker => "RVL.audio.voice.v1";
+}
 
 internal sealed class CharacterVoiceSessionAdapter : IDisposable
 {
@@ -102,76 +118,44 @@ internal sealed class CharacterVoiceSessionAdapter : IDisposable
     internal static bool IsProviderLoaded => false;
     internal static CharacterVoiceSessionAdapter Attach(Action<Exception> fault, Action<string> log) => new();
     internal static string[] CollectKnownIdentifiers(object story) => Array.Empty<string>();
-    internal void ValidateController() { }
-    internal void BindStory(string key, string[] identifiers) { }
-    internal void PreparePass() { }
-    internal bool PumpPreload() => true;
+    internal void ValidateController() => RuntimeSeamTrace.Emit("voice_session", "validate_controller");
+    internal void BindStory(string key, string[] identifiers) =>
+        RuntimeSeamTrace.Emit("voice_session", "bind_story", ("key", key), ("identifiers", identifiers.Length));
+    internal void PreparePass() => RuntimeSeamTrace.Emit("voice_session", "prepare_pass");
+    internal bool PumpPreload()
+    {
+        RuntimeSeamTrace.Emit("voice_session", "pump_preload", ("armed", IsArmed));
+        return true;
+    }
     internal bool IsArmed => false;
-    internal void BeginPass(object player, int fps, int sampleRate, Func<CharacterVoicePosition> position, CharacterVoiceReceipt? receipt) { }
-    internal void ValidateFrame() { }
-    internal void CompletePass(CharacterVoicePosition position) { }
-    internal CharacterVoiceReceipt SealPass(CharacterVoicePosition position) => new();
-    internal void SealForCommit() { }
-    internal void EndPass() { }
-    internal void ValidateForCommit() { }
+    internal void BeginPass(object player, int fps, int sampleRate, Func<CharacterVoicePosition> position, CharacterVoiceReceipt? receipt)
+    {
+        CharacterVoicePosition at;
+        try { at = position(); }
+        catch { at = new CharacterVoicePosition(-1, -1, -1); }
+        RuntimeSeamTrace.Emit("voice_session", "begin_pass",
+            ("frame", at.Frame), ("sample", at.Sample), ("story_frame", at.StoryFrame),
+            ("fps", fps), ("sample_rate", sampleRate), ("receipt", receipt != null));
+    }
+    internal void ValidateFrame() => RuntimeSeamTrace.Emit("voice_session", "validate_frame");
+    internal void CompletePass(CharacterVoicePosition position) =>
+        RuntimeSeamTrace.Emit("voice_session", "complete_pass", ("frame", position.Frame), ("sample", position.Sample));
+    internal CharacterVoiceReceipt SealPass(CharacterVoicePosition position)
+    {
+        RuntimeSeamTrace.Emit("voice_session", "seal_pass", ("frame", position.Frame), ("sample", position.Sample));
+        return new CharacterVoiceReceipt();
+    }
+    internal void SealForCommit() => RuntimeSeamTrace.Emit("voice_session", "seal_for_commit");
+    internal void EndPass() => RuntimeSeamTrace.Emit("voice_session", "end_pass");
+    internal void ValidateForCommit() => RuntimeSeamTrace.Emit("voice_session", "validate_for_commit");
     internal IDisposable AcquireCommitScope() => RuntimeAudioPlane.AcquireCommitScope();
-    internal void Reset() { }
-    public void Dispose() { }
+    internal void Reset() => RuntimeSeamTrace.Emit("voice_session", "reset");
+    public void Dispose() => RuntimeSeamTrace.Emit("voice_session", "dispose");
 }
 
 internal static class CharacterVoiceCompatibility
 {
-    internal static void EnsureStrictExportAllowed() { }
-}
-
-internal readonly record struct ControlledBackgroundCommand(long Frame, long Pts, string Op, long Value, string Path, string SourceSha256, long Duration);
-internal static class ControlledBackgroundVideoAdapter
-{
-    internal static readonly ControlledBackgroundCommand[] CommandTrace = Array.Empty<ControlledBackgroundCommand>();
-    private static long _lastFrame = -1;
-    internal static void Initialize(Harmony harmony, Action<string> log) => RuntimeScenePlane.Probe();
-    internal static void TryInstall() { }
-    internal static void ValidateActive() { }
-    internal static string PlaybackSettingsIdentity()
-    {
-        int players = 0;
-        foreach (var player in UnityEngine.Object.FindObjectsOfType<UnityEngine.Video.VideoPlayer>(true))
-            if (player != null && player.isActiveAndEnabled) players++;
-        return "background-generic=" + players;
-    }
-    internal static void BeginExport(Func<long> frame, int fps, string directory, string ffmpeg, string ffprobe)
-    {
-        _lastFrame = -1;
-        RuntimeVirtualizationHost.Trace("background_begin", new Dictionary<string, object?>
-        {
-            ["frame"] = frame(),
-            ["fps"] = fps,
-            ["players"] = PlaybackSettingsIdentity()
-        });
-    }
-    internal static void Pump(long frame)
-    {
-        int stepped = RuntimeScenePlane.PumpVideoFrame(frame);
-        if (frame == _lastFrame || frame % 30 != 0) return;
-        _lastFrame = frame;
-        int playing = 0;
-        foreach (var player in UnityEngine.Object.FindObjectsOfType<UnityEngine.Video.VideoPlayer>(true))
-            if (player != null && player.isActiveAndEnabled && player.isPlaying) playing++;
-        RuntimeVirtualizationHost.Trace("background_frame", new Dictionary<string, object?>
-        {
-            ["frame"] = frame,
-            ["playing_players"] = playing
-        });
-    }
-    internal static void EndExport() =>
-        RuntimeVirtualizationHost.Trace("background_end", new Dictionary<string, object?> { ["action"] = "end" });
-    internal static bool Shutdown() => true;
-    internal static bool TryClassify(Assembly assembly, out StrictCapabilityLevel level, out IReadOnlyList<string> evidence)
-    {
-        level = StrictCapabilityLevel.Observed;
-        evidence = new[] { "RVL.render-plane.v1", "generic-scene-capture" };
-        return true;
-    }
+    internal static void EnsureStrictExportAllowed() => RuntimeSeamTrace.Emit("voice_compatibility", "allowed");
 }
 
 internal static class MoreEffectsCompatibility
@@ -180,8 +164,8 @@ internal static class MoreEffectsCompatibility
     internal static string Status => "RVL.clock-plane.v1";
     internal static string FailureReason => "";
     internal static void Initialize(Harmony harmony, Action<string> log) => RuntimeVirtualizationHost.Probe("clock", RuntimePlaneState.Probed, "generic effects clock");
-    internal static void TryInstall() { }
-    internal static void EnsureOwnEffectsAllowed() { }
+    internal static void TryInstall() => RuntimeSeamTrace.Emit("effects_clock", "install");
+    internal static void EnsureOwnEffectsAllowed() => RuntimeSeamTrace.Emit("effects_clock", "allowed");
     internal static void BeginExport(Func<double> time) =>
         RuntimeVirtualizationHost.Trace("effects_clock", new Dictionary<string, object?> { ["action"] = "begin", ["time"] = time() });
     internal static void EndExport() =>
@@ -192,8 +176,8 @@ internal static class MoreEffectsCompatibility
 internal static class MultilingualCaptureAdapter
 {
     internal static void Initialize(Harmony harmony, Action<string> log) => RuntimeScenePlane.Probe();
-    internal static void TryInstall() { }
-    internal static void ValidateActive() { }
+    internal static void TryInstall() => RuntimeScenePlane.Probe();
+    internal static void ValidateActive() => RuntimeSeamTrace.Emit("multilingual", "validate_active");
     internal static string PlaybackSettingsIdentity() => "translation-generic=canvas";
     internal static void BeginExport() =>
         RuntimeVirtualizationHost.Trace("multilingual_begin", new Dictionary<string, object?> { ["action"] = "begin" });
@@ -217,11 +201,12 @@ internal static class RuntimeModBoundaries
 {
     private static EffectsSourceInput? _prepared;
     private static bool _active;
-    internal static void Initialize(Harmony harmony, Action<string> log, string configRoot) { }
-    internal static void TryInstall() { }
-    internal static void ValidateActive() { }
+    internal static void Initialize(Harmony harmony, Action<string> log, string configRoot) =>
+        RuntimeSeamTrace.Emit("effects_source", "initialize", ("config_root", configRoot));
+    internal static void TryInstall() => RuntimeSeamTrace.Emit("effects_source", "install");
+    internal static void ValidateActive() => RuntimeSeamTrace.Emit("effects_source", "validate_active");
     internal static bool Shutdown() => true;
-    internal static void PrepareExportDependencies() { }
+    internal static void PrepareExportDependencies() => RuntimeSeamTrace.Emit("effects_source", "prepare_dependencies");
     internal static void BeginExport()
     {
         _active = true;
@@ -269,25 +254,40 @@ internal static class RuntimeModBoundaries
 
 internal sealed class NativeBgmSessionAdapter : IDisposable
 {
-    internal static NativeBgmSessionAdapter Prepare(object story, Action<Exception> fault, Action<string> log, Action<Exception> cleanupFault) => new();
-    internal bool PumpPreload() => true;
+    private static NativeBgmSessionAdapter? _current;
+    internal static NativeBgmSessionAdapter Prepare(object story, Action<Exception> fault, Action<string> log, Action<Exception> cleanupFault)
+    {
+        _current = new NativeBgmSessionAdapter();
+        RuntimeSeamTrace.Emit("bgm", "prepare");
+        return _current;
+    }
+    internal bool PumpPreload()
+    {
+        RuntimeSeamTrace.Emit("bgm", "pump_preload",
+            ("sources", RuntimeAudioPlane.SourceCount), ("playing", RuntimeAudioPlane.PlayingCount));
+        return true;
+    }
     internal void BeginPass(object player) =>
         RuntimeVirtualizationHost.Trace("bgm", new Dictionary<string, object?> { ["action"] = "begin" });
     internal void EndPass() =>
         RuntimeVirtualizationHost.Trace("bgm", new Dictionary<string, object?> { ["action"] = "end" });
     internal bool CleanupPending => false;
     internal Exception? CleanupFailure => null;
-    public void Dispose() { }
-    internal static void Reset() { }
+    public void Dispose() => RuntimeSeamTrace.Emit("bgm", "dispose");
+    internal static void Reset()
+    {
+        _current = null;
+        RuntimeSeamTrace.Emit("bgm", "reset");
+    }
 }
 
 internal static class RetainedMenuPlaybackBoundary
 {
     private static IDisposable? _lease;
     internal static void Initialize(Harmony harmony, Action<string> log, Action<Exception> fault, string configRoot) => RuntimeScenePlane.Probe();
-    internal static void TryInstall() { }
-    internal static void ValidateActive() { }
-    internal static void ValidateForCommit() { }
+    internal static void TryInstall() => RuntimeScenePlane.Probe();
+    internal static void ValidateActive() => RuntimeSeamTrace.Emit("menu_boundary", "validate_active");
+    internal static void ValidateForCommit() => RuntimeSeamTrace.Emit("menu_boundary", "validate_for_commit");
     internal static bool TryAcquireRetained(out IDisposable? lease)
     {
         _lease ??= RuntimeScenePlane.AcquireMenuLease();

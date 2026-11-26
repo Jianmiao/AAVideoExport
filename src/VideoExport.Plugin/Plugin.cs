@@ -82,7 +82,6 @@ public sealed class Plugin : BasePlugin
             CharacterVoiceDelayClock.Initialize(_harmony, message => Log.LogInfo(message),
                 error => ExportHost.Current?.CharacterVoiceClockFailed(error));
             CharacterVoiceDelayClock.TryInstall();
-            ControlledBackgroundVideoAdapter.Initialize(_harmony, message => Log.LogInfo(message));
             RuntimeModBoundaries.Initialize(_harmony, message => Log.LogInfo(message), Path.GetDirectoryName(Config.ConfigFilePath)!);
             MultilingualCaptureAdapter.Initialize(_harmony, message => Log.LogInfo(message));
             RetainedMenuPlaybackBoundary.Initialize(_harmony, message => Log.LogInfo(message),
@@ -93,6 +92,12 @@ public sealed class Plugin : BasePlugin
             int commandLineCount = 1;
             float commandLineCancelAfter = -1f;
             int commandLineCancelFrame = -1;
+            string commandLineEncoding = "";
+            string commandLineCodec = "";
+            string commandLineEncoder = "";
+            string commandLineSoftwarePreset = "superfast";
+            int commandLineBitrateKbps = 0;
+            int commandLineWidth = 1280, commandLineHeight = 720, commandLineFps = 30;
             var commandLineArgs = Environment.GetCommandLineArgs();
             for (int i = 0; i < commandLineArgs.Length; i++)
             {
@@ -114,12 +119,38 @@ public sealed class Plugin : BasePlugin
                 else if (commandLineArgs[i] == "--aa-export-cancel-frame" && i + 1 < commandLineArgs.Length &&
                     int.TryParse(commandLineArgs[++i], out var parsedCancelFrame))
                     commandLineCancelFrame = Math.Max(0, parsedCancelFrame);
+                else if (commandLineArgs[i] == "--aa-export-encoding" && i + 1 < commandLineArgs.Length &&
+                    !commandLineArgs[i + 1].StartsWith("-"))
+                    commandLineEncoding = commandLineArgs[++i];
+                else if (commandLineArgs[i] == "--aa-export-codec" && i + 1 < commandLineArgs.Length &&
+                    !commandLineArgs[i + 1].StartsWith("-"))
+                    commandLineCodec = commandLineArgs[++i];
+                else if (commandLineArgs[i] == "--aa-export-encoder" && i + 1 < commandLineArgs.Length &&
+                    !commandLineArgs[i + 1].StartsWith("-"))
+                    commandLineEncoder = commandLineArgs[++i];
+                else if (commandLineArgs[i] == "--aa-export-bitrate" && i + 1 < commandLineArgs.Length &&
+                    int.TryParse(commandLineArgs[++i], out var parsedBitrate))
+                    commandLineBitrateKbps = Math.Max(0, parsedBitrate);
+                else if (commandLineArgs[i] == "--aa-export-software-preset" && i + 1 < commandLineArgs.Length &&
+                    (commandLineArgs[++i] is "superfast" or "ultrafast"))
+                    commandLineSoftwarePreset = commandLineArgs[i];
+                else if (commandLineArgs[i] == "--aa-export-width" && i + 1 < commandLineArgs.Length &&
+                    int.TryParse(commandLineArgs[++i], out var parsedWidth) && parsedWidth > 0)
+                    commandLineWidth = parsedWidth;
+                else if (commandLineArgs[i] == "--aa-export-height" && i + 1 < commandLineArgs.Length &&
+                    int.TryParse(commandLineArgs[++i], out var parsedHeight) && parsedHeight > 0)
+                    commandLineHeight = parsedHeight;
+                else if (commandLineArgs[i] == "--aa-export-fps" && i + 1 < commandLineArgs.Length &&
+                    int.TryParse(commandLineArgs[++i], out var parsedFps) && parsedFps > 0)
+                    commandLineFps = parsedFps;
             }
             if (commandLineStory != null)
             {
                 _host.ConfigureCommandLineExport(commandLineStory,
                     Path.GetFullPath(commandLineOutput ?? OutputDirectory), commandLineExit, commandLineCount,
-                    commandLineCancelAfter, commandLineCancelFrame);
+                    commandLineCancelAfter, commandLineCancelFrame, commandLineEncoding, commandLineCodec,
+                    commandLineEncoder, commandLineSoftwarePreset, commandLineBitrateKbps,
+                    commandLineWidth, commandLineHeight, commandLineFps);
                 Log.LogInfo("AAVE command-line export armed: " + commandLineStory);
             }
             if (ExportBuildProfile.DevelopmentAuditEnabled)
@@ -143,11 +174,6 @@ public sealed class Plugin : BasePlugin
                 throw;
             }
             AASkipIntroExportBoundary.Shutdown();
-            if (!ControlledBackgroundVideoAdapter.Shutdown())
-            {
-                Log.LogError("AA Video Export: background cleanup remains pending after load failure; unload must retry before removing remaining patches.");
-                throw;
-            }
             if (!MultilingualCaptureAdapter.Shutdown() || !RuntimeModBoundaries.Shutdown())
             {
                 Log.LogError("AA Video Export: scoped translation/dependency cleanup remains pending after load failure.");
@@ -205,7 +231,6 @@ public sealed class Plugin : BasePlugin
         _host?.Shutdown();
         if (_host?.RetainedCleanupPending == true || !RetainedMenuPlaybackBoundary.Shutdown()) return false;
         if (!CharacterVoiceDelayClock.Shutdown()) return false;
-        if (!ControlledBackgroundVideoAdapter.Shutdown()) return false;
         if (!MultilingualCaptureAdapter.Shutdown() || !RuntimeModBoundaries.Shutdown()) return false;
         AASkipIntroExportBoundary.Shutdown();
         if (!MoreEffectsCompatibility.Shutdown()) return false;

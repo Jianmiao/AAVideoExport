@@ -88,7 +88,10 @@ internal sealed class FramePipeline : IDisposable
         CaptureWidth = canvas.CaptureWidth;
         CaptureHeight = canvas.CaptureHeight;
         _bytes = checked(canvas.CaptureWidth * canvas.CaptureHeight * 4);
-        _capacity = Math.Clamp((256 * 1024 * 1024) / _bytes, 1, 6);
+        // Keep the same 256 MiB staging budget but allow more shallow frames
+        // (720p/1080p) to ride through encoder jitter. Large 4K frames still
+        // resolve to a small bound and never grow the queue beyond the budget.
+        _capacity = Math.Clamp((256 * 1024 * 1024) / _bytes, 1, 24);
         _queue = new BlockingCollection<FrameBuffer>(_capacity);
         AsyncReadback = useAsync && SystemInfo.supportsAsyncGPUReadback;
         _nativeBuffers = nativeBuffers && AsyncReadback;

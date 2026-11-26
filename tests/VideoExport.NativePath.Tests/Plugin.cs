@@ -76,10 +76,6 @@ public sealed class Plugin : BasePlugin
             AddComponent<NativeBgmLifecycleChecks>();
         else if (Environment.GetCommandLineArgs().Contains("--aa-export-bgm-inventory"))
             AddComponent<NativeBgmInventoryChecks>();
-        else if (Environment.GetCommandLineArgs().Contains("--aa-export-controlled-background"))
-            AddComponent<ControlledBackgroundChecks>();
-        else if (Environment.GetCommandLineArgs().Contains("--aa-export-background-restore"))
-            AddComponent<BackgroundNativeRestorationChecks>();
         else if (Environment.GetCommandLineArgs().Contains("--aa-export-multilingual-capture"))
             AddComponent<MultilingualCaptureChecks>();
         else if (Environment.GetCommandLineArgs().Contains("--aa-export-aamultilingual-boundary"))

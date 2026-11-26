@@ -17,21 +17,22 @@ public sealed class FfmpegCapabilities
         this.gpuName = gpuName;
     }
 
-    public static Task<FfmpegCapabilities> ProbeAsync(string ffmpegPath, string gpuName, CancellationToken cancellationToken = default) =>
-        ProbeCandidatesAsync(ffmpegPath, gpuName, null, cancellationToken);
+    public static Task<FfmpegCapabilities> ProbeAsync(string ffmpegPath, string gpuName, CancellationToken cancellationToken = default, string? codec = null) =>
+        ProbeCandidatesAsync(ffmpegPath, gpuName, null, cancellationToken, codec);
 
-    public static Task<FfmpegCapabilities> ProbeHardwareAsync(string ffmpegPath, string gpuName, CancellationToken cancellationToken = default) =>
-        ProbeCandidatesAsync(ffmpegPath, gpuName, true, cancellationToken);
+    public static Task<FfmpegCapabilities> ProbeHardwareAsync(string ffmpegPath, string gpuName, CancellationToken cancellationToken = default, string? codec = null) =>
+        ProbeCandidatesAsync(ffmpegPath, gpuName, true, cancellationToken, codec);
 
-    public static Task<FfmpegCapabilities> ProbeSoftwareAsync(string ffmpegPath, CancellationToken cancellationToken = default) =>
-        ProbeCandidatesAsync(ffmpegPath, "", false, cancellationToken);
+    public static Task<FfmpegCapabilities> ProbeSoftwareAsync(string ffmpegPath, CancellationToken cancellationToken = default, string? codec = null) =>
+        ProbeCandidatesAsync(ffmpegPath, "", false, cancellationToken, codec);
 
-    private static async Task<FfmpegCapabilities> ProbeCandidatesAsync(string ffmpegPath, string gpuName, bool? hardware, CancellationToken cancellationToken)
+    private static async Task<FfmpegCapabilities> ProbeCandidatesAsync(string ffmpegPath, string gpuName, bool? hardware, CancellationToken cancellationToken, string? codec)
     {
         var listing = await FfmpegProcess.RunAsync(ffmpegPath, new[] { "-hide_banner", "-encoders" }, TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
         listing.EnsureSuccess("Encoder discovery");
         using var semaphore = new SemaphoreSlim(2);
-        var tasks = EncoderCatalog.All.Where(candidate => hardware is null || candidate.Hardware == hardware).Select(async candidate =>
+        var tasks = EncoderCatalog.All.Where(candidate => (hardware is null || candidate.Hardware == hardware) &&
+                (codec is null || candidate.Codec == codec)).Select(async candidate =>
         {
             if (!Regex.IsMatch(listing.Output, @"(?m)^\s*V\S*\s+" + Regex.Escape(candidate.Name) + @"\s"))
                 return candidate with { Detail = "Not included in this FFmpeg build." };

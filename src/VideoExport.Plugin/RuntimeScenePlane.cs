@@ -18,7 +18,6 @@ internal static class RuntimeScenePlane
     private static int _activeCanvasCount;
     private static int _activeVideoPlayerCount;
     private static readonly List<MonoBehaviour> ObservedMenuObjects = new();
-    private static readonly Dictionary<VideoPlayer, VideoState> VideoStates = new();
     private static long _observedFrame = -1;
 
     internal static string SceneName { get; private set; } = "";
@@ -57,7 +56,6 @@ internal static class RuntimeScenePlane
             try { Time.captureDeltaTime = 1f / fps; }
             catch (Exception error) { Plugin.LogPerformance("scene capture-delta failed: " + error.GetType().Name); }
         }
-        VideoStates.Clear();
         int warmed = PrimeFontAtlases();
         _activeCanvasCount = CountCanvases();
         _activeVideoPlayerCount = CountVideoPlayers();
@@ -83,38 +81,6 @@ internal static class RuntimeScenePlane
         });
     }
 
-    internal static int PumpVideoFrame(long frame)
-    {
-        if (!_active) return 0;
-        int stepped = 0;
-        foreach (var player in UnityEngine.Object.FindObjectsOfType<VideoPlayer>(true))
-        {
-            if (player == null || !player.isActiveAndEnabled) continue;
-            if (!VideoStates.TryGetValue(player, out var state))
-            {
-                state = new VideoState(frame, player.isPlaying, player.isPaused, player.playbackSpeed, player.time, player.frame, player.isLooping);
-                VideoStates[player] = state;
-                try { player.playbackSpeed = 0f; player.Pause(); }
-                catch (Exception error) { Plugin.LogPerformance("scene video pause failed: " + error.GetType().Name); }
-            }
-            long target = Math.Max(0, frame - state.BaseFrame);
-            if (state.Looping && player.frameCount > 0) target %= checked((long)player.frameCount);
-            try
-            {
-                if (player.canSetTime && player.frame != target)
-                {
-                    player.frame = target;
-                    stepped++;
-                }
-            }
-            catch (Exception error)
-            {
-                Plugin.LogPerformance("scene video seek failed: " + error.GetType().Name);
-            }
-        }
-        return stepped;
-    }
-
     internal static void CaptureFrame(long frame)
     {
         if (!_active || frame == _observedFrame) return;
@@ -136,23 +102,6 @@ internal static class RuntimeScenePlane
     {
         if (!_active) return;
         _active = false;
-        foreach (var pair in VideoStates)
-        {
-            var player = pair.Key;
-            var state = pair.Value;
-            if (player == null) continue;
-            try
-            {
-                player.playbackSpeed = state.Speed;
-                if (state.WasPlaying) player.Play();
-                else if (state.WasPaused) player.Pause();
-            }
-            catch (Exception error)
-            {
-                Plugin.LogPerformance("scene video restore failed: " + error.GetType().Name);
-            }
-        }
-        VideoStates.Clear();
         if (_restoreTimeScale)
         {
             try { Time.timeScale = _timeScale; }
@@ -356,8 +305,6 @@ internal static class RuntimeScenePlane
         var cameras = UnityEngine.Object.FindObjectsOfType<Camera>(true);
         return cameras.Length == 0 ? "" : cameras[0].gameObject.scene.name;
     }
-
-    private sealed record VideoState(long BaseFrame, bool WasPlaying, bool WasPaused, float Speed, double Time, long Frame, bool Looping);
 
     private sealed class Lease : IDisposable
     {

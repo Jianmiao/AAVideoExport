@@ -5,7 +5,7 @@ $lab = 'F:\AzureArchive_AAVE03Lab'
 $exe = "$repo\tools\HiddenDesktopLauncher\bin\Release\net8.0\HiddenDesktopLauncher.exe"
 $game = "$lab\AzureArchive.exe"
 $story = 'E:\AAdata\data\saves\AAVE-OfficialAuthoring-20261030.aas'
-$g6 = if ([string]::IsNullOrWhiteSpace($OutputRoot)) { "$repo\artifacts\rvl-1.0.0\g6-final" } else { [IO.Path]::GetFullPath($OutputRoot) }
+$g6 = if ([string]::IsNullOrWhiteSpace($OutputRoot)) { 'H:\AAVE-1.0.0-Evidence-20261125\g6-final' } else { [IO.Path]::GetFullPath($OutputRoot) }
 $plugins = "$lab\BepInEx\plugins"
 
 function Set-Fixture([string]$name, [bool]$on) {
@@ -40,8 +40,11 @@ Set-Fixture 'AAVideoExport.NativePath.Tests' $false
 
 Run-Export 'product-normal' @()
 Run-Export 'product-final-double' @('--aa-export-count', '2')
+# The native Test object has no public rewind after a mid-story cancel, so
+# same-process `--aa-export-count 2 --aa-export-cancel-frame` is not a
+# supported product path. Test cancel cleanup and a fresh-process re-export.
 Run-Export 'product-final-cancel' @('--aa-export-cancel-frame', '300')
-Run-Export 'product-final-reexport' @('--aa-export-count', '2', '--aa-export-cancel-frame', '300')
+Run-Export 'product-final-reexport' @()
 
 Set-Fixture 'UnknownPassiveMod' $true
 Run-Export 'product-final-passive' @()

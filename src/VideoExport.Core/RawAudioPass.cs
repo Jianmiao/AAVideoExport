@@ -36,6 +36,7 @@ public sealed class RawAudioPass : IDisposable
     public double RawDspEpochSeconds { get; }
     public long LeadSampleFrames { get; }
     public long RawSampleFrames { get; private set; }
+    public long FirstContentFrame { get; private set; }
     public long AppendedBlocks { get; private set; }
     public bool IsSealed => phase == Phase.Sealed;
     public RawAudioPassReceipt? Receipt => receipt;
@@ -112,6 +113,12 @@ public sealed class RawAudioPass : IDisposable
         // silence. This removes capture-start jitter without changing any
         // audible sample.
         long firstContent = FindFirstContentFrame();
+        // The mixer may expose one leading block of pre-roll content before the
+        // authored story clock has advanced. Normalize every pass to the first
+        // complete 1024-sample mixer block so an independent pass cannot shift
+        // the whole audio timeline by one block.
+        if (firstContent < 1024) firstContent = 1024;
+        FirstContentFrame = firstContent;
         var window = new TimestampedAudioWindow(0, firstContent, receipt!.ContentSampleFrames, Channels);
         var buffer = new float[ChunkSampleFrames * Channels];
         try

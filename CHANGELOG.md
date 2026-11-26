@@ -1,6 +1,27 @@
 # 版本变更记录
 
-## 1.0.0 — 运行期虚拟化（RVL），2026-11-22
+## 1.0.0 1080p 性能更新 — 2026-11-26
+
+- 固定稿件 CLI 新增 `--aa-export-width` / `--aa-export-height` / `--aa-export-fps`，以及 encoder / codec / bitrate / software preset 控制；默认仍为 1280×720 / 30 fps / qtrle / 软件编码，旧命令行为不变。
+- libx264 默认 preset 为 `superfast`；新增 `--aa-export-software-preset ultrafast` 作为显式速度档，不自动选择。两档均保持 `-threads:v 1` + `lookahead-threads=1` 的严格单线程确定性契约，分辨率、帧数、时长和音频采样不变。
+- 1080p 热态同稿件结果：h264_qsv `7.269 s / 88.6 fps`；libx264 superfast `10.334 s / 62.3 fps`；ultrafast `6.799–7.067 s / 91–95 fps`（约快 34%）。ultrafast 对 superfast 的 SSIM 为 `0.9953`、PSNR 平均 `48.22 dB`、最低 `43.60 dB`；文件大小几乎一致，默认质量档不变。
+- QSV VPP 的 RGBA→NV12/transpose 链在验证的 Intel 驱动上会挂起（1080p 强制实验与 2K 实测均超时）；最终改为所有 QSV 尺寸使用已验证的 CPU 预处理 + QSV 编码，不再启用 VPP。
+- 其他分辨率补充：1440p 软件 superfast 全流程 `63.4 s`（26,618,618 B）、ultrafast `50 s`（26,453,433 B）、QSV `64.8 s`（10,553,451 B）；2160p 软件 superfast 全流程 `97.0 s`（52,008,122 B、644 帧）。2160p QSV 本轮在 506 帧后编码/合成失败，未通过；4K 交付以软件路径为准。
+- 最终 B5 构建 Plugin `200924A296D4F0D9CDDF9B135D67B9AF739B8BCE5C67D379EEDBA8B63682615D`（568,320 B），Core `4283B2FD13DB7C027EE868E4BF2FECB10CF34F27125FB9D9C668CE6FBE81000E`（386,560 B）。
+- 最终 G6 纯产品验收 8/8 场景 PASS（24/24 项检查）；G1 115 文件 / 19 Mod / 0 违规；Core 117 passed / 0 failed。详见本轮验收证据。
+- 最终 Core 1080p 复验：libx264 superfast `69599A49BDF6E5FFA81B36A9E07CF2983CE888677E366D1E150343052916E11B`（13,504,583 B）、ultrafast `054420E50EDFCD1B026CC00909AD23B60AB8917F098CC6F92EBA80D2394D396D`（13,509,334 B）、h264_qsv `7515D38425C5FAD64E0044F17720213112FA77DB724BD927A943A4A09D3C042B`（7,416,909 B），三档输出 SHA 与字节均与 B5 候选一致；性能绝对值以旧 B5 热态样本为准，本轮复验仅用于最终二进制等价性。
+
+## 1.0.0 正式 — 2026-11-25
+
+- 最终构建 Plugin `D59D7F21721B3655E055B95FE6F997CF71E33DB25491CF8742605F9880E51142`（562,688 B），Core `C3EA604E46D13F5918DAC02C29B4F1EC83C4AF87EB4A7D5A2DE11E307CF77215`（386,048 B）。
+- 动态背景改为预解码帧缓存直接绑定 `BackgroundPresenter.Layer.Image.mainTexture`；不再经过 Mod RenderTexture，不再依赖 Mod 的最后一帧写入。缓存只按 URL、帧数、尺寸和资源 basename 选择，不读取 Mod 身份。
+- 背景 Mod 开启正式成片：三次独立进程、同进程连续两次、取消后全新进程重导均为 `CCCA68DC92909AD62D357D9B95315BCAB8F109542EC63232EB8A54187610FA30`，644 帧、`256,855,078 B`、`1,031,168` 音频采样；背景逐帧动态。
+- 背景 Mod 关闭回归为 `BCF14DAAC69C471B048D2597ECF7443255FFF470172804C77B3857BF977A876E`，`184,811,076 B`，未泄漏缓存绑定。
+- G1 PASS：115 文件 / 19 Mod / 0 violations。G2 PASS：同进程两次文件 SHA 与解码视频/音频 SHA 均一致。G3 PASS：UnknownClockMod 644 帧、45 条 clock 事件、`clock_capture_reads=3869`。G4 PASS：UnknownRenderOwnerMod 两次同 SHA、第 300 帧全屏洋红 100%。G5 PASS：91 项 before/after 0 added / 0 removed / 0 changed。G6 PASS：8/8。
+- 取消项按“取消 + 全新进程重导”签署：取消 300 帧、`cancelled=true`、0 成片、0 临时文件；重导 644 帧同 SHA。
+- 已知限制：`--aa-export-count 2 --aa-export-cancel-frame` 的 CLI 同进程自动重导不受支持；AA 原生 `Test` 取消后没有回到脚本开头，也没有公开 Rewind。该限制不属于产品取消/重导路径。
+
+## 1.0.0-rc.1 — 运行期虚拟化（RVL），2026-11-22
 
 - 四个通用运行期平面落地：`RuntimeVirtualizationHost` 协调 Clock / Audio / Render / Scene；`RuntimeCompatibilitySeams.cs` 仅保留旧类型名作为转发接缝，startup / menu / voice commit scope 均转发到实际平面，不再返回空作用域。
 - 语音与 BGM 由 `RuntimeAudioPlane` 直接观察最终 mixer；循环源在导出起点回绕，一次性语音在首次可听帧把 clip 原点对齐到帧边界，解决两次导出语音相位漂移与 PCM 偶发错位。G2 两次 decoded video 与 PCM16 完全一致。

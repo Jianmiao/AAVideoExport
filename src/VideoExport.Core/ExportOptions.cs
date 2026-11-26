@@ -54,6 +54,10 @@ public sealed record ExportOptions
     // that mode and never silently substitutes CPU encoding for a failed GPU.
     public string EncodingMode { get; init; } = "hardware";
     public string Encoder { get; init; } = "auto";
+    // Software H.264 speed/quality profile. "superfast" keeps the B3 default;
+    // "ultrafast" is an explicit faster fallback profile and is never selected
+    // automatically when the caller leaves this at its default.
+    public string SoftwarePreset { get; init; } = "superfast";
     public int BitrateKbps { get; init; } = 4000;
     public string RateControl { get; init; } = "vbr";
     public string AudioQuality { get; init; } = "aac192";
@@ -91,6 +95,7 @@ public sealed record ExportOptions
         Require(!StrictSynchronization || Container is "mp4" or "mov", "严格同步目前支持 MP4 或 MOV；MKV 的毫秒时间精度不能通过逐样本终验。");
         Require(Supersampling == 1, "Rendering is fixed at 1x; use the selected output dimensions.");
         Require(Encoder == "auto" || EncoderCatalog.All.Any(e => e.Name == Encoder && e.Codec == Codec), "The selected encoder does not support this codec.");
+        Require(SoftwarePreset is "superfast" or "ultrafast", "Software preset must be superfast or ultrafast.");
     }
 
     public CanvasLayout GetCanvasLayout()

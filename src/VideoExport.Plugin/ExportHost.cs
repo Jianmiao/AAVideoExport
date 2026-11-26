@@ -26,6 +26,7 @@ public sealed partial class ExportHost : MonoBehaviour
     private CancellationTokenSource? _probeCancellation;
     private bool _probeAttempted;
     private string _probeMode = "", _capabilitiesMode = "";
+    private string _probeCodec = "", _capabilitiesCodec = "";
     private Task<ExportSession>? _prepare;
     private Task<ExportResult>? _finalize;
     private Task? _cleanup;
@@ -69,6 +70,10 @@ public sealed partial class ExportHost : MonoBehaviour
     private float _commandLineSubmittedAt;
     private float _commandLineCancelAfter = -1f;
     private int _commandLineCancelFrame = -1;
+    private string _commandLineEncoding = "", _commandLineCodec = "", _commandLineEncoder = "";
+    private string _commandLineSoftwarePreset = "superfast";
+    private int _commandLineBitrateKbps;
+    private int _commandLineWidth = 1280, _commandLineHeight = 720, _commandLineFps = 30;
     private bool _commandLineCancelIssued;
     private readonly Stopwatch _loadingTimer = new();
     private IntPtr _eligiblePlayer;
@@ -84,6 +89,7 @@ public sealed partial class ExportHost : MonoBehaviour
     private bool _automaticCaptureAvailable = true;
     private bool _failureHandling;
     private long _uiTicks, _renderTicks, _audioTicks;
+    private long _frameCallTicks, _validationTicks, _clockTicks, _captureSubmitTicks, _postTicks, _updateTicks;
     private double _lastPerfReport;
     private double _lastEncodingElapsedSeconds;
     private int _lastBufferedFrames;
@@ -206,8 +212,11 @@ public sealed partial class ExportHost : MonoBehaviour
             return true;
         }
         if (Busy || SceneManager.GetActiveScene().name != "CatalogScene") { CommandLineWait("scene=" + SceneManager.GetActiveScene().name + " busy=" + Busy); return false; }
-        if (_panel.Options.EncodingMode != "software")
-            _panel.Options = EncodingModeSelection.Change(_panel.Options, "software");
+        string requestedMode = CommandLineEncodingMode;
+        if (_panel.Options.EncodingMode != requestedMode)
+            _panel.Options = EncodingModeSelection.Change(_panel.Options, requestedMode);
+        if (_panel.Options.Codec != CommandLineCodec)
+            _panel.Options = _panel.Options with { Codec = CommandLineCodec, Encoder = "auto" };
         if (_probe != null) { CommandLineWait("encoder probe running"); return false; }
         if (_capabilities == null) { Probe(); CommandLineWait("encoder probe starting"); return false; }
         var cards = Object.FindObjectsOfType<CatalogFileInfo>()
@@ -277,14 +286,19 @@ public sealed partial class ExportHost : MonoBehaviour
         {
             Title = title,
             OutputDirectory = attemptOutput,
-            Width = 1280,
-            Height = 720,
-            Fps = 30,
-            Container = "mov",
-            Codec = "qtrle",
-            EncodingMode = "software",
+            Width = _commandLineWidth,
+            Height = _commandLineHeight,
+            Fps = _commandLineFps,
+            Container = CommandLineContainer,
+            Codec = CommandLineCodec,
+            EncodingMode = CommandLineEncodingMode,
+            Encoder = string.IsNullOrWhiteSpace(_commandLineEncoder) ? "auto" : _commandLineEncoder,
+            SoftwarePreset = _commandLineSoftwarePreset,
+            BitrateKbps = _commandLineBitrateKbps > 0 ? _commandLineBitrateKbps : 4000,
             StrictSynchronization = true
         };
+        if (options.Codec == "qtrle" && options.EncodingMode != "software")
+            throw new ExportException("hardware_encoder_required", "QuickTime Animation (qtrle) is a software lossless codec and cannot use a hardware encoder.");
         options.Validate();
         _panel.Options = options;
         _commandLineSubmitted = true;
@@ -297,7 +311,8 @@ public sealed partial class ExportHost : MonoBehaviour
             CommandLineWait("prepare not armed status=" + _status);
             return false;
         }
-        Plugin.LogPerformance("AAVE command-line export submitted: " + _commandLineStory + " -> " + Path.Combine(_commandLineOutput, title + ".mov"));
+        Plugin.LogPerformance("AAVE command-line export submitted: " + _commandLineStory + " -> " + Path.Combine(_commandLineOutput, title + "." + CommandLineContainer) +
+            "; mode=" + options.EncodingMode + "; codec=" + options.Codec + "; encoder=" + options.Encoder);
         return true;
     }
 
@@ -339,7 +354,9 @@ public sealed partial class ExportHost : MonoBehaviour
         Plugin.LogPerformance("AAVE command-line export finished: " + (_commandLineFailed ? "failed" : "ok") + " " + result);
     }
 
-    internal void ConfigureCommandLineExport(string storyPath, string outputDirectory, bool exitWhenDone, int count = 1, float cancelAfterSeconds = -1f, int cancelAtFrame = -1)
+    internal void ConfigureCommandLineExport(string storyPath, string outputDirectory, bool exitWhenDone, int count = 1, float cancelAfterSeconds = -1f, int cancelAtFrame = -1,
+        string encodingMode = "", string codec = "", string encoder = "", string softwarePreset = "superfast",
+        int bitrateKbps = 0, int width = 1280, int height = 720, int fps = 30)
     {
         if (!Path.IsPathFullyQualified(storyPath) || !File.Exists(storyPath))
             throw new ExportException("command_line_story_missing", "The --aa-export-story value must be an existing absolute .aas path.");
@@ -352,11 +369,54 @@ public sealed partial class ExportHost : MonoBehaviour
         _commandLineCount = Math.Max(1, count);
         _commandLineCancelAfter = cancelAfterSeconds;
         _commandLineCancelFrame = cancelAtFrame;
+        _commandLineEncoding = encodingMode ?? "";
+        _commandLineCodec = codec ?? "";
+        _commandLineEncoder = encoder ?? "";
+        _commandLineSoftwarePreset = softwarePreset is "ultrafast" ? "ultrafast" : "superfast";
+        _commandLineBitrateKbps = bitrateKbps;
+        _commandLineWidth = width;
+        _commandLineHeight = height;
+        _commandLineFps = fps;
     }
+
+    private string CommandLineEncodingMode
+    {
+        get
+        {
+            if (_commandLineEncoding.Length != 0) return _commandLineEncoding;
+            return IsHardwareEncoderName(_commandLineEncoder) ? "hardware" : "software";
+        }
+    }
+
+    private string CommandLineCodec
+    {
+        get
+        {
+            if (_commandLineCodec.Length != 0) return _commandLineCodec;
+            if (_commandLineEncoding.Length == 0 && _commandLineEncoder.Length == 0) return "qtrle";
+            if (_commandLineEncoder.EndsWith("hevc_qsv", StringComparison.Ordinal) ||
+                _commandLineEncoder.EndsWith("hevc_nvenc", StringComparison.Ordinal) ||
+                _commandLineEncoder.EndsWith("hevc_amf", StringComparison.Ordinal) ||
+                _commandLineEncoder == "libx265") return "hevc";
+            if (_commandLineEncoder.EndsWith("av1_qsv", StringComparison.Ordinal) ||
+                _commandLineEncoder.EndsWith("av1_nvenc", StringComparison.Ordinal) ||
+                _commandLineEncoder.EndsWith("av1_amf", StringComparison.Ordinal) ||
+                _commandLineEncoder is "libsvtav1" or "libaom-av1") return "av1";
+            return "h264";
+        }
+    }
+
+    private string CommandLineContainer => CommandLineCodec == "qtrle" ? "mov" : "mp4";
+
+    private static bool IsHardwareEncoderName(string encoder) =>
+        encoder.EndsWith("_qsv", StringComparison.Ordinal) ||
+        encoder.EndsWith("_nvenc", StringComparison.Ordinal) ||
+        encoder.EndsWith("_amf", StringComparison.Ordinal);
 
     public void Update()
     {
         if (_shutdown) return;
+        long updateStarted = Stopwatch.GetTimestamp();
         MoreEffectsCompatibility.TryInstall();
         FlandrePortraitClock.TryInstall();
         try
@@ -364,7 +424,6 @@ public sealed partial class ExportHost : MonoBehaviour
             PumpBgmCleanup();
             ThrowRetainedFault();
             CharacterVoiceDelayClock.TryInstall();
-            ControlledBackgroundVideoAdapter.TryInstall();
             RuntimeModBoundaries.TryInstall();
             MultilingualCaptureAdapter.TryInstall();
             RetainedMenuPlaybackBoundary.TryInstall();
@@ -384,6 +443,13 @@ public sealed partial class ExportHost : MonoBehaviour
             if (Capturing) _uiTicks += Stopwatch.GetTimestamp() - uiStarted;
             if (_commandLineRequested)
             {
+                if (!_commandLineFinished && _commandLineAttempt == 0 && !_commandLineCancelIssued &&
+                    _commandLineCancelFrame >= 0 && _captured >= _commandLineCancelFrame)
+                {
+                    _commandLineCancelIssued = true;
+                    Plugin.LogPerformance("AAVE command-line export cancel requested at frame " + _captured);
+                    Cancel();
+                }
                 if (!_commandLineFinished && Time.unscaledTime >= _commandLineNextTry)
                 {
                     _commandLineNextTry = Time.unscaledTime + 1.25f;
@@ -436,10 +502,11 @@ public sealed partial class ExportHost : MonoBehaviour
                 try
                 {
                     var detected = _probe.GetAwaiter().GetResult();
-                    if (_probeMode == _panel.Options.EncodingMode)
+                    if (_probeMode == _panel.Options.EncodingMode && _probeCodec == _panel.Options.Codec)
                     {
                         _capabilities = detected;
                         _capabilitiesMode = _probeMode;
+                        _capabilitiesCodec = _probeCodec;
                         _statusIsError = (_probeMode == "software" ? detected.SoftwareEncoders.Count : detected.HardwareEncoders.Count) == 0;
                         _status = _probeMode == "software"
                             ? detected.SoftwareEncoders.Count == 0
@@ -452,7 +519,7 @@ public sealed partial class ExportHost : MonoBehaviour
                 }
                 catch (Exception error)
                 {
-                    _capabilities = null; _capabilitiesMode = "";
+                    _capabilities = null; _capabilitiesMode = ""; _capabilitiesCodec = "";
                     _statusIsError = true;
                     _status = _probeMode == "software" ? "CPU 编码器检测失败，请检查 FFmpeg 后重新检测。"
                         : "GPU 检测失败。可手动选择 CPU 软件编码，或检查 FFmpeg 与驱动后重新检测。";
@@ -507,7 +574,6 @@ public sealed partial class ExportHost : MonoBehaviour
                 if (_effectsSourceWaiting || _bgmWarmup) return;
             }
             if (!Capturing) return;
-            ControlledBackgroundVideoAdapter.ValidateActive();
             RuntimeModBoundaries.ValidateActive();
             MultilingualCaptureAdapter.ValidateActive();
             if (ExportBuildProfile.DevelopmentAuditEnabled && _options?.StrictSynchronization == true && _strictCapabilitySnapshot != null
@@ -583,6 +649,7 @@ public sealed partial class ExportHost : MonoBehaviour
         catch (Exception error) { Fail(error); }
         finally
         {
+            if (Capturing) _updateTicks += Stopwatch.GetTimestamp() - updateStarted;
             RestoreCoordinated(UpdateInputOwnership, "updating native input ownership");
             if (!Busy && !_renderRestorationFailed) ReleaseSessionOwnership();
         }
@@ -593,7 +660,7 @@ public sealed partial class ExportHost : MonoBehaviour
     {
         try
         {
-            if (_panel.Visible && (!_probeAttempted || _probeMode != _panel.Options.EncodingMode)) Probe();
+            if (_panel.Visible && (!_probeAttempted || _probeMode != _panel.Options.EncodingMode || _probeCodec != _panel.Options.Codec)) Probe();
             _panel.IsCapturing = Capturing;
             _panel.ReduceCaptureUiWork = Plugin.ReduceProgressUiWork;
             _catalogAction?.Tick(_panel.Visible || Capturing);
@@ -616,8 +683,8 @@ public sealed partial class ExportHost : MonoBehaviour
                     : $"两遍生成第 2/2 遍：渲染 {speed:0.0} 帧/秒 · 编码 {encodeSpeed:0.0} 帧/秒 · 队列 {_frames!.BufferedFrames:N0} 帧";
             }
             IReadOnlyList<EncoderCapability>? encoders = _probe != null || !_probeAttempted
-                || _probeMode != _panel.Options.EncodingMode ? null
-                : _capabilitiesMode != _panel.Options.EncodingMode || _capabilities == null
+                || _probeMode != _panel.Options.EncodingMode || _probeCodec != _panel.Options.Codec ? null
+                : _capabilitiesMode != _panel.Options.EncodingMode || _capabilitiesCodec != _panel.Options.Codec || _capabilities == null
                     ? Array.Empty<EncoderCapability>()
                     : _panel.Options.EncodingMode == "software" ? _capabilities.SoftwareEncoders : _capabilities.HardwareEncoders;
             long encodedFrames = _session?.FramesWritten ?? 0;
@@ -666,11 +733,12 @@ public sealed partial class ExportHost : MonoBehaviour
     private void Probe()
     {
         string mode = _panel.Options.EncodingMode;
-        if (Busy || (_probe != null && _probeMode == mode)) return;
+        string codec = _panel.Options.Codec;
+        if (Busy || (_probe != null && _probeMode == mode && _probeCodec == codec)) return;
         if (_probe != null)
         {
-            // A mode switch owns a fresh result. Cancel the old process and
-            // observe faults without ever publishing its result to the panel.
+            // A mode/codec switch owns a fresh result. Cancel the old process
+            // and observe faults without ever publishing its result to the panel.
             _probeCancellation?.Cancel();
             _ = _probe.ContinueWith(completed => { _ = completed.Exception; },
                 CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
@@ -679,15 +747,17 @@ public sealed partial class ExportHost : MonoBehaviour
         _probeAttempted = true;
         _capabilities = null;
         _capabilitiesMode = "";
+        _capabilitiesCodec = "";
         _probeMode = mode;
+        _probeCodec = codec;
         _probeCancellation?.Dispose();
         _probeCancellation = new CancellationTokenSource();
         _statusIsError = false;
         _status = mode == "software" ? "正在检测 CPU 软件编码（短片测试，不读取剧情）…"
             : "正在检测本机 GPU 硬件编码（短片测试，不读取剧情）…";
         _probe = mode == "software"
-            ? FfmpegCapabilities.ProbeSoftwareAsync(Plugin.FfmpegPath, _probeCancellation.Token)
-            : FfmpegCapabilities.ProbeHardwareAsync(Plugin.FfmpegPath, _gpuName, _probeCancellation.Token);
+            ? FfmpegCapabilities.ProbeSoftwareAsync(Plugin.FfmpegPath, _probeCancellation.Token, codec)
+            : FfmpegCapabilities.ProbeHardwareAsync(Plugin.FfmpegPath, _gpuName, _probeCancellation.Token, codec);
     }
 
     [HideFromIl2Cpp]
@@ -709,7 +779,6 @@ public sealed partial class ExportHost : MonoBehaviour
             // not a certification of unobserved third-party timing paths.
             MoreEffectsCompatibility.TryInstall();
             CharacterVoiceDelayClock.TryInstall();
-            ControlledBackgroundVideoAdapter.TryInstall();
             RuntimeModBoundaries.TryInstall();
             MultilingualCaptureAdapter.TryInstall();
             MoreEffectsCompatibility.EnsureOwnEffectsAllowed();
@@ -740,7 +809,9 @@ public sealed partial class ExportHost : MonoBehaviour
                 _strictCapabilityGeneration = StrictCapabilityInventory.AssemblyGeneration;
             }
             if (_capabilities == null || _probe != null || _capabilitiesMode != options.EncodingMode
-                || _panel.Options.EncodingMode != options.EncodingMode)
+                || _capabilitiesCodec != options.Codec
+                || _panel.Options.EncodingMode != options.EncodingMode
+                || _panel.Options.Codec != options.Codec)
             { Probe(); _status = "请先等待当前编码方式的检测完成，再点击导出。"; return; }
             string encoder = _capabilities.PickForMode(options);
             var (selected, storyKey) = ResolveStory();
@@ -751,7 +822,7 @@ public sealed partial class ExportHost : MonoBehaviour
                 name => ScenarioResourceManager.GetPersistentFilePath("saves", name, ".aas"), out string scenarioName))
                 throw new ExportException("story_location_unsupported", "所选剧情与 AA 当前读取的鉴赏目录不一致，请刷新鉴赏列表后重新选择。");
             acquisitionAttempted = true;
-            _renderSessionOwnership ??= RenderControlV1.Acquire();
+            _renderSessionOwnership ??= AcquireRenderControl();
             acquired = true;
             // The native loader accepts a basename and resolves data/saves itself.
             // Read the selected file afresh; a global table can belong to a different card.
@@ -909,7 +980,7 @@ public sealed partial class ExportHost : MonoBehaviour
                     "Strict capability set changed after story loading; capture was refused before the first frame.");
             _strictCapabilityGeneration = StrictCapabilityInventory.AssemblyGeneration;
         }
-        _renderSessionOwnership ??= RenderControlV1.Acquire();
+        _renderSessionOwnership ??= AcquireRenderControl();
         _armed = false;
         _eligiblePlayer = IntPtr.Zero;
         _player = player;
@@ -979,6 +1050,7 @@ public sealed partial class ExportHost : MonoBehaviour
         RuntimeVirtualizationHost.BeginExport(Plugin.HostIdentity, _options.Fps, ExportBuildProfile.SinglePassEnabled,
             _session.OutputPath, _native.ParticipatingCameraCount, _native.SampleRate, _native.Channels);
         RuntimeScenePlane.BeginExport(_options.Fps);
+        RuntimeVideoClock.BeginExport(_options.Fps, _selectedStoryKey);
         RuntimeAudioPlane.BeginExport();
         RuntimeRenderPlane.BeginExport(_native.ParticipatingCameraCount, _native.OwnedCameraCount, _native.OverlayCameraCount,
             RuntimeScenePlane.ActiveCanvasCount, RuntimeScenePlane.ActiveVideoPlayerCount);
@@ -987,14 +1059,13 @@ public sealed partial class ExportHost : MonoBehaviour
         FlandrePortraitClock.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.ElapsedSeconds : _captured / (double)_options.Fps);
         _characterVoiceClockFailure = null;
         CharacterVoiceDelayClock.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured, _options.Fps);
-        ControlledBackgroundVideoAdapter.BeginExport(() => ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured, _options.Fps,
-            Path.Combine(Plugin.TimelineReceiptDirectory, "background-frames"), Plugin.FfmpegPath, Plugin.FfprobePath);
         RuntimeModBoundaries.BeginExport();
         MultilingualCaptureAdapter.BeginExport();
         UpdateInputOwnership();
         _lastUnityFrame = -1;
         _elapsed.Restart();
         _uiTicks = _renderTicks = _audioTicks = 0;
+        _frameCallTicks = _validationTicks = _clockTicks = _captureSubmitTicks = _postTicks = _updateTicks = 0;
         _lastEncodingElapsedSeconds = 0;
         _lastBufferedFrames = 0;
         _panel.ResetPerformanceCounters();
@@ -1034,8 +1105,10 @@ public sealed partial class ExportHost : MonoBehaviour
         if (!Capturing || _strictPriming || _strictDraining || _strictFinishPending) return;
         try
         {
-            long frame = ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured;
-            ControlledBackgroundVideoAdapter.Pump(frame); MultilingualCaptureAdapter.Pump(frame);
+            long frame = _captured;
+            RuntimeVideoClock.RefreshCache(frame);
+            RuntimeVideoClock.Pump(frame);
+            MultilingualCaptureAdapter.Pump(frame);
         }
         catch (Exception error) { Fail(error); }
     }
@@ -1068,25 +1141,36 @@ public sealed partial class ExportHost : MonoBehaviour
     {
         if (!Capturing || _lastUnityFrame == Time.frameCount) return;
         _lastUnityFrame = Time.frameCount;
+        long frameStarted = Stopwatch.GetTimestamp();
         try
         {
             ThrowRetainedFault();
             if (_strictStartupBoundaryAcquired) AASkipIntroExportBoundary.ValidateActive();
             if (ExportBuildProfile.DevelopmentAuditEnabled && _options?.StrictSynchronization == true) RequireStaticInertScope().ValidateFrame();
+            long validationStarted = Stopwatch.GetTimestamp();
             ValidateRetainedControllers();
             ValidateFrameworkFrame(required: _options?.StrictSynchronization == true);
             ValidateRecipeFrame(required: _options?.StrictSynchronization == true);
             ValidateVoiceFrame();
+            _validationTicks += Stopwatch.GetTimestamp() - validationStarted;
             long stage = Stopwatch.GetTimestamp();
             if (_strictPriming)
             {
                 var primer = _native!.RenderAudio();
+                if (!RuntimeVideoClock.ReadyToStart()) return;
                 ValidateFrameworkFrame(required: _options?.StrictSynchronization == true);
                 if (AcceptStrictPrimer(primer.Count)) _strictStartReady = true;
                 return; // No authored event has been advanced; primer PCM is not content.
             }
             if (_strictFinishPending || _strictDraining || _strictAwaitingStart) return;
+            long frame = ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured;
+            long clockStarted = Stopwatch.GetTimestamp();
+            bool clockReady = RuntimeVideoClock.Pump(frame) && RuntimeVideoClock.CaptureReady();
+            _clockTicks += Stopwatch.GetTimestamp() - clockStarted;
+            if (!clockReady) return;
+            validationStarted = Stopwatch.GetTimestamp();
             _strictPlan?.ValidateNextVideoFrame(_captured);
+            _validationTicks += Stopwatch.GetTimestamp() - validationStarted;
             var target = _frames!.RenderTarget;
             // Automatic capture returns after Unity/Azurite has already drawn
             // the stack owner. Any camera that owns a separate target texture
@@ -1096,9 +1180,8 @@ public sealed partial class ExportHost : MonoBehaviour
                 _native.CompositeOwnedCameras(target, _native.LastCamera);
             if (!frameAlreadyRendered)
             {
-                long frame = ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured;
-                ControlledBackgroundVideoAdapter.Pump(frame);
-                MultilingualCaptureAdapter.Pump(frame);
+                long renderFrame = ExportBuildProfile.SinglePassEnabled ? NativeExportClock.Frame : _captured;
+                MultilingualCaptureAdapter.Pump(renderFrame);
                 _native!.ExcludeOverlayLayer(_panel.ExcludeFrom);
                 // Waiting for a free GPU slot has its own metric; do not count it
                 // again as camera rendering.
@@ -1107,22 +1190,31 @@ public sealed partial class ExportHost : MonoBehaviour
                 _renderTicks += Stopwatch.GetTimestamp() - stage;
             }
             ThrowRetainedFault();
+            validationStarted = Stopwatch.GetTimestamp();
             ValidateFrameworkFrame(required: _options?.StrictSynchronization == true);
+            _validationTicks += Stopwatch.GetTimestamp() - validationStarted;
+            long submitStarted = Stopwatch.GetTimestamp();
             if (!_strictPreparing) _frames!.Capture();
             if (frameAlreadyRendered && Capturing)
                 _native!.SetTarget(_frames.RenderTarget);
+            _captureSubmitTicks += Stopwatch.GetTimestamp() - submitStarted;
             stage = Stopwatch.GetTimestamp();
             RuntimeAudioPlane.BeforeCapture(_captured);
             var audio = _native!.RenderAudio();
             ThrowRetainedFault();
+            validationStarted = Stopwatch.GetTimestamp();
             ValidateFrameworkFrame(required: _options?.StrictSynchronization == true);
+            _validationTicks += Stopwatch.GetTimestamp() - validationStarted;
             CaptureStrictAudioAndState(audio.Samples, audio.Count);
             _audioTicks += Stopwatch.GetTimestamp() - stage;
             _captured++;
             long observedFrame = _captured - 1;
+            long postStarted = Stopwatch.GetTimestamp();
             RuntimeAudioPlane.CaptureFrame(observedFrame, _native.SampleRate, _native.Channels, audio.Count);
             RuntimeRenderPlane.CaptureFrame(observedFrame);
             RuntimeScenePlane.CaptureFrame(observedFrame);
+            _postTicks += Stopwatch.GetTimestamp() - postStarted;
+            _frameCallTicks += Stopwatch.GetTimestamp() - frameStarted;
             ReportPerformance(false);
             if (_captured == 1) UnityEngine.Debug.Log("AA Video Export: first frame and audio captured.");
             if (_endFence.IsComplete(_captured)) _strictFinishPending = true;
@@ -1319,6 +1411,12 @@ public sealed partial class ExportHost : MonoBehaviour
             wall_seconds = Math.Round(seconds, 3),
             captured_fps = Math.Round(_captured / Math.Max(seconds, .001), 2),
             ui_ms = Math.Round(Ms(_uiTicks), 3), render_ms = Math.Round(Ms(_renderTicks), 3),
+            frame_call_ms = Math.Round(Ms(_frameCallTicks), 3),
+            update_ms = Math.Round(Ms(_updateTicks), 3),
+            validation_ms = Math.Round(Ms(_validationTicks), 3),
+            clock_ms = Math.Round(Ms(_clockTicks), 3),
+            capture_submit_ms = Math.Round(Ms(_captureSubmitTicks), 3),
+            post_capture_ms = Math.Round(Ms(_postTicks), 3),
             visibility_ms = Math.Round(Ms(_native?.VisibilityTicks ?? 0), 3),
             camera_render_ms = Math.Round(Ms(_native?.CameraRenderTicks ?? 0), 3),
             visibility_refreshes = _native?.PanelRefreshCount ?? 0,
@@ -1401,12 +1499,6 @@ public sealed partial class ExportHost : MonoBehaviour
             try { CharacterVoiceDelayClock.EndExport(); }
             catch (Exception error) { voiceRestoreError = error; throw; }
         }, "restoring CharacterVoice authored delay");
-        Exception? backgroundRestoreError = null;
-        RestoreCoordinated(() =>
-        {
-            try { ControlledBackgroundVideoAdapter.EndExport(); }
-            catch (Exception error) { backgroundRestoreError = error; throw; }
-        }, "restoring controlled background video");
         Exception? translationRestoreError = null, dependencyRestoreError = null;
         RestoreCoordinated(() =>
         {
@@ -1423,6 +1515,7 @@ public sealed partial class ExportHost : MonoBehaviour
         RestoreCoordinated(GenericStopwatchBridge.EndExport, "restoring generic managed clock");
         RestoreCoordinated(() => RuntimeAudioPlane.EndExport(scope.AudioRawSampleFrames), "restoring audio plane");
         RestoreCoordinated(() => RuntimeRenderPlane.EndExport(_captured), "restoring render plane");
+        RestoreCoordinated(RuntimeVideoClock.EndExport, "restoring video clock");
         RestoreCoordinated(RuntimeScenePlane.EndExport, "restoring scene plane");
         RuntimeVirtualizationHost.EndExport(_captured, scope.AudioRawSampleFrames,
             _cancellation?.IsCancellationRequested == true);
@@ -1457,7 +1550,6 @@ public sealed partial class ExportHost : MonoBehaviour
         // Cancel already owns cleanup; its original diagnostic stays primary.
         if (bgmRestoreError != null) throw bgmRestoreError;
         if (voiceRestoreError != null) throw voiceRestoreError;
-        if (backgroundRestoreError != null) throw backgroundRestoreError;
         if (translationRestoreError != null) throw translationRestoreError;
         if (dependencyRestoreError != null) throw dependencyRestoreError;
         if (retainedRestoreError != null) throw retainedRestoreError;
@@ -1515,6 +1607,7 @@ public sealed partial class ExportHost : MonoBehaviour
             try { RenderPipelineManager.remove_beginCameraRendering(_beginCamera); }
             catch (Exception error) { UnityEngine.Debug.LogWarning("AA Video Export: URP pre-camera cleanup unavailable (" + error.GetType().Name + ")."); }
         }
+
         RestoreCoordinated(UpdateInputOwnership, "restoring native input");
         if (!_renderRestorationFailed) ReleaseSessionOwnership();
         Current = null;
@@ -1562,6 +1655,14 @@ public sealed partial class ExportHost : MonoBehaviour
         var ownership = _renderSessionOwnership;
         _renderSessionOwnership = null;
         if (ownership == null) return;
+        RuntimeVirtualizationHost.Trace("render_control", new Dictionary<string, object?>
+        {
+            ["action"] = "release_begin",
+            ["protocol"] = RenderControlV1.ProtocolVersion,
+            ["participants"] = RenderControlV1.ParticipantCount,
+            ["release_observers"] = RenderControlV1.ReleaseObserverCount,
+            ["owned"] = RenderControlV1.IsRenderingOwned
+        });
         try { ownership.Dispose(); }
         catch (Exception error)
         {
@@ -1570,6 +1671,22 @@ public sealed partial class ExportHost : MonoBehaviour
             _renderRestorationFailed = true;
             UnityEngine.Debug.LogWarning("AA Video Export: render release observer failed (" + error.GetType().Name + ").");
         }
+    }
+
+    [HideFromIl2Cpp]
+    private IDisposable AcquireRenderControl()
+    {
+        var lease = RenderControlV1.Acquire();
+        RuntimeVirtualizationHost.Trace("render_control", new Dictionary<string, object?>
+        {
+            ["action"] = "acquired",
+            ["protocol"] = RenderControlV1.ProtocolVersion,
+            ["participants"] = RenderControlV1.ParticipantCount,
+            ["release_observers"] = RenderControlV1.ReleaseObserverCount,
+            ["ready"] = RenderControlV1.IsReady,
+            ["owned"] = RenderControlV1.IsRenderingOwned
+        });
+        return lease;
     }
 
     [HideFromIl2Cpp]

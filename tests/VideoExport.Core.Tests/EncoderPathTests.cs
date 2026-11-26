@@ -25,9 +25,12 @@ internal static partial class Program
             Equal("bt709", args[Array.IndexOf(args, "-colorspace") + 1], "color contract retained");
             return Task.CompletedTask;
         });
-        await Test("QSV preprocessing follows the delivered canvas after fit or fill geometry", () =>
+        await Test("QSV preprocessing stays on the stable CPU path for every delivered canvas", () =>
         {
-            foreach (var shape in new[] { (1920, 1080, false), (1080, 1920, false), (1280, 720, false), (2560, 1440, true), (3840, 2160, true) })
+            // The Intel driver hangs in vpp_qsv's RGBA->NV12/transpose chain at
+            // 1080p and 2K. QSV remains the encoder, but frames are converted by
+            // the CPU first so fit/fill and 1440p/2160p outputs always complete.
+            foreach (var shape in new[] { (1920, 1080), (1080, 1920), (1280, 720), (2560, 1440), (3840, 2160) })
             foreach (string mode in new[] { "fit", "fill" })
             foreach (string codec in new[] { "h264", "hevc", "av1" })
             {
@@ -36,7 +39,13 @@ internal static partial class Program
                     Width = shape.Item1, Height = shape.Item2, SourceWidth = 1920, SourceHeight = 1106,
                     CanvasMode = mode, Codec = codec, Encoder = codec + "_qsv"
                 };
-                Equal(shape.Item3, EncoderArguments.UsesQsvVpp(options, options.Encoder), "post-geometry hardware workload");
+                Check(!EncoderArguments.UsesQsvVpp(options, options.Encoder), "QSV VPP must stay disabled");
+                var args = EncoderArguments.Video(options, options.Encoder, true).ToArray();
+                string filter = args[Array.IndexOf(args, "-vf") + 1];
+                Check(!filter.Contains("vpp_qsv", StringComparison.Ordinal), "CPU preprocessing must not invoke vpp_qsv");
+                Check(!filter.Contains("hwupload", StringComparison.Ordinal), "CPU preprocessing must not upload to QSV VPP");
+                Equal("yuv420p", args[Array.IndexOf(args, "-pix_fmt") + 1], "CPU frames are converted before QSV encoding");
+                Equal(options.Encoder, args[Array.IndexOf(args, "-c:v") + 1], "hardware encoder retained");
                 Check(!EncoderArguments.UsesQsvVpp(options, codec + "_nvenc"), "NVENC does not receive QSV filters");
                 Check(!EncoderArguments.UsesQsvVpp(options, codec + "_amf"), "AMF does not receive QSV filters");
             }

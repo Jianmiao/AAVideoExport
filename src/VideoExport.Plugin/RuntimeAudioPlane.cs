@@ -93,6 +93,11 @@ internal static class RuntimeAudioPlane
             if (source == null || !source.isActiveAndEnabled) continue;
             if (!Sources.Contains(source)) Sources.Add(source);
             if (!source.isPlaying || source.clip == null || Anchored.Contains(source)) continue;
+            // The first authored block can become audible during frame 2 or 3
+            // depending on process start jitter. Deferring the first onset
+            // anchor to a fixed startup frame keeps two independent exports on
+            // the same authored audio timeline without naming any Mod.
+            if (frame < 3) continue;
             // A one-shot that became audible between two frame reads starts
             // at an arbitrary offset inside the mixer buffer. Anchoring its
             // first observed frame to the clip origin makes every pass observe

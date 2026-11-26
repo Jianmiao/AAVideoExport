@@ -4,15 +4,10 @@ internal static class EncoderArguments
 {
     internal static bool UsesQsvVpp(ExportOptions options, string encoder)
     {
-        if (!encoder.EndsWith("_qsv", StringComparison.Ordinal) || options.Codec == "qtrle") return false;
-        var canvas = options.GetCanvasLayout();
-        // The proxy path combines resize and Rec.709 conversion in one CPU
-        // scale pass. Keep the existing large-native-canvas QSV VPP policy.
-        if (canvas.IsProxy) return false;
-        // Crop/pad happens before upload, so VPP processes the delivered canvas,
-        // not the larger capture texture. A 1920x1106 capture cropped to 1080p
-        // must keep the full-HD CPU preprocessing path used by the older build.
-        return (long)canvas.OutputWidth * canvas.OutputHeight > 1920L * 1080L;
+        // QSV VPP's RGBA->NV12/transpose chain hangs on the validated Intel
+        // driver at both 1080p and 2K. Use the proven CPU preprocessing path
+        // for every QSV output size; the hardware encoder still does the encode.
+        return false;
     }
 
     internal static void AddHardwareDeviceOptions(List<string> args, ExportOptions options, string encoder)
@@ -97,7 +92,9 @@ internal static class EncoderArguments
         }
         else if (encoder == "libx264")
         {
-            args.AddRange(new[] { "-preset", "veryfast" });
+            // Superfast stays the default; ultrafast is an explicit software
+            // speed profile. Both preserve the single-thread strict contract.
+            args.AddRange(new[] { "-preset", options.SoftwarePreset });
             if (cbr) args.AddRange(new[] { "-minrate", rate });
             string parameters = cbr ? "nal-hrd=cbr:force-cfr=1" : "";
             if (options.StrictSynchronization)
