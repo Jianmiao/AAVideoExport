@@ -955,11 +955,38 @@ public sealed partial class ExportHost : MonoBehaviour
         {
             if (!_launch.AcceptPlayback(_eligibleTicket, Path.GetFullPath(PersistentData.projectPath))) return true;
             _nativeLoadPending = false;
+            ReloadProjectAudioOverrides();
             Begin(player);
             _loadingCoroutine = null; _loadingStory = null; _frozenSave = null;
             return !_voiceWarmup && !_bgmWarmup && !_effectsSourceWaiting;
         }
         catch (Exception error) { Fail(error); return false; }
+    }
+
+    [HideFromIl2Cpp]
+    private void ReloadProjectAudioOverrides()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedStoryKey)) return;
+        // A published .aas carries only its own baked scenario resources; the
+        // editable project manifest keeps the live SoundOverrides/VoiceOverrides.
+        // Native CoLoadSave has already resolved the story, so re-point the local
+        // override table at the project root before BGM/voice warmup and capture.
+        string saveRoot = Path.GetDirectoryName(_selectedStoryKey) ?? "";
+        string dataRoot = Path.GetDirectoryName(saveRoot) ?? "";
+        string projectName = Path.GetFileNameWithoutExtension(_selectedStoryKey);
+        string projectRoot = Path.Combine(dataRoot, "projects", projectName);
+        string sidecarRoot = Path.ChangeExtension(_selectedStoryKey, null);
+        string localRoot = Directory.Exists(projectRoot) ? projectRoot : sidecarRoot;
+        if (!Directory.Exists(localRoot) || !File.Exists(Path.Combine(localRoot, "manifest.json"))) return;
+        var resources = ScenarioResourceManager.Instance;
+        if (resources == null) return;
+        resources.LoadLocalResourceOverrides(localRoot);
+        RuntimeVirtualizationHost.Trace("audio_project_overrides", new Dictionary<string, object?>
+        {
+            ["project_root"] = projectRoot,
+            ["sidecar_root"] = sidecarRoot,
+            ["loaded_root"] = localRoot
+        });
     }
 
     [HideFromIl2Cpp]
