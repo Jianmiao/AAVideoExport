@@ -75,6 +75,13 @@ internal sealed class Direct3DAnimeUpscaler : IDisposable, IQueuedFrameProcessor
 
     static string Header(string[] names, int w, int h) => string.Join("\n", names.Select((n, i) => "Texture2D<float4> " + n + ":register(t" + i + ");")) + "\nSamplerState aa_sampler:register(s0);RWTexture2D<float4> aa_out:register(u0);static uint2 aa_id;\n";
     static string Entry(string body, int w, int h) => "[numthreads(8,8,1)]void main(uint3 id:SV_DispatchThreadID){if(id.x>=" + w + "||id.y>=" + h + ")return;aa_id=id.xy;" + body + "}\n";
+
+    internal static int VendorIdForEncoder(string encoder, int fallbackVendorId) =>
+        encoder.EndsWith("_nvenc", StringComparison.Ordinal) ? 0x10de
+        : encoder.EndsWith("_amf", StringComparison.Ordinal) ? 0x1002
+        : encoder.EndsWith("_qsv", StringComparison.Ordinal) ? 0x8086
+        : fallbackVendorId;
+
     public Direct3DAnimeUpscaler(ExportOptions options, string encoder, bool flipVertical, bool useNv12 = true, int queueDepth = 1)
     {
         if (queueDepth is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(queueDepth));
@@ -83,7 +90,7 @@ internal sealed class Direct3DAnimeUpscaler : IDisposable, IQueuedFrameProcessor
         height = canvas.CaptureHeight;
         outputWidth = canvas.OutputWidth;
         outputHeight = canvas.OutputHeight;
-        int vendor = encoder.EndsWith("_nvenc", StringComparison.Ordinal) ? 0x10de : encoder.EndsWith("_amf", StringComparison.Ordinal) ? 0x1002 : encoder.EndsWith("_qsv", StringComparison.Ordinal) ? 0x8086 : options.RenderGpuVendorId;
+        int vendor = VendorIdForEncoder(encoder, options.RenderGpuVendorId);
         int deviceId = vendor == options.RenderGpuVendorId ? options.RenderGpuDeviceId : 0;
         // Four bytes per RGBA texel pack four consecutive NV12 bytes. Keep
         // arbitrary even canvases on RGBA when their row is not divisible by four.

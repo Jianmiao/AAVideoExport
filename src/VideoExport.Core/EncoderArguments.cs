@@ -25,6 +25,8 @@ internal static class EncoderArguments
         var args = new List<string> { "-c:v", encoder };
         var canvas = options.GetCanvasLayout();
         bool qsv = UsesQsvVpp(options, encoder);
+        bool qsv4k = encoder.EndsWith("_qsv", StringComparison.Ordinal) &&
+            (canvas.OutputWidth >= 3840 || canvas.OutputHeight >= 2160);
         if (UpscaleShaders.UsesGpu(options))
         {
             string filter = (flipVertical ? "vflip," : "") +
@@ -62,8 +64,10 @@ internal static class EncoderArguments
             }
             // Unity supplies full-range RGB. Convert explicitly to limited-range Rec.709 SDR.
             string dimensions = canvas.IsProxy ? $"w={canvas.OutputWidth}:h={canvas.OutputHeight}:flags={options.EffectiveUpscaleAlgorithm}:" : "";
-            args.AddRange(new[] { "-vf", geometry + "scale=" + dimensions + "in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p,setparams=range=limited:color_primaries=bt709:color_trc=bt709:colorspace=bt709",
-                "-pix_fmt", "yuv420p", "-color_range", "tv", "-colorspace", "bt709", "-color_trc", "bt709", "-color_primaries", "bt709" });
+            string pixelFormat = qsv4k ? "nv12" : "yuv420p";
+            args.AddRange(new[] { "-vf", geometry + "scale=" + dimensions + "in_range=full:out_range=tv:out_color_matrix=bt709,format=" + pixelFormat +
+                ",setparams=range=limited:color_primaries=bt709:color_trc=bt709:colorspace=bt709",
+                "-pix_fmt", pixelFormat, "-color_range", "tv", "-colorspace", "bt709", "-color_trc", "bt709", "-color_primaries", "bt709" });
         }
         string rate = options.BitrateKbps + "k";
         string buffer = (options.BitrateKbps * 2) + "k";
@@ -79,10 +83,20 @@ internal static class EncoderArguments
         else if (encoder.EndsWith("_qsv", StringComparison.Ordinal))
         {
             args.AddRange(new[] { "-preset", "veryfast" });
-            // Keep six frames in flight for both the CPU-conversion and QSV-VPP
-            // paths. This only changes pipeline overlap; rate control, pixel
-            // format, timestamps and codec quality remain unchanged.
-            args.AddRange(new[] { "-async_depth", "6" });
+            if (qsv4k)
+            {
+                // Arc's H.264 PAK path can fail late in a 4K export when six
+                // surfaces are in flight. VDEnc plus two surfaces keeps 4K
+                // hardware H.264/HEVC/AV1 sessions inside the driver budget.
+                args.AddRange(new[] { "-low_power", "1", "-async_depth", "2" });
+            }
+            else
+            {
+                // Keep six frames in flight for the CPU-conversion path. This
+                // only changes pipeline overlap; rate control, pixel format,
+                // timestamps and codec quality remain unchanged.
+                args.AddRange(new[] { "-async_depth", "6" });
+            }
             if (cbr) args.AddRange(new[] { "-minrate", rate });
         }
         else if (encoder.EndsWith("_amf", StringComparison.Ordinal))
