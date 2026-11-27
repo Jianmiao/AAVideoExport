@@ -457,7 +457,10 @@ public sealed partial class ExportHost : MonoBehaviour
                     catch (Exception error) { Fail(error); }
                 }
                 else if (_commandLineFinished && _commandLineExit && Time.unscaledTime - _commandLineFinishedAt >= 2f)
+                {
                     Application.Quit();
+                    Environment.Exit(0);
+                }
             }
             if (_cancelledPlayback != null)
             {
@@ -955,7 +958,9 @@ public sealed partial class ExportHost : MonoBehaviour
         {
             if (!_launch.AcceptPlayback(_eligibleTicket, Path.GetFullPath(PersistentData.projectPath))) return true;
             _nativeLoadPending = false;
+            if (_commandLineAttempt > 0) RuntimeScenePlane.ResetRepeatUi();
             ReloadProjectAudioOverrides();
+            RuntimeScenePlane.SetStoryFontText(_selectedStoryKey);
             Begin(player);
             _loadingCoroutine = null; _loadingStory = null; _frozenSave = null;
             return !_voiceWarmup && !_bgmWarmup && !_effectsSourceWaiting;
@@ -976,7 +981,19 @@ public sealed partial class ExportHost : MonoBehaviour
         string projectName = Path.GetFileNameWithoutExtension(_selectedStoryKey);
         string projectRoot = Path.Combine(dataRoot, "projects", projectName);
         string sidecarRoot = Path.ChangeExtension(_selectedStoryKey, null);
-        string localRoot = Directory.Exists(projectRoot) ? projectRoot : sidecarRoot;
+        string localRoot = projectRoot;
+        if (!Directory.Exists(projectRoot))
+        {
+            // A story with no editable project directory already has its baked
+            // resources loaded by CoLoadSave. Do not reload the sidecar manifest:
+            // it can contain an empty audio table and would overwrite the baked
+            // sound/voice table. Only use a sidecar when it actually carries
+            // standalone override folders.
+            string sidecarSounds = Path.Combine(sidecarRoot, "sounds");
+            string sidecarVoices = Path.Combine(sidecarRoot, "voices");
+            if (!Directory.Exists(sidecarSounds) && !Directory.Exists(sidecarVoices)) return;
+            localRoot = sidecarRoot;
+        }
         if (!Directory.Exists(localRoot) || !File.Exists(Path.Combine(localRoot, "manifest.json"))) return;
         var resources = ScenarioResourceManager.Instance;
         if (resources == null) return;

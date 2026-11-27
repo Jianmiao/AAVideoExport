@@ -57,6 +57,15 @@ internal static class RuntimeScenePlane
             catch (Exception error) { Plugin.LogPerformance("scene capture-delta failed: " + error.GetType().Name); }
         }
         int warmed = PrimeFontAtlases();
+        try
+        {
+            Canvas.ForceUpdateCanvases();
+            RuntimeVirtualizationHost.Trace("font_atlas_canvas", new Dictionary<string, object?>
+            {
+                ["textures"] = FontTextureSummary()
+            });
+        }
+        catch (Exception error) { Plugin.LogPerformance("scene canvas force failed: " + error.GetType().Name); }
         _activeCanvasCount = CountCanvases();
         _activeVideoPlayerCount = CountVideoPlayers();
         SceneName = ActiveSceneName();
@@ -180,6 +189,26 @@ internal static class RuntimeScenePlane
 
     private const string PrintableAscii =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 /:-_,.()[]!?%+";
+    private static string _storyFontText = "";
+
+    internal static void SetStoryFontText(string storyPath)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(storyPath) || !File.Exists(storyPath)) return;
+            var bytes = File.ReadAllBytes(storyPath);
+            var source = System.Text.Encoding.UTF8.GetString(bytes);
+            var printable = new System.Text.StringBuilder(source.Length);
+            foreach (var ch in source)
+                if (char.IsLetterOrDigit(ch) || char.IsPunctuation(ch) || ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t')
+                    printable.Append(ch);
+            _storyFontText = printable.ToString();
+        }
+        catch
+        {
+            _storyFontText = "";
+        }
+    }
 
     private static int PrimeFontAtlases()
     {
@@ -191,6 +220,7 @@ internal static class RuntimeScenePlane
         }
         labels.Sort((left, right) => string.CompareOrdinal(HierarchyPath(left.transform), HierarchyPath(right.transform)));
         var fonts = new Dictionary<int, Font>();
+        var sizes = new HashSet<int> { 42 };
         int warmed = 0;
         foreach (var label in labels)
         {
@@ -204,13 +234,9 @@ internal static class RuntimeScenePlane
                 var font = face == null ? null : ReadMember(face, "dynamicFont") as Font;
                 if (font == null) font = ReadMember(label, "trueTypeFont") as Font;
                 if (font == null || size <= 0) continue;
-                var identity = font.GetInstanceID();
-                fonts[identity] = font;
-                var request = font.GetType().GetMethod("RequestCharactersInTexture",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public, null,
-                    new[] { typeof(string), typeof(int), typeof(FontStyle) }, null);
-                if (request == null) continue;
-                request.Invoke(font, new object[] { (text ?? "") + PrintableAscii, size, style });
+                fonts[font.GetInstanceID()] = font;
+                sizes.Add(size);
+                RequestFont(font, (text ?? "") + PrintableAscii, size, style);
                 warmed++;
             }
             catch (Exception error)
@@ -222,9 +248,108 @@ internal static class RuntimeScenePlane
         {
             ["labels"] = labels.Count,
             ["fonts"] = fonts.Count,
-            ["requested"] = warmed
+            ["requested"] = warmed,
+            ["story_chars"] = _storyFontText.Length,
+            ["textures"] = FontTextureSummary()
+        });
+
+        // Grow every dynamic atlas to its final cold size before any story
+        // glyph is placed. A second in-process export otherwise inherits the
+        // atlas from the first pass at a different capacity and packs the same
+        // glyphs at different 1-LSB offsets.
+        var allFonts = UnityEngine.Resources.FindObjectsOfTypeAll<Font>();
+        foreach (var font in allFonts)
+        {
+            if (font == null) continue;
+            try
+            {
+                foreach (var size in sizes) RequestFont(font, PrintableAscii, size, FontStyle.Normal);
+                fonts[font.GetInstanceID()] = font;
+            }
+            catch { }
+        }
+        Canvas.ForceUpdateCanvases();
+        RuntimeVirtualizationHost.Trace("font_atlas_ascii", new Dictionary<string, object?>
+        {
+            ["textures"] = FontTextureSummary()
+        });
+
+        foreach (var font in allFonts)
+        {
+            if (font == null) continue;
+            try
+            {
+                bool storyFont = font.name.Contains("NotoSansTC") || font.name.Contains("NowarRounded-CN") || font.name.Contains("MainFont");
+                foreach (var size in sizes)
+                {
+                    if (storyFont)
+                    {
+                        RequestFont(font, _storyFontText, size, FontStyle.Normal);
+                        RequestFont(font, _storyFontText, size, FontStyle.Bold);
+                        RequestFont(font, _storyFontText, size, FontStyle.Italic);
+                        RequestFont(font, _storyFontText, size, FontStyle.BoldAndItalic);
+                    }
+                    else
+                    {
+                        RequestFont(font, _storyFontText, size, FontStyle.Normal);
+                    }
+                }
+            }
+            catch { }
+        }
+        Canvas.ForceUpdateCanvases();
+        RuntimeVirtualizationHost.Trace("font_atlas_story", new Dictionary<string, object?>
+        {
+            ["textures"] = FontTextureSummary()
         });
         return warmed;
+    }
+
+    private static void RequestFont(Font font, string text, int size, FontStyle style)
+    {
+        if (font == null || size <= 0 || string.IsNullOrEmpty(text)) return;
+        var request = font.GetType().GetMethod("RequestCharactersInTexture",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public, null,
+            new[] { typeof(string), typeof(int), typeof(FontStyle) }, null);
+        if (request == null) return;
+        request.Invoke(font, new object[] { text, size, style });
+    }
+
+    private static string FontTextureSummary()
+    {
+        var fonts = UnityEngine.Resources.FindObjectsOfTypeAll<Font>();
+        var parts = new List<string>();
+        foreach (var font in fonts)
+        {
+            if (font == null) continue;
+            try
+            {
+                var texture = font.material == null ? null : font.material.mainTexture;
+                parts.Add(font.name + ":" + (texture == null ? "-" : texture.width + "x" + texture.height));
+            }
+            catch { parts.Add(font.name + ":?"); }
+        }
+        return string.Join("|", parts);
+    }
+
+    internal static void ResetRepeatUi()
+    {
+        int removed = 0;
+        foreach (var transform in UnityEngine.Object.FindObjectsOfType<Transform>(true))
+        {
+            try
+            {
+                if (transform == null) continue;
+                string name = transform.gameObject.name;
+                if (name.Contains("UIScenarioScriptLogUnit"))
+                {
+                    UnityEngine.Object.Destroy(transform.gameObject);
+                    removed++;
+                }
+            }
+            catch { }
+        }
+        RuntimeVirtualizationHost.Trace("repeat_ui_reset", new Dictionary<string, object?> { ["removed"] = removed });
     }
 
     private static object? ReadMember(object instance, string name)
