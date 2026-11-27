@@ -1,5 +1,13 @@
 # 版本变更记录
 
+## 1.0.0 音频修复与确定性 G6 — 2026-11-27
+
+- `ReloadProjectAudioOverrides()` 接回工程目录的 `SoundOverrides`；无工程目录时才使用 sidecar fallback，避免空 sidecar 覆盖已烘焙音频表。修复后 `直通线-0` 全片产品自动发布不再近静音。
+- `RuntimeScenePlane.SetStoryFontText()` 从 `.aas` 提取全部可打印文本；`PrimeFontAtlases()` 在首帧前按 story 全部字体、全部字号（含 42）和 Normal/Bold/Italic/BoldAndItalic 四种 style 预热动态字体 atlas，并在 story glyph 前调用 `Canvas.ForceUpdateCanvases()`。同进程两次导出的字体 atlas 布局一致，G6 `double` 逐帧相同。
+- `ExportHost` 在 owner CLI 的 `Application.Quit()` 后补 `Environment.Exit(0)`，修复 finished 后进程不退出、矩阵 runner 卡住的问题。
+- 最终构建 Plugin `B2766ACEAF5F639D67CEEFCB10DC181CFA9A2D1D1408170C9D0FA130776F5B1F`（571,392 B）/ Core `98C575EB21CA12057D6285888B1734CEEFD92F49BC9F01A498AEC6CF554E0089`（386,560 B）。G6 24/24；`normal`、`reexport`、`passive`、`clock`、`double` 两份均为 `8FA18158776240F9A6D2D4BB88AB210A66905DAC61D5DE49E19C7F60CF8A1F74`、257,285,420 B、644 帧；音频 MD5 `02e4992c1d78922834d3c7a8b44d67ae`；取消 300 帧；owner 第 300 帧全屏洋红 921,600；clock 45 条事件。
+- 全片 `直通线-0` 自动发布成片 `AD38A849CA21728956691313C625A92543E3B8A1F6C13F92D9B3C8FA481AE906`（16,809,543,166 B）来自音频修复构建 `44A1F8…`；最终字体构建下的全片自动发布证据尚未重新生成。
+
 ## 1.0.0 1080p 性能更新 — 2026-11-26
 
 - 固定稿件 CLI 新增 `--aa-export-width` / `--aa-export-height` / `--aa-export-fps`，以及 encoder / codec / bitrate / software preset 控制；默认仍为 1280×720 / 30 fps / qtrle / 软件编码，旧命令行为不变。
